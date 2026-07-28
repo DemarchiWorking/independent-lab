@@ -1754,11 +1754,16 @@ qualquer negócio a quem tiver a key. Ver achado completo em
       perfil_publico, criado_em`), leitura pública
 - [ ] Policy `negocios_leitura` (atual) substituída por uma restrita a
       `id = tenant_atual()` para `authenticated`
-- [ ] Toda leitura pública hoje feita direto em `negocios` (mapa,
-      `GH-GROW-01`) migrada para consultar a view, nunca a tabela
 - [ ] Validado contra Postgres real (`supabase start && supabase db
       reset`) — provar que `anon` lê a view normalmente E não lê mais
       `xp`/`moeda_virtual`/atributos da tabela
+
+**⚠️ Correção (revisão de 2026-07-28):** uma versão anterior deste card
+pedia "migrar toda leitura pública para a view". **Removido — era
+trabalho desnecessário:** `SupabaseRepository` só usa `supabaseAdmin()`
+(service_role), que ignora RLS por definição, então nenhuma leitura do
+app é afetada por essa policy. Este card é **só migration + verificação**,
+sem mudança de código de aplicação, risco de regressão ≈ 0.
 
 **Regras de segurança:** 🔴 este card é o que torna seguro ligar o
 primeiro código Supabase no browser. Não pular, não adiar depois de
@@ -1783,32 +1788,43 @@ critérios completos nos cards originais.
 
 ---
 
-### GH-MULTI-02 — Canal de presença real (Supabase Realtime Presence)
+### GH-MULTI-02 — Canal de presença real (Supabase Realtime Presence) 🟡 código feito
 
 | Campo | Valor |
 |---|---|
 | Prioridade | P1 |
 | Esforço | P–M |
-| Depende de | `GH-MULTI-00`, `GH-MULTI-01` |
+| Depende de | Código: nenhum. Ir ao ar: `GH-MULTI-00`, `GH-MULTI-01` |
 
 **Descrição:** Implementa de verdade `features/world/presenca/canal.ts`
-(hoje só `declare function`, deliberadamente inerte) — substitui os
-stubs por uma implementação real de Supabase Realtime Presence. Plano
-bite-sized completo (arquivos exatos, código completo, passos de teste)
-em [`world/PLANO-PRESENCA-REALTIME.md`](world/PLANO-PRESENCA-REALTIME.md).
+(antes só `declare function`, deliberadamente inerte). Estado atual e
+decisões de design em
+[`world/PLANO-PRESENCA-REALTIME.md`](world/PLANO-PRESENCA-REALTIME.md).
 
 **Critérios de aceitação:**
-- [ ] `assinarPresenca(salaTenantId, aoEntrar, aoSair)` conecta a um canal
-      `sede:<tenantId>`, dispara os callbacks corretamente, devolve função
-      de cancelamento
-- [ ] `publicarPresenca(salaTenantId, presente)` anuncia entrada/saída do
-      tenant logado
-- [ ] Payload de presença só carrega `{ tenantId, nome }` — nunca
+- [x] `entrarNaSala(salaTenantId, eu, aoMudar)` conecta ao canal
+      `sede:<tenantId>`, anuncia presença e devolve função de saída —
+      **API mudou** para uma função só (era `assinarPresenca` +
+      `publicarPresenca`): duas funções criariam canais diferentes, e
+      `track()` num canal não-inscrito nunca chega a ninguém. Ver o
+      plano para o raciocínio completo
+- [x] Payload só carrega `{ tenantId, nome, entrouEm }` — nunca
       atributos/XP/moeda (mesma whitelist de `GH-GROW-01`/`GH-GROW-03`)
-- [ ] Degrada graciosamente (no-op, nunca lança) quando
+- [x] Degrada graciosamente (no-op, nunca lança) quando
       `NEXT_PUBLIC_SUPABASE_URL` não está configurado (`GAMEHUB_DB=file`)
-- [ ] Presença nunca é persistida — efêmera, mesma decisão já tomada para
+- [x] Presença nunca é persistida — efêmera, mesma decisão já tomada para
       conquistas (`GH-GROW-03`) e posição do avatar (`GH-WORLD-05`)
+- [x] 15 testes (9 puros + 6 com canal simulado): escopo do canal, `track`
+      só após `SUBSCRIBED`, dedup por tenant, ordenação estável, no-op sem
+      config, cleanup desinscreve
+- [ ] **Verificação viva** — duas abas, dois tenants, uma vendo a outra.
+      Bloqueada por Fase 0 + `GH-MULTI-00` + `GH-MULTI-01`. Enquanto isso
+      não acontecer, o módulo está provado só contra canal simulado.
+
+**Nota de segurança operacional:** nenhuma tela chama `entrarNaSala`
+hoje — o módulo é inerte por construção até `GH-MULTI-03` ligá-lo. Isso é
+proposital: garante que a anon key não vai parar no browser antes de
+`GH-MULTI-00` estar aplicado.
 
 **Regras de segurança:** canal escopado por tenant (`sede:<tenantId>`),
 nunca um canal global "todo mundo online" — evita vazar padrão de uso

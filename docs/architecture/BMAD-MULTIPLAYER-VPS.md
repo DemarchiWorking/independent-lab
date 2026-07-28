@@ -116,6 +116,35 @@ RLS) é bloqueante — precede `GH-MULTI-02` (implementação do canal), não
 a ordem inversa expõe dado real de produção pela primeira vez na história
 do projeto.
 
+### 3.3.1 ✅ O WebSocket NÃO passa pelo nosso Nginx (não perca tempo com isso)
+
+Parece que iria: a VPS roda Nginx → PM2, e Realtime usa WebSocket, então a
+intuição é "preciso garantir `Upgrade`/`Connection` no proxy". **Não
+precisa.** `supabaseAnon()` aponta para o domínio hospedado do Supabase —
+o navegador abre a conexão WSS **direto lá**, sem tocar na nossa VPS. O
+`deploy/nginx.conf.template` até tem os headers de upgrade, mas é
+boilerplate do Next.js (HMR em dev), não é load-bearing para Realtime.
+
+Registrado aqui porque, sem essa nota, um leitor futuro gasta uma tarde
+endurecendo um proxy que a conexão nunca atravessa.
+
+### 3.3.2 🔒 Limitação conhecida: o canal é público por padrão
+
+Canais Realtime são públicos por padrão: quem tiver a anon key (ou seja,
+qualquer visitante, depois que `GH-MULTI-02` estiver no ar) pode entrar em
+`sede:<qualquerTenantId>` e ver quem está presente, ou forjar a própria
+presença.
+
+**Aceitável no MVP** — o payload é só `{ tenantId, nome }`, ambos já
+fachada pública (a mesma informação que `/n/<slug>` publica no Google de
+propósito). Não há dado privado em jogo.
+
+**Caminho de saída, quando/se precisar:** Realtime Authorization —
+canais privados com RLS em `realtime.messages`. Gatilho para puxar isso:
+se algum dia o payload de presença precisar carregar algo além de fachada
+pública, ou se forjar presença passar a ter valor de jogo (ex.: presença
+virar critério de recompensa).
+
 ### 3.4 Degradação graciosa (simplicidade > robustez artificial)
 
 `GAMEHUB_DB=file` (dev local, sem Supabase configurado) precisa continuar
@@ -138,15 +167,38 @@ sincronização sub-100ms — não antes.
 
 ## 4. Development — sequência priorizada (Épico 13 no backlog)
 
-Ordem **não é flexível** nos 2 primeiros itens — é uma cadeia de
-dependência real, não só prioridade de negócio:
+Ordem **não é flexível** — é cadeia de dependência real, não só
+prioridade de negócio:
 
 | # | Card | O que é | Depende de |
 |---|---|---|---|
-| 1 | `GH-MULTI-00` | Hardening de RLS de `negocios` (view de fachada + policy restrita) | — (mas precisa de Postgres real para *verificar*, não só escrever) |
-| 2 | `GH-MULTI-01` | Provisionar VPS + Supabase reais | = Épico 9 (`GH-OPS-01`/`GH-OPS-03`), referenciado, não duplicado |
-| 3 | `GH-MULTI-02` | Implementar `presenca/canal.ts` de verdade (Supabase Realtime Presence) | `GH-MULTI-00`, `GH-MULTI-01` |
-| 4 | `GH-MULTI-03` | Integrar presença real em `VisitaScreen.tsx` (e depois `WorldScreen.tsx`, opcional) | `GH-MULTI-02` |
+| 0 | **Fase 0** | Provar que o modo `GAMEHUB_DB=supabase` funciona de ponta a ponta (= `GH-OPS-03`, já P0) | — (só Supabase local, `supabase start`) |
+| 1 | `GH-MULTI-00` | Hardening de RLS de `negocios` (view de fachada + policy restrita) | Fase 0 (para poder verificar) |
+| 2 | `GH-MULTI-01` | Provisionar VPS + Supabase hospedado | = Épico 9 (`GH-OPS-01`/`GH-OPS-02`), referenciado, não duplicado |
+| 3 | `GH-MULTI-02` | Implementar `presenca/canal.ts` de verdade | 🟡 **código já feito** (mock); ir ao ar depende de 1 e 2 |
+| 4 | `GH-MULTI-03` | Integrar presença real em `VisitaScreen.tsx` | `GH-MULTI-02` verificado ao vivo |
+
+### 4.0 Por que a Fase 0 vem antes de tudo (achado que reordenou o plano)
+
+`GH-OPS-03` já registra que as policies RLS nunca rodaram contra Postgres
+real — só parsing estático. Estendendo o raciocínio: **as 23 migrations
+nunca foram aplicadas em sequência**, e o `SupabaseRepository` inteiro
+nunca executou. O app inteiro só rodou em `GAMEHUB_DB=file`.
+
+Multiplayer é uma camada fina *em cima* dessa superfície inteira não
+validada. Construir presença antes de provar o modo Supabase significa
+depurar 23 migrations e um recurso novo ao mesmo tempo, sem saber qual
+dos dois está quebrado. Fase 0 separa as duas coisas:
+
+1. `supabase start && supabase db reset` — as 23 migrations aplicam limpo?
+2. App com `GAMEHUB_DB=supabase` apontando para o Supabase local.
+3. Cadastro end-to-end (é o caminho que mais toca o adapter:
+   `criar_negocio_com_lote`, onboarding, sede inicial, mobília inicial).
+4. Seed de demo (`SEED_DEMO=1 npx vitest run
+   src/scripts/seed-demo.test.ts`) contra Supabase — os números têm que
+   bater com os já validados em modo arquivo. É um diferencial pronto
+   para achar divergência entre os dois adapters.
+5. Isolamento: tenant A não lê `onboardings` de B.
 
 Detalhamento de cada card está em `docs/BACKLOG-PRODUTO.md`, Épico 13.
 
@@ -183,6 +235,25 @@ create policy negocios_leitura_propria on public.negocios
   for select to authenticated
   using (id = (select private.tenant_atual()));
 ```
+
+**⚠️ Correção importante (achado da revisão de 2026-07-28):** uma versão
+anterior deste documento dizia que as leituras públicas de hoje (mapa,
+`GH-GROW-01`) precisariam migrar para consultar a view. **Não precisam.**
+`SupabaseRepository` usa exclusivamente `supabaseAdmin()` (service_role),
+que **ignora RLS por definição** — nenhuma leitura do app é afetada por
+essa policy. O endurecimento é puramente defensivo contra a anon key que
+`GH-MULTI-02` vai expor no browser.
+
+Consequência prática (boa): **`GH-MULTI-00` não exige nenhuma mudança de
+código de aplicação.** É migration + verificação, risco de regressão ≈ 0.
+
+Corolário menos confortável, que vale registrar: hoje as policies RLS são
+efetivamente *advisory* para o app — protegem contra acesso direto à API,
+não contra um bug no nosso próprio código server-side (que roda como
+service_role e pode ler tudo). Mover as leituras públicas para a anon key
++ view seria defesa em profundidade de verdade, mas é refatoração maior e
+**não é pré-requisito de multiplayer** — fica registrado como opção
+futura, não como tarefa deste épico.
 
 **Validação obrigatória antes de aplicar em produção** (não pular):
 1. `supabase start && supabase db reset` com este SQL.

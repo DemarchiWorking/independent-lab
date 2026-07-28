@@ -73,41 +73,39 @@ mantida em sincronia com os checkboxes reais de `BACKLOG-PRODUTO.md`:
 | 🔴 de `GAPS-DE-INTEGRACAO.md` (RLS de `negocios`) | Adiado — precisa de Postgres real pra validar runtime |
 | `GH-PITCH-01` | Parcial — validado nos dados, **nunca num navegador real** |
 
-## 🎯 Próxima prioridade — Épico 13: Multiplayer Real (decidido em 2026-07-28)
+## 🎯 Próxima prioridade — Épico 13: Multiplayer Real
 
-O usuário pediu explicitamente um plano BMAD (Business/Model/Architecture/
-Development) para multiplayer via Supabase Realtime + VPS, com foco em
-escalabilidade, simplicidade, poder de negócio e inovação. **Documentos
-já criados, prontos para o próximo prompt seguir nesta ordem exata:**
+**A próxima ação é a Fase 0, e ela precisa do usuário** (Supabase local,
+`supabase start` — exige Docker, que não existe neste ambiente).
 
-1. **Ler primeiro:** [`architecture/BMAD-MULTIPLAYER-VPS.md`](architecture/BMAD-MULTIPLAYER-VPS.md)
-   — a decisão estratégica completa (por quê, o que NÃO fazer, sequência).
-2. **`GH-MULTI-00`** (Épico 13, `BACKLOG-PRODUTO.md`) — hardening de RLS
-   de `negocios`. **Bloqueante, não pular.** Desenho do SQL já especificado
-   e com sintaxe validada (`pg-query-emscripten`), mas precisa de Postgres
-   real pra ser APLICADO e VERIFICADO — não aplicar às cegas.
-3. **`GH-MULTI-01`** — provisionar VPS + Supabase reais. É literalmente o
-   Épico 9 (`GH-OPS-01`/`GH-OPS-03`) — **precisa do usuário**, mesma
-   restrição de sempre (SSH, projeto Supabase, sem isso nada dos itens
-   abaixo roda de verdade).
-4. **`GH-MULTI-02`** — canal de presença real. Plano bite-sized COMPLETO
-   (código inteiro, testes, sem placeholder) em
-   [`world/PLANO-PRESENCA-REALTIME.md`](world/PLANO-PRESENCA-REALTIME.md)
-   — as Tasks 1–3 desse plano (helpers puros + diff de presença + canal
-   com mock) **já podem ser executadas sem esperar `GH-MULTI-00`/`01`**,
-   só a verificação final (rodar contra Supabase real) depende deles.
-5. **`GH-MULTI-03`** — integrar no `VisitaScreen.tsx` (sem plano
-   bite-sized ainda — escrever quando `GH-MULTI-02` estiver de fato
-   verificado contra Supabase real, não antes).
+### Ordem, com o motivo de cada posição
 
-**Se o usuário preferir não seguir por multiplayer no próximo prompt**,
-ordem alternativa (sem dependência de infraestrutura nova):
+| # | O que | Estado |
+|---|---|---|
+| **0** | **Fase 0** — provar que `GAMEHUB_DB=supabase` funciona ponta a ponta (= `GH-OPS-03`) | ⛔ **precisa do usuário** (Docker/Supabase local) |
+| 1 | `GH-MULTI-00` — endurecer RLS de `negocios` | SQL especificado e com sintaxe validada; aplicar/verificar exige a Fase 0 |
+| 2 | `GH-MULTI-01` — VPS + Supabase hospedado (= Épico 9) | ⛔ **precisa do usuário** (SSH, GitHub secrets, projeto Supabase) |
+| 3 | `GH-MULTI-02` — canal de presença | 🟡 **código FEITO e testado** (15 testes, canal simulado); falta só a verificação viva |
+| 4 | `GH-MULTI-03` — integrar no `VisitaScreen` | Não iniciado; pré-requisito já mapeado (ver abaixo) |
+
+**Por que a Fase 0 existe (achado que reordenou o plano):** as 23
+migrations nunca foram aplicadas em sequência e o `SupabaseRepository`
+nunca executou — o app inteiro só rodou em modo arquivo. Construir
+multiplayer antes disso é depurar 23 migrations e um recurso novo ao
+mesmo tempo. Detalhe em `architecture/BMAD-MULTIPLAYER-VPS.md` §4.0.
+
+### Se quiser avançar SEM infraestrutura nova
+
+`GH-MULTI-03` é o próximo passo autônomo possível — mas só faz sentido
+depois da verificação viva do `GH-MULTI-02` (senão integra-se contra algo
+que nunca rodou de verdade). O pré-requisito concreto já está mapeado:
+`src/app/world/visitar/[tenantId]/page.tsx` chama `lerSessao()` mas não
+passa a identidade do **visitante** para `VisitaScreen` — precisa
+threadar `{ tenantId, nome }` como prop.
+
+Alternativa totalmente independente de multiplayer:
 `GH-MAPA-02` (zoom do mapa) → `GH-MAPA-03` (visual do pin, depende do
 anterior) → `GH-EDU-02` (diagnóstico em PDF).
-
-**Épico 9 (deploy real) continua precisando do usuário** — VPS/SSH,
-repositório remoto+secrets, projeto Supabase. Perguntar antes de tentar
-qualquer coisa aí, em qualquer ordem escolhida.
 
 ### 3. Antes do dia do pitch de verdade (mesmo sem código novo)
 
