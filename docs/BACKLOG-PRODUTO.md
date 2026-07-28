@@ -251,7 +251,7 @@ mesmo nível de sensibilidade do XP hoje.
 
 ---
 
-### GH-ATR-03 — Requisito mínimo de atributo em entregas e nós da árvore
+### GH-ATR-03 — Requisito mínimo de atributo em entregas e nós da árvore ✅
 
 | Campo | Valor |
 |---|---|
@@ -267,11 +267,20 @@ ganha um **requisito mínimo por atributo**. A UI compara o total disponível
 (`marketplace-servicos.md` §3).
 
 **Critérios de aceitação:**
-- [ ] Catálogo de jobs e nós ganham `requisitos: Partial<Atributos>`
-- [ ] UI mostra comparação lado a lado (atual vs. requisito) antes da
+- [x] Catálogo de jobs e nós ganham `requisitos: Partial<Atributos>`
+      (`Job.requisitos` em `features/marketplace/data.ts`, `HexNode.requisitos`
+      em `features/parcerias/data.ts` — substitui o antigo `minScore`, que
+      era exibido mas nunca validado)
+- [x] UI mostra comparação lado a lado (atual vs. requisito) antes da
       confirmação, com indicação visual clara de atendido/não atendido
-- [ ] Servidor **recusa** a ação se o requisito não for atendido (não é só
-      aviso visual — é validação real)
+      (`components/ui/RequisitoAtributos.tsx`, usado em `MarketplaceScreen` e
+      `HexTreeScreen`)
+- [x] Servidor **recusa** a ação se o requisito não for atendido (não é só
+      aviso visual — é validação real): checagem em `recompensar()`
+      (`servico_contratado`) e `desbloquearNo()`, **e** na RPC atômica
+      (`aceitar_trabalho`/`desbloquear_no`, migration
+      `0012_atr_requisitos.sql`) — dupla garantia, mesmo padrão de
+      `GH-ARV-01`
 
 **Regras de segurança:** a checagem de requisito é feita no servidor com os
 dados atuais do banco, nunca com valores enviados pelo client.

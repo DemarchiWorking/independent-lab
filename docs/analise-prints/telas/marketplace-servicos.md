@@ -94,7 +94,7 @@ Aceitar um job **não é um clique só** — abre um segundo modal empilhado:
 |---|---|---|
 | Lista + detalhe master-detail | ✅ implementado | — |
 | `Recompensa` | ✅ `reward` (em R$) | — |
-| `Pontuação mín.` | ✅ `minScore` (exibido) | 🟡 exibido mas **não valida** |
+| `Pontuação mín.` | ✅ `requisitos: Partial<Atributos>` (GH-ATR-03) | — valida de verdade: servidor e RPC recusam se não atendido |
 | `Tempo est.` | ✅ `days` | — |
 | Rating ★ | ✅ `rating` | — |
 | Cliente/parceiro | ✅ `partner` | — |

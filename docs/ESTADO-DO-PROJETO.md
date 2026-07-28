@@ -1,8 +1,10 @@
 # Estado do Projeto — snapshot para continuar
 
-> **Última atualização:** 2026-07-27. Leia este documento **primeiro** ao
-> retomar o trabalho — ele diz o que está pronto, o que mudou de direção, e
-> por onde continuar. Detalhes técnicos ficam nos docs linkados, não aqui.
+> **Última atualização:** 2026-07-28 (seção `GH-ATR-03` em §3.1 — o resto do
+> arquivo é de 2026-07-27 e não reflete o Épico 11, ver nota de processo em
+> §3.1). Leia este documento **primeiro** ao retomar o trabalho — ele diz o
+> que está pronto, o que mudou de direção, e por onde continuar. Detalhes
+> técnicos ficam nos docs linkados, não aqui.
 
 ---
 
@@ -229,14 +231,46 @@ XP/atributo do catálogo; reenvio é recusado.
 **Estado combinado das quatro (FDN-01, FDN-02, EQP-01, ARV-01):** 141
 testes, `tsc`/`build` limpos.
 
-**Próxima tarefa — recomendação de arquiteto, não "primeiro P0 da lista":**
-`GH-ARV-02` e `GH-EQP-02` são os dois únicos P0 que restam na Trilha A, e
-**os dois** dependem de `GH-ATR-03` (P1: "requisito mínimo de atributo em
-entregas e nós da árvore"). Fazer `GH-ATR-03` agora — mesmo sendo P1 — é o
-que tem mais alavancagem: destrava dois P0 de uma vez, em vez de escolher um
-P0 de outro épico (`GH-GROW-01`, `GH-OPS-*`, `GH-PITCH-*`) que deixaria a
-Trilha A pela metade. **Próxima tarefa: `GH-ATR-03`**
-(`docs/BACKLOG-PRODUTO.md` linha ~253).
+**`GH-ATR-03` — feito** (requisito mínimo de atributo em entregas e nós da
+árvore, commit `1020e63`): `Job.requisitos`/`HexNode.requisitos`
+(`Partial<Record<AtributoChave, number>>`) nos dois catálogos, substituindo
+o antigo `minScore` que era exibido mas nunca validado. Primitiva pura
+`atributosFaltantes()`/`atendeRequisitos()`/`mensagemRequisito()` em
+`lib/atributos.ts` (mesma função serve marketplace e parcerias — devolve
+*quais* eixos faltam e *quanto*, não só um booleano, pensando já em
+`GH-ARV-02`). **Dupla validação**, mesmo padrão de `GH-ARV-01`: checagem
+amigável em `recompensar()`/`desbloquearNo()` **e** garantia real em SQL —
+migration `0012_atr_requisitos.sql` deu 5 parâmetros `p_min_*` novos à RPC
+`desbloquear_no` (exigiu `drop function` da assinatura antiga — parâmetro
+novo cria sobrecarga, não substitui) e criou a RPC `aceitar_trabalho`, que
+não existia: até aqui o INSERT em `trabalhos_aceitos` era direto do client
+via policy `authenticated`, então a validação só na Server Action seria
+contornável — a policy de insert caiu, mesmo movimento que 0011 já tinha
+feito em `nos_desbloqueados`. Componente `RequisitoAtributos.tsx` (novo,
+não reaproveita `AtributosBar`: mostra só os eixos exigidos, comparando
+contra um piso, não contra o teto de 40) usado no painel de detalhe de
+`MarketplaceScreen`/`HexTreeScreen`. Valores de `requisitos` calibrados
+contra o piso real do onboarding (pior perfil: tecnologia 8, processo 6,
+presença 2, aquisição 6, capacidade 6) — pelo menos um job (`excel-sql`) e
+um nó (`web`, sem requisito de propósito) continuam sempre alcançáveis no
+dia 0, teste anti-softlock dedicado em `marketplace/guarda.test.ts` e
+`parcerias/guarda.test.ts`. Validado em runtime via rota `selftest-atr`
+temporária (apagada antes do commit) contra um tenant com atributos baixos
+e saldo alto (isolando o teste no requisito, não na moeda): recusa vem com
+a mensagem certa e não escreve em `trabalhos.json`/`nos.json`.
+
+**Estado combinado das cinco (FDN-01, FDN-02, EQP-01, ARV-01, ATR-03):** 185
+testes, `tsc`/`build` limpos.
+
+**Nota de processo:** depois deste card, uma sessão concorrente construiu o
+Épico 11 (eventos globais, `GH-EVT-01..04`) por cima — ver
+`docs/PROXIMA-TAREFA.md` para o estado mais recente do repositório, este
+arquivo (`ESTADO-DO-PROJETO.md`) não foi atualizado por aquela sessão. A
+recomendação de próxima tarefa abaixo (§4) ficou defasada pelo mesmo motivo:
+com `GH-ATR-03` pronto, os dois P0 destravados (`GH-ARV-02`, `GH-EQP-02`)
+são o próximo passo real da Trilha A — `docs/PROXIMA-TAREFA.md` recomenda
+`GH-ARV-02` primeiro (a primitiva `atributosFaltantes` já existe, o card
+fica quase só visual: terceiro estado no `HexTile`).
 
 ## 4. Plano recomendado para a próxima sessão
 
