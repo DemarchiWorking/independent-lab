@@ -222,11 +222,15 @@ export function GameShell({
                         degrauAtual={degrauAtual}
                       />
                     ) : view === "marketplace" ? (
-                      <MarketplaceScreen trabalhosAceitos={trabalhosAceitos} />
+                      <MarketplaceScreen
+                        trabalhosAceitos={trabalhosAceitos}
+                        atributos={atributos}
+                      />
                     ) : view === "parcerias" ? (
                       <HexTreeScreen
                         nosDesbloqueados={nosDesbloqueados}
                         moedaVirtual={moedaVirtual ?? 0}
+                        atributos={atributos}
                       />
                     ) : isModule(view) ? (
                       <ModuleScreen moduleKey={view} />

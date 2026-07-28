@@ -3,7 +3,7 @@ import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { CIDADES_REGIAO } from "@/lib/regiao";
 import { nivelPorXp, NIVEL_MAX } from "@/lib/gamificacao";
-import { aplicarGanhos } from "@/lib/atributos";
+import { aplicarGanhos, atributosFaltantes } from "@/lib/atributos";
 import { alocacoesAtivasEm, disponibilidadeDe } from "@/lib/disponibilidade";
 import type { AtributoChave } from "@tokens";
 import type { DeltaProgresso, GameRepository, NovoNegocio } from "./repository";
@@ -406,11 +406,23 @@ export class FileRepository implements GameRepository {
     );
   }
 
-  async aceitarTrabalho(tenantId: string, jobId: string): Promise<TrabalhoAceito> {
+  async aceitarTrabalho(
+    tenantId: string,
+    jobId: string,
+    requisitos?: Partial<Record<AtributoChave, number>>,
+  ): Promise<TrabalhoAceito> {
     const arquivo = path.join(tenantDir(tenantId), "trabalhos.json");
     const atuais = await lerJson<TrabalhoAceito[]>(arquivo, []);
     const existente = atuais.find((t) => t.jobId === jobId);
-    if (existente) return existente;
+    if (existente) return existente; // idempotente: já concedido, não reavalia requisito
+
+    if (requisitos) {
+      const negocio = await this.lerNegocio(tenantId);
+      if (!negocio) throw new Error(`Negócio ${tenantId} não encontrado`);
+      if (atributosFaltantes(negocio.atributos, requisitos).length > 0) {
+        throw new Error("atributo_insuficiente");
+      }
+    }
 
     const novo: TrabalhoAceito = {
       id: randomBytes(8).toString("hex"),
@@ -436,6 +448,7 @@ export class FileRepository implements GameRepository {
     custoMoeda: number,
     xp: number,
     atributos?: Partial<Record<AtributoChave, number>>,
+    requisitos?: Partial<Record<AtributoChave, number>>,
   ): Promise<{ no: NoDesbloqueado; negocio: Negocio }> {
     const arquivo = path.join(tenantDir(tenantId), "nos.json");
     const atuais = await lerJson<NoDesbloqueado[]>(arquivo, []);
@@ -444,6 +457,9 @@ export class FileRepository implements GameRepository {
     }
     const negocio = await this.lerNegocio(tenantId);
     if (!negocio) throw new Error(`Negócio ${tenantId} não encontrado`);
+    if (requisitos && atributosFaltantes(negocio.atributos, requisitos).length > 0) {
+      throw new Error("atributo_insuficiente");
+    }
     if (negocio.moedaVirtual < custoMoeda) {
       throw new Error("saldo_insuficiente");
     }

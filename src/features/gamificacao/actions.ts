@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { lerSessao } from "@/lib/auth/sessao";
 import { getRepository } from "@/lib/db";
 import { nivelPorXp } from "@/lib/gamificacao";
-import { ATRIBUTO_LABEL } from "@/lib/atributos";
+import { ATRIBUTO_LABEL, atributosFaltantes, mensagemRequisito } from "@/lib/atributos";
 import { cargoPorId, GANHO_ATRIBUTO_CONTRATACAO } from "@/features/equipe-ia/catalogo";
+import { jobPorId } from "@/features/marketplace/data";
 import { jaAceitouTrabalho } from "@/features/marketplace/guarda";
 import { EVENTOS, type EventoKey } from "./engine";
 import type { AtributoChave } from "@tokens";
@@ -69,11 +70,21 @@ export async function recompensar(
 
   if (evento === "servico_contratado") {
     if (!contextoId) return { ok: false, erro: "Job não especificado." };
+    const job = jobPorId(contextoId);
+    if (!job) return { ok: false, erro: "Job inválido." };
     const aceitos = await repo.listarTrabalhosAceitos(sessao.tenantId);
     if (jaAceitouTrabalho(aceitos, contextoId)) {
       return { ok: false, erro: "Você já aceitou esse trabalho." };
     }
-    await repo.aceitarTrabalho(sessao.tenantId, contextoId);
+    const faltantes = atributosFaltantes(antes.atributos, job.requisitos);
+    if (faltantes.length > 0) {
+      return { ok: false, erro: mensagemRequisito(faltantes) };
+    }
+    try {
+      await repo.aceitarTrabalho(sessao.tenantId, contextoId, job.requisitos);
+    } catch (e) {
+      return { ok: false, erro: traduzirErro(e) };
+    }
   }
 
   // "servico_desbloqueado" NÃO passa mais por aqui: desde GH-ARV-01 o custo
@@ -119,4 +130,13 @@ export async function recompensar(
         }
       : undefined,
   };
+}
+
+/** Mensagem amigável para erros lançados pelo repositório (GH-ATR-03). */
+function traduzirErro(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (msg.includes("atributo_insuficiente")) {
+    return "Sua maturidade ainda não atende ao requisito deste trabalho.";
+  }
+  return "Não foi possível concluir. Tente novamente.";
 }

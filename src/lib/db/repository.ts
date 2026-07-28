@@ -89,8 +89,14 @@ export interface GameRepository {
   /** ---- Marketplace (guarda anti-farm, GH-FDN-01) ---- */
   listarTrabalhosAceitos(tenantId: string): Promise<TrabalhoAceito[]>;
   /** Idempotente: aceitar o mesmo job duas vezes retorna o registro existente
-   *  (nunca paga XP/moeda de novo — mesmo padrão de `contratarFuncionario`). */
-  aceitarTrabalho(tenantId: string, jobId: string): Promise<TrabalhoAceito>;
+   *  (nunca paga XP/moeda de novo — mesmo padrão de `contratarFuncionario`).
+   *  `requisitos` (GH-ATR-03) é o piso mínimo de atributos exigido — só
+   *  avaliado na primeira aceitação (idempotência não reavalia requisito). */
+  aceitarTrabalho(
+    tenantId: string,
+    jobId: string,
+    requisitos?: Partial<Record<AtributoChave, number>>,
+  ): Promise<TrabalhoAceito>;
 
   /** ---- Árvore de parcerias (GH-FDN-02 + custo variável GH-ARV-01) ---- */
   listarNosDesbloqueados(tenantId: string): Promise<NoDesbloqueado[]>;
@@ -107,6 +113,10 @@ export interface GameRepository {
     custoMoeda: number,
     xp: number,
     atributos?: Partial<Record<AtributoChave, number>>,
+    /** Piso de atributos exigido para desbloquear (GH-ATR-03) — semântica
+     *  OPOSTA de `atributos` acima: é o REQUISITO mínimo que o negócio já
+     *  precisa ter, não o ganho aplicado ao desbloquear. */
+    requisitos?: Partial<Record<AtributoChave, number>>,
   ): Promise<{ no: NoDesbloqueado; negocio: Negocio }>;
 
   /** ---- Sede / World (ver docs/world/ARQUITETURA-WORLD.md) ---- */

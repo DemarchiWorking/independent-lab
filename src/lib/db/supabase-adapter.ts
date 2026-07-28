@@ -617,28 +617,27 @@ export class SupabaseRepository implements GameRepository {
     }>).map((l) => this.paraTrabalho(l));
   }
 
-  /** Idempotente — mesmo padrão de `contratarFuncionario` (upsert +
-   *  ignoreDuplicates na unique(tenant_id, job_id), depois select). */
-  async aceitarTrabalho(tenantId: string, jobId: string): Promise<TrabalhoAceito> {
-    const { error: upsertError } = await this.db
-      .from("trabalhos_aceitos")
-      .upsert(
-        { tenant_id: Number(tenantId), job_id: jobId },
-        { onConflict: "tenant_id,job_id", ignoreDuplicates: true },
-      );
-    if (upsertError) {
-      throw new Error(`aceitarTrabalho (upsert): ${upsertError.message}`);
-    }
-
+  /** Atômica via RPC `aceitar_trabalho` — idempotência + piso de atributos
+   *  (GH-ATR-03) checados na mesma transação (ver `0012_atr_requisitos.sql`). */
+  async aceitarTrabalho(
+    tenantId: string,
+    jobId: string,
+    requisitos?: Partial<Record<AtributoChave, number>>,
+  ): Promise<TrabalhoAceito> {
+    const r = requisitos ?? {};
     const { data, error } = await this.db
-      .from("trabalhos_aceitos")
-      .select("*")
-      .eq("tenant_id", Number(tenantId))
-      .eq("job_id", jobId)
+      .rpc("aceitar_trabalho", {
+        p_tenant_id: Number(tenantId),
+        p_job_id: jobId,
+        p_min_tecnologia: r.tecnologia ?? 0,
+        p_min_processo: r.processo ?? 0,
+        p_min_presenca: r.presenca ?? 0,
+        p_min_aquisicao: r.aquisicao ?? 0,
+        p_min_capacidade: r.capacidade ?? 0,
+      })
       .single();
-
     if (error || !data) {
-      throw new Error(`aceitarTrabalho (select): ${error?.message}`);
+      throw new Error(error?.message ?? "aceitar_trabalho: sem retorno");
     }
     return this.paraTrabalho(
       data as { id: number; tenant_id: number; job_id: string; aceito_em: string },
@@ -685,8 +684,10 @@ export class SupabaseRepository implements GameRepository {
     custoMoeda: number,
     xp: number,
     atributos?: Partial<Record<AtributoChave, number>>,
+    requisitos?: Partial<Record<AtributoChave, number>>,
   ): Promise<{ no: NoDesbloqueado; negocio: Negocio }> {
     const a = atributos ?? {};
+    const q = requisitos ?? {};
     const { data, error } = await this.db
       .rpc("desbloquear_no", {
         p_tenant_id: Number(tenantId),
@@ -698,6 +699,11 @@ export class SupabaseRepository implements GameRepository {
         p_presenca: a.presenca ?? 0,
         p_aquisicao: a.aquisicao ?? 0,
         p_capacidade: a.capacidade ?? 0,
+        p_min_tecnologia: q.tecnologia ?? 0,
+        p_min_processo: q.processo ?? 0,
+        p_min_presenca: q.presenca ?? 0,
+        p_min_aquisicao: q.aquisicao ?? 0,
+        p_min_capacidade: q.capacidade ?? 0,
       })
       .single();
     if (error || !data) {

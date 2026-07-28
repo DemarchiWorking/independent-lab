@@ -127,5 +127,30 @@ describe("scoring do onboarding", () => {
         expect(eixo.valor).toBeLessThanOrEqual(eixo.teto);
       }
     });
+
+    // Âncora do PISO MÍNIMO possível de atributosIniciais (pior conjunto de
+    // respostas do onboarding). Os testes de catálogo anti-softlock em
+    // marketplace/guarda.test.ts e parcerias/guarda.test.ts (GH-ATR-03)
+    // assumem literalmente este valor — se este teste quebrar por uma
+    // mudança na fórmula de scoring, os requisitos dos catálogos também
+    // precisam ser revisados para não softlockear negócios novos.
+    it("pior conjunto de respostas produz o piso mínimo de atributosIniciais (GH-ATR-03)", () => {
+      const pior = calcular(
+        respostas({
+          presencaDigital: "nada",
+          equipe: "so-eu",
+          gargalo: "manual",
+          captacao: ["indicacao", "sem-processo"],
+        }),
+      );
+      expect(pior.atributosIniciais.tecnologia.valor).toBe(8);
+      expect(pior.atributosIniciais.processo.valor).toBe(6);
+      expect(pior.atributosIniciais.presenca.valor).toBe(2);
+      expect(pior.atributosIniciais.aquisicao.valor).toBe(6);
+      expect(pior.atributosIniciais.capacidade.valor).toBe(6);
+      for (const eixo of Object.values(pior.atributosIniciais)) {
+        expect(eixo.teto).toBe(40);
+      }
+    });
   });
 });

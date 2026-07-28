@@ -97,3 +97,51 @@ export function aplicarGanhos(
   }
   return resultado;
 }
+
+/**
+ * Piso mínimo por eixo exigido para aceitar um job do marketplace ou
+ * desbloquear um nó da árvore de parcerias (GH-ATR-03). Eixos ausentes ou
+ * com valor `<= 0` não exigem nada — mapa parcial de propósito.
+ */
+export type Requisitos = Partial<Record<AtributoChave, number>>;
+
+/** Um eixo que não atinge o mínimo exigido, com o quanto falta. */
+export interface AtributoFaltante {
+  chave: AtributoChave;
+  label: string;
+  atual: number;
+  minimo: number;
+  falta: number;
+}
+
+/**
+ * Eixos que NÃO atingem o mínimo exigido, na ordem canônica de
+ * ATRIBUTO_CHAVES. Lista vazia = requisito atendido. Pura.
+ * Compara com >=: atingir o mínimo exato ATENDE o requisito.
+ */
+export function atributosFaltantes(
+  atuais: Atributos,
+  requisitos: Requisitos,
+): AtributoFaltante[] {
+  const faltantes: AtributoFaltante[] = [];
+  for (const chave of ATRIBUTO_CHAVES) {
+    const minimo = requisitos[chave];
+    if (!minimo || minimo <= 0) continue;
+    const atual = atuais[chave].valor;
+    if (atual >= minimo) continue;
+    faltantes.push({ chave, label: ATRIBUTO_LABEL[chave], atual, minimo, falta: minimo - atual });
+  }
+  return faltantes;
+}
+
+/** Atalho booleano sobre `atributosFaltantes` — true quando o requisito é atendido. */
+export function atendeRequisitos(atuais: Atributos, requisitos: Requisitos): boolean {
+  return atributosFaltantes(atuais, requisitos).length === 0;
+}
+
+/** Ex.: "Requisito não atendido: Tecnologia 8/20, Capacidade 6/12." */
+export function mensagemRequisito(faltantes: readonly AtributoFaltante[]): string {
+  if (faltantes.length === 0) return "";
+  const partes = faltantes.map((f) => `${f.label} ${f.atual}/${f.minimo}`);
+  return `Requisito não atendido: ${partes.join(", ")}.`;
+}

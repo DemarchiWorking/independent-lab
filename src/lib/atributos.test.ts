@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   aplicarGanhos,
+  atendeRequisitos,
+  atributosFaltantes,
   atributosVazios,
+  mensagemRequisito,
   somarAtributo,
   TETO_ATRIBUTO,
 } from "./atributos";
@@ -83,5 +86,95 @@ describe("aplicarGanhos", () => {
     const base = atributosVazios();
     const r = aplicarGanhos(base, { tecnologia: 1000 });
     expect(r.tecnologia.valor).toBe(TETO_ATRIBUTO);
+  });
+});
+
+describe("atributosFaltantes (GH-ATR-03)", () => {
+  it("requisito vazio nunca gera faltante", () => {
+    const atuais = aplicarGanhos(atributosVazios(), { tecnologia: 5 });
+    expect(atributosFaltantes(atuais, {})).toEqual([]);
+  });
+
+  it("todos os eixos acima do mínimo: nenhum faltante", () => {
+    const atuais = aplicarGanhos(atributosVazios(), {
+      tecnologia: 20,
+      processo: 20,
+    });
+    expect(atributosFaltantes(atuais, { tecnologia: 8, processo: 10 })).toEqual([]);
+  });
+
+  it("borda exata: atual === minimo atende o requisito", () => {
+    const atuais = aplicarGanhos(atributosVazios(), { tecnologia: 8 });
+    expect(atributosFaltantes(atuais, { tecnologia: 8 })).toEqual([]);
+  });
+
+  it("um eixo abaixo do mínimo aparece com o quanto falta", () => {
+    const atuais = aplicarGanhos(atributosVazios(), { tecnologia: 5 });
+    const faltantes = atributosFaltantes(atuais, { tecnologia: 8 });
+    expect(faltantes).toEqual([
+      { chave: "tecnologia", label: "Tecnologia", atual: 5, minimo: 8, falta: 3 },
+    ]);
+  });
+
+  it("dois eixos abaixo do mínimo aparecem na ordem canônica de ATRIBUTO_CHAVES", () => {
+    const atuais = aplicarGanhos(atributosVazios(), { presenca: 2, tecnologia: 5 });
+    const faltantes = atributosFaltantes(atuais, { presenca: 10, tecnologia: 8 });
+    // ordem canônica: tecnologia, processo, presenca, aquisicao, capacidade
+    expect(faltantes.map((f) => f.chave)).toEqual(["tecnologia", "presenca"]);
+  });
+
+  it("eixo fora do requisito nunca aparece, mesmo valendo 0", () => {
+    const atuais = atributosVazios(); // tudo zerado
+    const faltantes = atributosFaltantes(atuais, { tecnologia: 8 });
+    expect(faltantes.map((f) => f.chave)).toEqual(["tecnologia"]);
+  });
+
+  it("mínimo 0 é ignorado (não vira faltante)", () => {
+    const atuais = atributosVazios();
+    expect(atributosFaltantes(atuais, { tecnologia: 0 })).toEqual([]);
+  });
+
+  it("mínimo negativo é ignorado (não vira faltante)", () => {
+    const atuais = atributosVazios();
+    expect(atributosFaltantes(atuais, { tecnologia: -5 })).toEqual([]);
+  });
+
+  it("é pura: não muta os atributos de entrada", () => {
+    const atuais = aplicarGanhos(atributosVazios(), { tecnologia: 5 });
+    const copia = JSON.parse(JSON.stringify(atuais));
+    atributosFaltantes(atuais, { tecnologia: 8, processo: 3 });
+    expect(atuais).toEqual(copia);
+  });
+});
+
+describe("atendeRequisitos", () => {
+  it("true quando não há faltantes", () => {
+    const atuais = aplicarGanhos(atributosVazios(), { tecnologia: 8 });
+    expect(atendeRequisitos(atuais, { tecnologia: 8 })).toBe(true);
+  });
+
+  it("false quando há ao menos um faltante", () => {
+    const atuais = atributosVazios();
+    expect(atendeRequisitos(atuais, { tecnologia: 8 })).toBe(false);
+  });
+});
+
+describe("mensagemRequisito", () => {
+  it("string vazia quando não há faltantes", () => {
+    expect(mensagemRequisito([])).toBe("");
+  });
+
+  it("um eixo faltante", () => {
+    const atuais = atributosVazios();
+    const faltantes = atributosFaltantes(atuais, { tecnologia: 8 });
+    expect(mensagemRequisito(faltantes)).toBe("Requisito não atendido: Tecnologia 0/8.");
+  });
+
+  it("dois eixos faltantes, separados por vírgula", () => {
+    const atuais = atributosVazios();
+    const faltantes = atributosFaltantes(atuais, { tecnologia: 20, capacidade: 12 });
+    expect(mensagemRequisito(faltantes)).toBe(
+      "Requisito não atendido: Tecnologia 0/20, Capacidade 0/12.",
+    );
   });
 });

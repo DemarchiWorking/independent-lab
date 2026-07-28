@@ -6,6 +6,8 @@ import { cn } from "@/lib/cn";
 import { listContainer, listItem, springSnappy } from "@/lib/motion";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { Icon } from "@/components/ui/Icon";
+import { RequisitoAtributos } from "@/components/ui/RequisitoAtributos";
+import { atributosFaltantes, type Atributos } from "@/lib/atributos";
 import { useRecompensa } from "@/features/gamificacao/RecompensaContext";
 import { jobs, type Job } from "./data";
 
@@ -25,16 +27,22 @@ function Stars({ n }: { n: number }) {
 export function MarketplaceScreen({
   onAccept,
   trabalhosAceitos = [],
+  atributos,
 }: {
   onAccept?: (job: Job) => void;
   /** jobIds já aceitos — vem do servidor (GH-FDN-01: guarda anti-farm; não é
    *  `useState` local, que resetaria ao recarregar e escondia o farm). */
   trabalhosAceitos?: readonly string[];
+  /** atributos atuais do negócio — decide se o piso do job foi atingido
+   *  (GH-ATR-03). Ausente = modo demo, não valida. */
+  atributos?: Atributos;
 }) {
   const [selectedId, setSelectedId] = useState(jobs[0].id);
   const selected = jobs.find((j) => j.id === selectedId) ?? jobs[0];
   const { disparar, pendente } = useRecompensa();
   const jaAceito = trabalhosAceitos.includes(selected.id);
+  const faltantes = atributos ? atributosFaltantes(atributos, selected.requisitos) : [];
+  const semRequisito = faltantes.length > 0;
 
   const aceitar = () => {
     disparar("servico_contratado", selected.id);
@@ -108,11 +116,6 @@ export function MarketplaceScreen({
               <b>{selected.reward}</b>
             </div>
             <div>
-              <span className="text-[#5b6b86]">Pontuação mín.</span>
-              <br />
-              <b>{selected.minScore}</b>
-            </div>
-            <div>
               <span className="text-[#5b6b86]">Tempo est.</span>
               <br />
               <b>{selected.days} dias</b>
@@ -123,6 +126,7 @@ export function MarketplaceScreen({
               <b>{selected.partner}</b>
             </div>
           </div>
+          <RequisitoAtributos atributos={atributos} requisitos={selected.requisitos} className="my-2" />
           <p className="text-[11px] leading-relaxed text-[#33415c]">
             {selected.description}
           </p>
@@ -131,6 +135,10 @@ export function MarketplaceScreen({
             {jaAceito ? (
               <ActionButton variant="ghost" icon="check" disabled>
                 Já aceito
+              </ActionButton>
+            ) : semRequisito ? (
+              <ActionButton variant="ghost" icon="lock" disabled>
+                Requisito não atendido
               </ActionButton>
             ) : (
               <ActionButton onClick={aceitar} disabled={pendente}>

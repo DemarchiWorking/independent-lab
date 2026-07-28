@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { lerSessao } from "@/lib/auth/sessao";
 import { getRepository } from "@/lib/db";
 import { EVENTOS } from "@/features/gamificacao/engine";
+import { atributosFaltantes, mensagemRequisito } from "@/lib/atributos";
 import { noPorId } from "./data";
 import { jaDesbloqueouNo } from "./guarda";
 
@@ -38,6 +39,10 @@ export async function desbloquearNo(noId: string): Promise<ResultadoParceria> {
   if (jaDesbloqueouNo(desbloqueados, noId)) {
     return { ok: false, erro: "Você já desbloqueou esse nó." };
   }
+  const faltantes = atributosFaltantes(negocio.atributos, no.requisitos);
+  if (faltantes.length > 0) {
+    return { ok: false, erro: mensagemRequisito(faltantes) };
+  }
   if (negocio.moedaVirtual < no.custo) {
     return { ok: false, erro: "Saldo de moeda insuficiente." };
   }
@@ -50,6 +55,7 @@ export async function desbloquearNo(noId: string): Promise<ResultadoParceria> {
       no.custo,
       def.xp,
       def.atributo ? { [def.atributo.chave]: def.atributo.ganho } : undefined,
+      no.requisitos,
     );
   } catch (e) {
     return { ok: false, erro: traduzirErro(e) };
@@ -62,6 +68,9 @@ export async function desbloquearNo(noId: string): Promise<ResultadoParceria> {
 
 function traduzirErro(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
+  if (msg.includes("atributo_insuficiente")) {
+    return "Sua maturidade ainda não atende ao requisito deste nó.";
+  }
   if (msg.includes("saldo_insuficiente")) return "Saldo de moeda insuficiente.";
   if (msg.includes("no_ja_desbloqueado")) return "Você já desbloqueou esse nó.";
   return "Não foi possível concluir. Tente novamente.";

@@ -1,5 +1,6 @@
 import type { CategoryKey } from "@tokens";
 import type { IconName } from "@/components/ui/Icon";
+import type { Requisitos } from "@/lib/atributos";
 
 export interface HexNode {
   id: string;
@@ -11,6 +12,8 @@ export interface HexNode {
   description: string;
   /** custo em moeda virtual 🪙 para desbloquear (GH-ARV-01) — nunca R$ real. */
   custo: number;
+  /** piso de atributos exigido para desbloquear o nó (GH-ATR-03). */
+  requisitos: Requisitos;
 }
 
 /**
@@ -28,6 +31,7 @@ export const hexNodes: HexNode[] = [
     category: "social",
     score: "9.4",
     custo: 300,
+    requisitos: {},
     description:
       "Presença digital do parceiro: site institucional e landing pages de captação. Porta de entrada da maioria das imobiliárias.",
   },
@@ -38,6 +42,7 @@ export const hexNodes: HexNode[] = [
     category: "media",
     score: "8.5",
     custo: 600,
+    requisitos: { tecnologia: 10, processo: 10 },
     description:
       "Fluxos n8n/Make que eliminam trabalho manual — leads, follow-up e integração entre sistemas.",
   },
@@ -48,6 +53,7 @@ export const hexNodes: HexNode[] = [
     category: "growth",
     score: "7.8",
     custo: 900,
+    requisitos: { tecnologia: 14, processo: 12 },
     description:
       "Dashboards e migração de dados (Excel → SQL). Transforma planilhas soltas em decisão orientada por dados.",
   },
@@ -58,6 +64,7 @@ export const hexNodes: HexNode[] = [
     category: "ads",
     score: "6.8",
     custo: 700,
+    requisitos: { presenca: 10, aquisicao: 10 },
     description:
       "Campanhas de aquisição com rastreio de CAC — desbloqueia leads em escala para o parceiro.",
   },
@@ -68,6 +75,7 @@ export const hexNodes: HexNode[] = [
     category: "social",
     score: "10",
     custo: 1200,
+    requisitos: { processo: 12, aquisicao: 12 },
     description:
       "Conecta CRM, WhatsApp e site. Nó de maior fit — base para parcerias de indicação e revenda.",
   },
@@ -78,6 +86,7 @@ export const hexNodes: HexNode[] = [
     category: "locked",
     locked: true,
     custo: 3000,
+    requisitos: { tecnologia: 24, capacidade: 16 },
     description:
       "Infraestrutura enterprise (EC2/RDS/S3, CI/CD). Desbloqueia ao atingir reputação e o 3º parceiro ativo.",
   },

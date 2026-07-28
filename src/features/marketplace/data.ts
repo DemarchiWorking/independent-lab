@@ -1,4 +1,5 @@
 import type { CategoryKey } from "@tokens";
+import type { Requisitos } from "@/lib/atributos";
 
 export interface Job {
   id: string;
@@ -7,7 +8,8 @@ export interface Job {
   category: CategoryKey;
   reward: string;
   rating: number; // 0–5
-  minScore: number;
+  /** piso de atributos exigido para aceitar o job (GH-ATR-03). */
+  requisitos: Requisitos;
   days: number;
   partner: string;
   description: string;
@@ -23,7 +25,7 @@ export const jobs: Job[] = [
     category: "growth",
     reward: "R$ 1.880",
     rating: 3,
-    minScore: 6,
+    requisitos: { tecnologia: 8 },
     days: 12,
     partner: "Imobiliária Vale",
     description:
@@ -36,7 +38,7 @@ export const jobs: Job[] = [
     category: "social",
     reward: "R$ 3.830",
     rating: 4,
-    minScore: 7,
+    requisitos: { processo: 12, presenca: 14 },
     days: 19,
     partner: "Consultoria Cresce",
     description:
@@ -49,7 +51,7 @@ export const jobs: Job[] = [
     category: "social",
     reward: "R$ 2.911",
     rating: 3,
-    minScore: 7,
+    requisitos: { tecnologia: 10, presenca: 10 },
     days: 14,
     partner: "Loteadora Sol",
     description:
@@ -62,7 +64,7 @@ export const jobs: Job[] = [
     category: "ads",
     reward: "R$ 4.200",
     rating: 5,
-    minScore: 9,
+    requisitos: { tecnologia: 20, capacidade: 12 },
     days: 21,
     partner: "Construtora Norte",
     description:
@@ -75,10 +77,14 @@ export const jobs: Job[] = [
     category: "media",
     reward: "R$ 2.600",
     rating: 4,
-    minScore: 6,
+    requisitos: { tecnologia: 10, processo: 8 },
     days: 9,
     partner: "Imob. Centro",
     description:
       "Automação que captura leads dos anúncios e distribui no WhatsApp Business com qualificação BANT.",
   },
 ];
+
+export function jobPorId(id: string): Job | undefined {
+  return jobs.find((j) => j.id === id);
+}
