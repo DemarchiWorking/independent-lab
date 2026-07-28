@@ -9,8 +9,11 @@ import { ActionButton } from "@/components/ui/ActionButton";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { MarketplaceScreen } from "@/features/marketplace/MarketplaceScreen";
 import { MissaoCard } from "@/features/gamificacao/MissaoCard";
+import { LicaoCard } from "@/features/licoes/LicaoCard";
+import { licaoDoDegrau } from "@/features/licoes/catalogo";
+import { jaConcluiuLicao } from "@/features/licoes/guarda";
 import type { Missao } from "@/features/gamificacao/missoes";
-import type { Atributos, FuncionarioContratado } from "@/lib/db/types";
+import type { Atributos, FuncionarioContratado, LicaoConcluida } from "@/lib/db/types";
 
 interface Room {
   id: string;
@@ -41,13 +44,20 @@ export function HubScreen({
   trabalhosAceitos = [],
   atributos,
   funcionarios = [],
+  degrauAtual,
+  licoesConcluidas = [],
 }: {
   missao?: Missao | null;
   trabalhosAceitos?: readonly string[];
   atributos?: Atributos;
   funcionarios?: FuncionarioContratado[];
+  /** Degrau atual do negócio (GH-EDU-01) — decide qual lição mostrar.
+   *  Ausente = modo demo, sem lição. */
+  degrauAtual?: number;
+  licoesConcluidas?: LicaoConcluida[];
 }) {
   const [open, setOpen] = useState(false);
+  const licao = degrauAtual !== undefined ? licaoDoDegrau(degrauAtual) : undefined;
 
   return (
     <div className="relative flex h-full flex-col items-center justify-center gap-5">
@@ -64,6 +74,10 @@ export function HubScreen({
           oportunidades de serviço.
         </motion.p>
       )}
+
+      {licao ? (
+        <LicaoCard licao={licao} concluida={jaConcluiuLicao(licoesConcluidas, licao.id)} />
+      ) : null}
 
       <motion.div
         variants={listContainer}

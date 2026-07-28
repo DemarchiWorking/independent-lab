@@ -7,11 +7,15 @@ import { slugify } from "./file-adapter";
 import type { DeltaProgresso, GameRepository, NovoNegocio } from "./repository";
 import type {
   Alocacao,
+  BairroResumo,
   CapituloEntregue,
+  EscopoMapa,
   EventoGlobal,
   FuncionarioContratado,
   ItemMobiliaColocado,
+  LicaoConcluida,
   Mapa,
+  MapaResumo,
   MapaView,
   Negocio,
   NoDesbloqueado,
@@ -21,6 +25,7 @@ import type {
   ProgressoEventoGlobal,
   Sede,
   Segmento,
+  SolicitacaoContato,
   TrabalhoAceito,
   Usuario,
 } from "./types";
@@ -53,6 +58,9 @@ interface LinhaNegocio {
   presenca: number;
   aquisicao: number;
   capacidade: number;
+  perfil_publico: boolean;
+  consentimento_em: string;
+  consentimento_versao: string | null;
 }
 
 interface LinhaLocal {
@@ -113,6 +121,9 @@ export class SupabaseRepository implements GameRepository {
         aquisicao: { valor: linha.aquisicao, teto: TETO_ATRIBUTO },
         capacidade: { valor: linha.capacidade, teto: TETO_ATRIBUTO },
       },
+      perfilPublico: linha.perfil_publico,
+      consentimentoEm: linha.consentimento_em,
+      consentimentoVersao: linha.consentimento_versao ?? "",
     };
   }
 
@@ -167,7 +178,7 @@ export class SupabaseRepository implements GameRepository {
     };
   }
 
-  async lerMapaView(): Promise<MapaView> {
+  async lerMapaView(escopo?: EscopoMapa): Promise<MapaView> {
     const { data, error } = await this.db
       .from("cidades")
       .select(
@@ -209,28 +220,71 @@ export class SupabaseRepository implements GameRepository {
         bairros: c.bairros.map((b) => ({
           slug: b.slug,
           nome: b.nome,
-          quarteiroes: b.quarteiroes.map((q) => ({
-            id: `q${q.numero}`,
-            nome: `Quarteirão ${q.numero}`,
-            lotes: Array.from({ length: 8 }, (_, i) => {
-              const n = q.negocios.find((x) => x.lote === i + 1);
-              return {
-                numero: i + 1,
-                negocio: n
-                  ? {
-                      id: String(n.id),
-                      nome: n.nome,
-                      segmento: n.segmento,
-                      nivel: n.nivel,
-                      degrauAtual: n.degrau_atual,
-                    }
-                  : null,
-              };
-            }),
-          })),
+          // escopo (GH-MAPA-01): mesmo pós-filtro do file-adapter — hoje
+          // ainda busca o mundo inteiro do Postgres e descarta depois (sem
+          // caller real usando escopo ainda, não vale a complexidade de
+          // filtrar o embed do PostgREST por linha só para isso). Reduzir o
+          // custo de rede de verdade é trabalho do `GH-MAPA-02` (zoom), que
+          // troca a estratégia de fetch inteira, não só este método.
+          quarteiroes:
+            escopo && (c.slug !== escopo.cidadeSlug || b.slug !== escopo.bairroSlug)
+              ? []
+              : b.quarteiroes.map((q) => ({
+                  id: `q${q.numero}`,
+                  nome: `Quarteirão ${q.numero}`,
+                  lotes: Array.from({ length: 8 }, (_, i) => {
+                    const n = q.negocios.find((x) => x.lote === i + 1);
+                    return {
+                      numero: i + 1,
+                      negocio: n
+                        ? {
+                            id: String(n.id),
+                            nome: n.nome,
+                            segmento: n.segmento,
+                            nivel: n.nivel,
+                            degrauAtual: n.degrau_atual,
+                          }
+                        : null,
+                    };
+                  }),
+                })),
         })),
       })),
     };
+  }
+
+  async lerMapaResumo(): Promise<MapaResumo> {
+    const { data, error } = await this.db.rpc("mapa_resumo");
+    if (error) throw new Error(`lerMapaResumo: ${error.message}`);
+    return {
+      cidades: ((data ?? []) as Array<{
+        cidade_slug: string;
+        cidade_nome: string;
+        total_bairros: number;
+        total_negocios: number;
+      }>).map((l) => ({
+        slug: l.cidade_slug,
+        nome: l.cidade_nome,
+        totalBairros: Number(l.total_bairros),
+        totalNegocios: Number(l.total_negocios),
+      })),
+    };
+  }
+
+  async lerBairroResumo(cidadeSlug: string): Promise<BairroResumo[]> {
+    const { data, error } = await this.db.rpc("bairro_resumo", {
+      p_cidade_slug: cidadeSlug,
+    });
+    if (error) throw new Error(`lerBairroResumo: ${error.message}`);
+    return ((data ?? []) as Array<{
+      bairro_slug: string;
+      bairro_nome: string;
+      total_negocios: number;
+    }>).map((l) => ({
+      slug: l.bairro_slug,
+      nome: l.bairro_nome,
+      totalNegocios: Number(l.total_negocios),
+    }));
   }
 
   /** Cadastro atômico: a RPC cria cidade/bairro/quarteirão e reserva o lote. */
@@ -251,6 +305,8 @@ export class SupabaseRepository implements GameRepository {
         p_presenca: dados.atributosIniciais.presenca.valor,
         p_aquisicao: dados.atributosIniciais.aquisicao.valor,
         p_capacidade: dados.atributosIniciais.capacidade.valor,
+        p_perfil_publico: dados.perfilPublico,
+        p_consentimento_versao: dados.consentimentoVersao,
       })
       .single();
 
@@ -269,6 +325,18 @@ export class SupabaseRepository implements GameRepository {
 
     if (error) throw new Error(`lerNegocio: ${error.message}`);
     return data ? this.paraDominio(data as LinhaNegocio) : null;
+  }
+
+  /** N+1 aceitável por ora (1 `local()` por negócio) — dataset público hoje é
+   *  pequeno (ver GH-MAPA-01); revisitar se `sitemap.xml` ficar lento. */
+  async listarNegociosPublicos(): Promise<Negocio[]> {
+    const { data, error } = await this.db
+      .from("negocios")
+      .select("*")
+      .eq("perfil_publico", true)
+      .order("nome");
+    if (error) throw new Error(`listarNegociosPublicos: ${error.message}`);
+    return Promise.all(((data ?? []) as LinhaNegocio[]).map((l) => this.paraDominio(l)));
   }
 
   async vincularMembro(usuario: Usuario): Promise<void> {
@@ -383,6 +451,122 @@ export class SupabaseRepository implements GameRepository {
     if (error) throw new Error(`criarOferta: ${error.message}`);
   }
 
+  private paraLicao(l: {
+    id: number;
+    tenant_id: number;
+    licao_id: string;
+    concluida_em: string;
+  }): LicaoConcluida {
+    return {
+      id: String(l.id),
+      tenantId: String(l.tenant_id),
+      licaoId: l.licao_id,
+      concluidaEm: l.concluida_em,
+    };
+  }
+
+  async listarLicoesConcluidas(tenantId: string): Promise<LicaoConcluida[]> {
+    const { data, error } = await this.db
+      .from("licoes_concluidas")
+      .select("*")
+      .eq("tenant_id", Number(tenantId))
+      .order("concluida_em", { ascending: true });
+    if (error) throw new Error(`listarLicoesConcluidas: ${error.message}`);
+    return ((data ?? []) as Array<{
+      id: number;
+      tenant_id: number;
+      licao_id: string;
+      concluida_em: string;
+    }>).map((l) => this.paraLicao(l));
+  }
+
+  /** Atômica via RPC `concluir_licao` (`0020_licoes.sql`) — idempotente,
+   *  mesmo padrão de `desbloquear_no`/`formar_parceria`. */
+  async concluirLicao(
+    tenantId: string,
+    licaoId: string,
+    xp: number,
+    atributos?: Partial<Record<AtributoChave, number>>,
+  ): Promise<LicaoConcluida> {
+    const a = atributos ?? {};
+    const { data, error } = await this.db
+      .rpc("concluir_licao", {
+        p_tenant_id: Number(tenantId),
+        p_licao_id: licaoId,
+        p_xp: xp,
+        p_tecnologia: a.tecnologia ?? 0,
+        p_processo: a.processo ?? 0,
+        p_presenca: a.presenca ?? 0,
+        p_aquisicao: a.aquisicao ?? 0,
+        p_capacidade: a.capacidade ?? 0,
+      })
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "concluir_licao: sem retorno");
+    }
+    return this.paraLicao(
+      data as { id: number; tenant_id: number; licao_id: string; concluida_em: string },
+    );
+  }
+
+  async listarSolicitacoesContato(tenantId: string): Promise<SolicitacaoContato[]> {
+    const { data, error } = await this.db
+      .from("solicitacoes_contato")
+      .select("*")
+      .eq("tenant_id", Number(tenantId))
+      .order("criada_em", { ascending: false });
+    if (error) throw new Error(`listarSolicitacoesContato: ${error.message}`);
+    return ((data ?? []) as Array<{
+      id: number;
+      tenant_id: number;
+      nome_remetente: string;
+      contato_remetente: string;
+      mensagem: string;
+      criada_em: string;
+    }>).map((l) => ({
+      id: String(l.id),
+      tenantId: String(l.tenant_id),
+      nomeRemetente: l.nome_remetente,
+      contatoRemetente: l.contato_remetente,
+      mensagem: l.mensagem,
+      criadaEm: l.criada_em,
+    }));
+  }
+
+  async criarSolicitacaoContato(
+    input: Omit<SolicitacaoContato, "id" | "criadaEm">,
+  ): Promise<SolicitacaoContato> {
+    const { data, error } = await this.db
+      .from("solicitacoes_contato")
+      .insert({
+        tenant_id: Number(input.tenantId),
+        nome_remetente: input.nomeRemetente,
+        contato_remetente: input.contatoRemetente,
+        mensagem: input.mensagem,
+      })
+      .select("*")
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "criarSolicitacaoContato: sem retorno");
+    }
+    const l = data as {
+      id: number;
+      tenant_id: number;
+      nome_remetente: string;
+      contato_remetente: string;
+      mensagem: string;
+      criada_em: string;
+    };
+    return {
+      id: String(l.id),
+      tenantId: String(l.tenant_id),
+      nomeRemetente: l.nome_remetente,
+      contatoRemetente: l.contato_remetente,
+      mensagem: l.mensagem,
+      criadaEm: l.criada_em,
+    };
+  }
+
   /** Uma única chamada — a função SQL faz o join do quarteirão (sem N+1). */
   async listarVizinhos(tenantId: string): Promise<Negocio[]> {
     const { data, error } = await this.db.rpc("vizinhos_do_tenant", {
@@ -418,6 +602,9 @@ export class SupabaseRepository implements GameRepository {
         aquisicao: { valor: l.aquisicao, teto: TETO_ATRIBUTO },
         capacidade: { valor: l.capacidade, teto: TETO_ATRIBUTO },
       },
+      perfilPublico: l.perfil_publico,
+      consentimentoEm: l.consentimento_em,
+      consentimentoVersao: l.consentimento_versao ?? "",
     }));
   }
 

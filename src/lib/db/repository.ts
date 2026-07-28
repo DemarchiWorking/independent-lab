@@ -1,12 +1,16 @@
 import type { AtributoChave } from "@tokens";
 import type {
   Alocacao,
+  BairroResumo,
   CapituloEntregue,
   Endereco,
+  EscopoMapa,
   EventoGlobal,
   FuncionarioContratado,
   ItemMobiliaColocado,
+  LicaoConcluida,
   Mapa,
+  MapaResumo,
   MapaView,
   Negocio,
   NoDesbloqueado,
@@ -15,6 +19,7 @@ import type {
   ParceriaFormada,
   ProgressoEventoGlobal,
   Sede,
+  SolicitacaoContato,
   TrabalhoAceito,
   Usuario,
 } from "./types";
@@ -28,8 +33,23 @@ import type {
 export interface GameRepository {
   /** ---- Geografia (global) ---- */
   lerMapa(): Promise<Mapa>;
-  /** Mapa enriquecido com o resumo do negócio em cada lote (read model da UI). */
-  lerMapaView(): Promise<MapaView>;
+  /**
+   * Mapa enriquecido com o resumo do negócio em cada lote (read model da UI).
+   * `escopo` (GH-MAPA-01) é opcional e só filtra — quando informado, só o
+   * bairro pedido vem com `quarteiroes` populado; o shape inteiro do mundo
+   * continua no retorno (nunca quebra quem itera `cidades`/`bairros` sem
+   * saber do escopo). Hoje nenhum chamador passa `escopo` (a única tela,
+   * `MapaScreen`, troca de cidade/bairro no client sem novo fetch — ver
+   * decisão registrada em `docs/BACKLOG-PRODUTO.md` GH-MAPA-01); existe para
+   * quando a navegação por zoom (`GH-MAPA-02`) precisar.
+   */
+  lerMapaView(escopo?: EscopoMapa): Promise<MapaView>;
+  /** Contagem por cidade, sem carregar cada negócio (GH-MAPA-01) — para o
+   *  nível de zoom mais alto (região). */
+  lerMapaResumo(): Promise<MapaResumo>;
+  /** Contagem por bairro dentro de UMA cidade (GH-MAPA-01) — para o nível de
+   *  zoom intermediário. */
+  lerBairroResumo(cidadeSlug: string): Promise<BairroResumo[]>;
 
   /** ---- Tenant ---- */
   /**
@@ -38,6 +58,10 @@ export interface GameRepository {
    */
   criarNegocio(dados: NovoNegocio): Promise<Negocio>;
   lerNegocio(tenantId: string): Promise<Negocio | null>;
+  /** Todos os negócios com `perfilPublico = true` (GH-GROW-01) — para o
+   *  `sitemap.xml` dinâmico. Só campos já públicos por design (mesma RLS
+   *  aberta de `negocios_leitura`); nunca cruza com `Onboarding`. */
+  listarNegociosPublicos(): Promise<Negocio[]>;
 
   /** ---- Membros ---- */
   vincularMembro(usuario: Usuario): Promise<void>;
@@ -199,6 +223,29 @@ export interface GameRepository {
     novoSlot: number,
   ): Promise<ItemMobiliaColocado>;
 
+  /** ---- Lições (GH-EDU-01) ---- */
+  listarLicoesConcluidas(tenantId: string): Promise<LicaoConcluida[]>;
+  /**
+   * Atômica e idempotente: concluir a mesma lição duas vezes retorna o
+   * registro existente, nunca paga XP/atributo de novo — mesma família de
+   * `desbloquearNo`/`formarParceria`. Sem custo/requisito (lição é sempre
+   * "grátis" de acessar), por isso mais simples que aqueles dois.
+   */
+  concluirLicao(
+    tenantId: string,
+    licaoId: string,
+    xp: number,
+    atributos?: Partial<Record<AtributoChave, number>>,
+  ): Promise<LicaoConcluida>;
+
+  /** ---- Contato via perfil público (GH-GROW-01) ---- */
+  listarSolicitacoesContato(tenantId: string): Promise<SolicitacaoContato[]>;
+  /** A checagem de rate-limit é responsabilidade do chamador (Server Action)
+   *  — este método só persiste. Nunca lança por conteúdo, só por I/O real. */
+  criarSolicitacaoContato(
+    input: Omit<SolicitacaoContato, "id" | "criadaEm">,
+  ): Promise<SolicitacaoContato>;
+
   /** ---- Eventos globais (Épico 11, ver docs/BACKLOG-PRODUTO.md) ---- */
   /** Todos os eventos, de qualquer status — o chamador filtra por
    *  agendado/ativo/encerrado (relógio lazy, `features/eventos-globais/motor.ts`).
@@ -248,6 +295,10 @@ export interface NovoNegocio {
   /** valores iniciais dos 5 eixos, calculados pelo onboarding a partir das
    *  10 respostas (features/onboarding/scoring.ts) */
   atributosIniciais: Negocio["atributos"];
+  /** Opt-out do perfil público, decidido no formulário de cadastro (GH-GROW-01). */
+  perfilPublico: boolean;
+  /** Versão da política de privacidade aceita no cadastro (GH-OPS-04). */
+  consentimentoVersao: string;
 }
 
 export type { Endereco };

@@ -16,6 +16,8 @@ const TOTAL = perguntas.length + 1; // 10 perguntas + tela de conta
 export function Wizard() {
   const [passo, setPasso] = useState(0);
   const [valores, setValores] = useState<Record<string, string | string[]>>({});
+  const [consentimento, setConsentimento] = useState(false);
+  const [perfilPublico, setPerfilPublico] = useState(true);
   const [estado, formAction, pendente] = useActionState<EstadoForm, FormData>(
     cadastrar,
     {},
@@ -179,6 +181,45 @@ export function Wizard() {
                     className="w-full rounded-md border-2 border-[#dbe3f0] bg-[#f7f9fc] px-3 py-2.5 text-sm outline-none focus:border-teal"
                   />
                 </div>
+
+                <label className="mt-3 flex items-start gap-2 text-[11px] leading-snug text-[#5b6b86]">
+                  <input
+                    type="checkbox"
+                    name="consentimento"
+                    checked={consentimento}
+                    onChange={(e) => setConsentimento(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    Li e concordo com a{" "}
+                    <a
+                      href="/privacidade"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-teal underline"
+                    >
+                      política de privacidade
+                    </a>
+                    . Sei que meu negócio ganha uma página pública (nome,
+                    segmento, cidade, nível) — nunca faturamento, moeda
+                    virtual ou as respostas deste cadastro.
+                  </span>
+                </label>
+                <label className="mt-2 flex items-start gap-2 text-[11px] leading-snug text-[#5b6b86]">
+                  <input
+                    type="checkbox"
+                    name="perfilPublico"
+                    checked={perfilPublico}
+                    onChange={(e) => setPerfilPublico(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    Quero que meu negócio apareça na página pública
+                    (recomendado — ajuda clientes a te encontrar; pode
+                    desmarcar e continuar mesmo assim).
+                  </span>
+                </label>
+
                 {estado.erro ? (
                   <p className="mt-3 rounded-sm bg-coral/15 px-3 py-2 text-xs font-bold text-coral-dark">
                     {estado.erro}
@@ -204,7 +245,11 @@ export function Wizard() {
         ) : null}
 
         {naConta ? (
-          <ActionButton type="submit" disabled={pendente} icon="arrow">
+          <ActionButton
+            type="submit"
+            disabled={pendente || !consentimento}
+            icon="arrow"
+          >
             {pendente ? "Criando seu negócio…" : "Criar meu negócio"}
           </ActionButton>
         ) : (

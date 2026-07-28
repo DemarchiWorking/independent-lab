@@ -81,6 +81,14 @@ export interface Negocio {
   moedaVirtual: number;
   /** os 5 eixos da economia de atributos — ver lib/atributos.ts */
   atributos: Atributos;
+  /** Opt-out do perfil público indexável (GH-GROW-01) — default `true`,
+   *  decidido explicitamente no cadastro (GH-OPS-04), nunca assumido. */
+  perfilPublico: boolean;
+  /** Metadado de consentimento LGPD (GH-OPS-04) — quando e qual versão da
+   *  política o dono aceitou. Não é dado sensível em si (ao contrário de
+   *  `Onboarding`, que guarda as respostas reais). */
+  consentimentoEm: string;
+  consentimentoVersao: string;
 }
 
 export interface Usuario {
@@ -250,6 +258,34 @@ export interface ProgressoEventoGlobal {
   completoEm: string | null;
 }
 
+/**
+ * Lição educacional concluída por um tenant (GH-EDU-01). `licaoId` referencia
+ * `features/licoes/catalogo.ts` (catálogo estático, mesmo padrão de
+ * `capituloId`/`noId`/`jobId`). Sem `escolhaId`/`resolvidoEm` como
+ * `CapituloEntregue`: lição não tem escolha, só "concluí ou não".
+ */
+export interface LicaoConcluida {
+  id: string;
+  tenantId: string;
+  licaoId: string;
+  concluidaEm: string;
+}
+
+/**
+ * Contato recebido pela página pública do negócio (GH-GROW-01). O visitante
+ * deixa o PRÓPRIO contato aqui — nunca expomos e-mail/telefone do dono em
+ * texto puro na página pública, isto é o "formulário intermediado" que
+ * substitui isso.
+ */
+export interface SolicitacaoContato {
+  id: string;
+  tenantId: string;
+  nomeRemetente: string;
+  contatoRemetente: string;
+  mensagem: string;
+  criadaEm: string;
+}
+
 /** Sessão autenticada. */
 export interface Sessao {
   usuarioId: string;
@@ -295,6 +331,37 @@ export interface CidadeView {
 
 export interface MapaView {
   cidades: CidadeView[];
+}
+
+/** ---------- Read model agregado do mapa (GH-MAPA-01) ----------
+ *  "Só contagem", sem carregar cada negócio — para os níveis de zoom altos
+ *  (região/cidade), onde a UI só precisa saber "quantos", não "quais". */
+
+export interface CidadeResumo {
+  slug: string;
+  nome: string;
+  totalBairros: number;
+  totalNegocios: number;
+}
+
+export interface MapaResumo {
+  cidades: CidadeResumo[];
+}
+
+export interface BairroResumo {
+  slug: string;
+  nome: string;
+  totalNegocios: number;
+}
+
+/** Escopo opcional de `lerMapaView()` (GH-MAPA-01) — quando informado, só o
+ *  bairro pedido vem populado com quarteirões/lotes; os demais continuam na
+ *  resposta com `quarteiroes: []` (mantém o shape de `MapaView` inteiro, só
+ *  muda o que vem preenchido — evita quebrar quem itera `mapa.cidades` sem
+ *  saber que existe escopo). */
+export interface EscopoMapa {
+  cidadeSlug: string;
+  bairroSlug: string;
 }
 
 /** ---------- Sede (o "World" — ver docs/world/ARQUITETURA-WORLD.md) ---------- */

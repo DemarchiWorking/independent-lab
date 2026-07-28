@@ -734,7 +734,7 @@ princípio já usado em `lib/disponibilidade.ts`/`features/historia/relogio.ts`.
 > Escala o ecossistema de "um quarteirão" para "bairro → cidade → região".
 > Ver [`world/MAPA-MUNDI-VALE-DO-CAFE.md`](world/MAPA-MUNDI-VALE-DO-CAFE.md).
 
-### GH-MAPA-01 — Consulta agregada por cidade/bairro (performance)
+### GH-MAPA-01 — Consulta agregada por cidade/bairro (performance) 🟡 parcial
 
 | Campo | Valor |
 |---|---|
@@ -748,13 +748,33 @@ de negócios; com centenas vira gargalo. Criar consulta agregada para os
 níveis de zoom altos.
 
 **Critérios de aceitação:**
-- [ ] View/consulta que retorna `{ cidade, total_negocios, total_bairros }`
-      sem carregar cada negócio
-- [ ] Idem para bairros dentro de uma cidade
-- [ ] `lerMapaView()` detalhado passa a receber escopo (bairro específico),
-      não o mundo todo
+- [x] View/consulta que retorna `{ cidade, total_negocios, total_bairros }`
+      sem carregar cada negócio — `GameRepository.lerMapaResumo()`, RPC
+      `mapa_resumo()` (migration `0017_mapa_resumo.sql`, `left join` +
+      `count`, leitura pública sem `security definer` — mesma RLS já
+      aberta de cidades/bairros/negocios)
+- [x] Idem para bairros dentro de uma cidade — `lerBairroResumo(cidadeSlug)`,
+      RPC `bairro_resumo(p_cidade_slug)`
+- [x] `lerMapaView()` ganhou `escopo?: EscopoMapa` opcional — quando
+      informado, só o bairro pedido vem com `quarteiroes` populado
 - [ ] Medição antes/depois documentada no PR (com dados semeados suficientes
-      para a diferença ser visível — ex.: 200 negócios)
+      — ex.: 200 negócios) — **não feito nesta sessão**: exigiria escrever
+      um script de seed sintético só para provar o ganho, e hoje o mundo real
+      tem 7 cidades sem bairro nenhum pré-semeado (`lib/regiao.ts` +
+      `supabase/seed.sql` — bairros só nascem no primeiro cadastro real). A
+      própria pesquisa desta sessão confirma: "performance" aqui é hoje
+      teórica, não um gargalo observado. Falta seed script + benchmark real
+      antes de fechar este checkbox.
+
+**Nota de integração (2026-07-28):** `escopo` em `lerMapaView()` **não está
+sendo usado por nenhum chamador ainda** — de propósito. A única tela real
+(`MapaScreen`) recebe o mundo inteiro do servidor e troca cidade/bairro
+**no client, sem novo fetch** (é assim que a troca de pill é instantânea
+hoje). Passar `escopo` a partir de `hub/page.tsx` quebraria essa UX sem
+`GH-MAPA-02` (zoom com fetch por nível) para substituí-la — por isso o
+parâmetro existe no contrato (repository + os 2 adapters), mas fica **inerte**
+até `GH-MAPA-02` decidir a nova estratégia de fetch. Documentado aqui para
+não parecer código morto/esquecido numa auditoria futura.
 
 **Regras de segurança:** agregados são públicos (contagem de negócios por
 cidade não é dado sensível); o detalhe continua sujeito às policies atuais.
@@ -857,7 +877,7 @@ motiva, não que envergonha.
 > automação intrusiva. Isso não é só ética — é o que evita o produto ser
 > banido de plataformas e queimar a marca no Sebrae.
 
-### GH-GROW-01 — Perfil público do negócio (vitrine indexável)
+### GH-GROW-01 — Perfil público do negócio (vitrine indexável) ✅
 
 | Campo | Valor |
 |---|---|
@@ -875,19 +895,29 @@ discreto "Faça parte do ecossistema — labdatadev". Quanto mais negócios
 entram, mais páginas apontam para o hub. É SEO composto, sem custo marginal.
 
 **Critérios de aceitação:**
-- [ ] Rota pública SSR (não client-only) — precisa ser indexável
-- [ ] Metadados corretos (title, description, Open Graph) por negócio
-- [ ] `sitemap.xml` gerado dinamicamente com todos os perfis públicos
-- [ ] Só expõe dados de **fachada** (nunca onboarding/budget/contato privado)
-- [ ] Negócio pode **optar por não aparecer** (opt-out explícito e fácil)
-- [ ] Página carrega rápido (é a primeira impressão de quem chega pelo Google)
+- [x] Rota pública SSR — `src/app/n/[slug]/page.tsx`, Server Component puro
+- [x] Metadados corretos (title, description, Open Graph) por negócio —
+      `generateMetadata()`
+- [x] `sitemap.xml` gerado dinamicamente — `src/app/sitemap.ts` (primeiro
+      deste app), só com `perfilPublico = true`; `robots.ts` também novo,
+      bloqueia `/hub`/`/painel`/`/world`/`/admin`
+- [x] Só expõe dados de fachada — whitelist explícita no JSX de
+      `page.tsx` (nome/segmento/cidade/bairro/nível/degrau/ofertas), nunca
+      `atributos`/`xp`/`moedaVirtual`
+- [x] Negócio pode optar por não aparecer — `Negocio.perfilPublico`
+      (opt-out no formulário de cadastro, ver `GH-OPS-04`, entregue junto)
+- [x] Slug derivado (`features/growth/slug.ts`, `slugDoNegocio`/`idDoSlug`)
+      em vez de coluna nova — nome+id, sem migration de unicidade
 
 **Regras de segurança:**
-- **Whitelist explícita** de campos públicos no código — nunca "serializar o
-  objeto negócio inteiro" (risco de vazar campo novo sem perceber no futuro)
-- Sem e-mail/telefone do dono expostos em texto puro (usar formulário de
-  contato intermediado, evita scraping)
-- Rate limiting no formulário de contato (anti-spam)
+- [x] Whitelist explícita no código (não serializa `Negocio` inteiro)
+- [x] Sem e-mail/telefone do dono em texto puro — formulário
+      (`ContatoForm.tsx` → `enviarSolicitacaoContato`) persiste o contato do
+      VISITANTE, nunca expõe o do dono
+- [x] Rate limiting anti-spam — em memória, por `(tenantId, IP)`, 3 a cada
+      10min (`features/growth/actions.ts`); documentado como MVP-adequado
+      (1 processo PM2, sem load balancer — ver `AGENTS.md`), migraria pra
+      Redis só se escalar horizontalmente
 
 **Dados trafegados:** nome do negócio, segmento, cidade, bairro, nível,
 degrau, serviços oferecidos. **Nunca:** e-mail, telefone, budget declarado,
@@ -895,6 +925,19 @@ score de fit, respostas do onboarding.
 
 **Boas práticas:** LGPD — o negócio precisa saber, no cadastro, que terá
 página pública, e poder desativar. Documentar isso no fluxo de onboarding.
+**Feito junto com `GH-OPS-04`** (mesmo checkbox de consentimento no Wizard).
+
+**Gaps conhecidos, deixados de propósito fora deste card** (ver
+`docs/ESTADO-DO-PROJETO.md` para o registro completo):
+- `Oferta` (serviços oferecidos) tem persistência e leitura prontas há
+  tempo, mas **nenhuma UI para o dono criar uma oferta** — a página pública
+  já renderiza a lista (vazia hoje) corretamente; falta o produtor.
+- Mensagens de contato recebidas são persistidas (`solicitacoes_contato`)
+  mas **não há tela para o dono ler** — falta uma aba/seção no painel.
+- `sitemap.ts`/`robots.ts` usam `NEXT_PUBLIC_SITE_URL` (novo env var) — sem
+  ele, cai em `localhost:8081`, o que produz um sitemap inválido em
+  produção. Precisa ser setado no `.env` da VPS antes do primeiro deploy
+  real (`GH-OPS-01`).
 
 ---
 
@@ -1027,6 +1070,45 @@ recomendação personalizada — usar para prospecção interna é legítimo e
 esperado; **vender ou compartilhar com terceiros não é**. Documentar isso na
 política de privacidade antes do primeiro cadastro real.
 
+**Decisão desta sessão (2026-07-28): adiado de propósito, não implementado.**
+Pesquisa completa já foi feita (ver abaixo) — falta só a implementação, numa
+sessão que possa dar a este card a atenção que ele pede, não como item 4 de
+5 num lote. Motivo: é o único card do backlog que exige **cruzar dados
+privados entre tenants** (hoje a RLS de `onboardings` é estritamente
+`tenant_id = tenant_atual()` — este painel seria o PRIMEIRO ponto do sistema
+a furar essa fronteira de proposito, ainda que por um caminho legítimo). Não
+é o tipo de coisa para apressar.
+
+**O que a pesquisa já confirmou, pronto para quando este card for aberto:**
+- **Não existe hoje nenhum método no `GameRepository` que liste dados de
+  MÚLTIPLOS tenants com onboarding incluído** — precisa ser escrito do zero.
+  O único precedente de leitura "todos os tenants" é `listarNegociosPublicos()`
+  (`GH-GROW-01`, nesta mesma sessão), mas esse só toca campos JÁ públicos —
+  não serve de template para dados privados.
+- O padrão de gate já está estabelecido e deve ser replicado literalmente:
+  `souAdmin()` (`src/lib/admin.ts`) + re-checagem independente **dentro de
+  cada Server Action** (nunca confiar só no gate da página) — ver
+  `src/app/admin/eventos/page.tsx` (mensagem neutra "Página não encontrada"
+  pra quem não é admin) e `src/features/eventos-globais/actions.ts`
+  (`criarEventoGlobal`/`listarTodosEventos` re-checam `souAdmin` cada um).
+- **Gap real em `souAdmin()` que este card deveria fechar ou pelo menos não
+  ignorar:** hoje é allowlist por env var **OU substring `"demarchi"` no
+  e-mail** (aceita `qualquer.coisa.demarchi@gmail.com`) — e não há NENHUM
+  log de auditoria de quem acessou o quê. O próprio `GH-EVT-05` (já no
+  backlog, P3) documenta o plano de migrar para roles reais via Supabase
+  Auth `app_metadata`. Dado que GH-GROW-05 é "o card de maior sensibilidade
+  do backlog" segundo ele mesmo, ele é o gatilho natural para finalmente
+  puxar `GH-EVT-05` também — não faz sentido dar acesso a budget de todos
+  os tenants atrás de um gate que aceita substring de e-mail sem nenhum
+  registro de quem entrou.
+- A implementação em Supabase precisará necessariamente usar
+  `supabaseAdmin()` (`service_role`, já o único cliente que `SupabaseRepository`
+  usa hoje) para o cruzamento — não é uma mudança de trust boundary nova,
+  mas o PRIMEIRO lugar onde esse bypass de RLS é usado para EXPOR dado
+  privado de vários tenants de uma vez, não só para escrever atomicamente no
+  próprio tenant. Vale um comentário de cabeçalho bem explícito no método
+  novo, para não parecer um bug numa auditoria futura.
+
 ---
 
 ## Épico 8 — Camada Educacional (P1/P2)
@@ -1035,7 +1117,7 @@ política de privacidade antes do primeiro cadastro real.
 > ensino de empreendedorismo** onde a lição é aplicada ao negócio real do
 > jogador no mesmo instante.
 
-### GH-EDU-01 — Trilha de aprendizado ancorada na escada de valor
+### GH-EDU-01 — Trilha de aprendizado ancorada na escada de valor ✅
 
 | Campo | Valor |
 |---|---|
@@ -1049,11 +1131,24 @@ curto (o "porquê" por trás da recomendação). Ex.: ao receber a missão
 por que processo documentado destrava crescimento.
 
 **Critérios de aceitação:**
-- [ ] Conteúdo em markdown versionado no repo (não CMS externo por ora)
-- [ ] Lição sempre ligada a uma **ação concreta** no jogo (nunca teoria solta)
-- [ ] Concluir uma lição é um evento de gamificação (XP)
-- [ ] Linguagem acessível — o ICP é empresário de PME, não estudante de
-      administração
+- [x] Conteúdo em markdown versionado no repo — `features/licoes/catalogo.ts`
+      (`CATALOGO_LICOES`, 5 lições, 1 por degrau), não CMS externo
+- [x] Lição sempre ligada a uma ação concreta — cada `Licao.acao` aponta
+      para um botão real do jogo (aceitar job, desbloquear nó, contratar
+      Funcionário de IA, evoluir Sede)
+- [x] Concluir uma lição é evento de gamificação — `XP_LICAO` (40, bem
+      abaixo de ações pagas como `servico_contratado`=200), RPC
+      `concluir_licao` (migration `0020_licoes.sql`), mesma família
+      idempotente de `desbloquearNo`/`formarParceria`
+- [x] Linguagem acessível — tom direto, exemplos de PME real (planilha,
+      resposta de lead, retrabalho entre sistemas), sem jargão de MBA
+
+**Onde aparece:** `LicaoCard` no Hub (`HubScreen.tsx`), mostrando a lição do
+`degrauAtual` do negócio — some da tela quando já concluída. **Decisão de
+integração:** não virou aba nova no menu lateral nem módulo do app-drawer
+— o card no Hub já satisfazia "ligada a uma ação concreta" sem precisar de
+navegação nova; se um dia crescer para trilha completa multi-lição por
+degrau, aí sim vale uma tela própria (fora de escopo hoje).
 
 **Regras de segurança:** conteúdo estático, sem input de usuário — risco
 baixo. Se evoluir para conteúdo gerado, sanitizar antes de renderizar.

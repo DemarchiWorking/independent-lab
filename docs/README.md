@@ -9,6 +9,7 @@
 |---|---|
 | [ESTADO-DO-PROJETO.md](ESTADO-DO-PROJETO.md) | **Sempre primeiro**, ao retomar |
 | [BACKLOG-PRODUTO.md](BACKLOG-PRODUTO.md) | 🎯 **O que fazer agora** — 33 cards priorizados, um por vez |
+| [GAPS-DE-INTEGRACAO.md](GAPS-DE-INTEGRACAO.md) | 🧩 Coisas que existem mas não estão costuradas a nada, ou que dois pedaços do sistema não combinam — registro vivo |
 | [PRODUTO-IA-FUNCIONARIOS.md](PRODUTO-IA-FUNCIONARIOS.md) | Entender o produto atual (o pivot) |
 | [analise-prints/SINTESE-REQUISITOS-FUNCIONAIS.md](analise-prints/SINTESE-REQUISITOS-FUNCIONAIS.md) | **Antes de implementar qualquer feature de jogo** |
 

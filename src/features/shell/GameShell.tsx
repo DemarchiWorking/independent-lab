@@ -25,6 +25,7 @@ import type {
   Endereco,
   FuncionarioContratado,
   ItemMobiliaColocado,
+  LicaoConcluida,
   MapaView,
   Sede,
 } from "@/lib/db/types";
@@ -114,6 +115,9 @@ interface GameShellProps {
   parceriasFormadas?: string[];
   /** Eventos globais visíveis ao jogador, já com o progresso dele (Épico 11). */
   eventos?: EventoComProgresso[];
+  /** Lições concluídas (GH-EDU-01) — decide se a lição do degrau atual já
+   *  foi lida, mostrada no Hub. */
+  licoesConcluidas?: LicaoConcluida[];
 }
 
 /** Moldura do jogo: cena isométrica + HUD fixos; o "palco" central troca de tela
@@ -136,6 +140,7 @@ export function GameShell({
   nosDesbloqueados = [],
   parceriasFormadas = [],
   eventos = [],
+  licoesConcluidas = [],
 }: GameShellProps) {
   const [view, setView] = useState<View>(initialView);
   const [drawer, setDrawer] = useState(false);
@@ -214,6 +219,8 @@ export function GameShell({
                   trabalhosAceitos={trabalhosAceitos}
                   atributos={atributos}
                   funcionarios={funcionarios}
+                  degrauAtual={degrauAtual}
+                  licoesConcluidas={licoesConcluidas}
                 />
               ) : (
                 <div className="relative h-full rounded-md bg-card/85 p-4 pt-5 backdrop-blur-sm">

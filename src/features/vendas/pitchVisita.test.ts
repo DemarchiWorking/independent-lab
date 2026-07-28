@@ -25,6 +25,9 @@ function negocio(atributos: Partial<Record<keyof Atributos, number>>): Negocio {
     xp: 500,
     moedaVirtual: 1000,
     atributos: base,
+    perfilPublico: true,
+    consentimentoEm: "2026-01-01T00:00:00.000Z",
+    consentimentoVersao: "2026-07-28",
   };
 }
 

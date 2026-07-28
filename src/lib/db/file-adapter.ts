@@ -11,13 +11,17 @@ import type { DeltaProgresso, GameRepository, NovoNegocio } from "./repository";
 import type {
   Alocacao,
   Bairro,
+  BairroResumo,
   CapituloEntregue,
   Cidade,
   Endereco,
+  EscopoMapa,
   EventoGlobal,
   FuncionarioContratado,
   ItemMobiliaColocado,
+  LicaoConcluida,
   Mapa,
+  MapaResumo,
   MapaView,
   Negocio,
   NegocioResumo,
@@ -28,6 +32,7 @@ import type {
   ProgressoEventoGlobal,
   Quarteirao,
   Sede,
+  SolicitacaoContato,
   TrabalhoAceito,
   Usuario,
 } from "./types";
@@ -106,7 +111,7 @@ export class FileRepository implements GameRepository {
     return lerJson<Mapa>(MAPA, mapaInicial());
   }
 
-  async lerMapaView(): Promise<MapaView> {
+  async lerMapaView(escopo?: EscopoMapa): Promise<MapaView> {
     const mapa = await this.lerMapa();
 
     // coleta todos os tenants ocupantes e lê os resumos em paralelo (sem N+1 serial)
@@ -139,17 +144,57 @@ export class FileRepository implements GameRepository {
         bairros: c.bairros.map((b) => ({
           slug: b.slug,
           nome: b.nome,
-          quarteiroes: b.quarteiroes.map((q) => ({
-            id: q.id,
-            nome: q.nome,
-            lotes: q.lotes.map((l) => ({
-              numero: l.numero,
-              negocio: l.tenantId ? (resumo.get(l.tenantId) ?? null) : null,
-            })),
-          })),
+          // escopo (GH-MAPA-01): fora do bairro pedido, não populamos
+          // quarteirões — o shape inteiro do mundo continua no retorno, só
+          // o conteúdo pesado (lotes/negócios) é que fica de fora.
+          quarteiroes:
+            escopo && (c.slug !== escopo.cidadeSlug || b.slug !== escopo.bairroSlug)
+              ? []
+              : b.quarteiroes.map((q) => ({
+                  id: q.id,
+                  nome: q.nome,
+                  lotes: q.lotes.map((l) => ({
+                    numero: l.numero,
+                    negocio: l.tenantId ? (resumo.get(l.tenantId) ?? null) : null,
+                  })),
+                })),
         })),
       })),
     };
+  }
+
+  async lerMapaResumo(): Promise<MapaResumo> {
+    const mapa = await this.lerMapa();
+    return {
+      cidades: mapa.cidades.map((c) => ({
+        slug: c.slug,
+        nome: c.nome,
+        totalBairros: c.bairros.length,
+        totalNegocios: c.bairros.reduce(
+          (total, b) =>
+            total +
+            b.quarteiroes.reduce(
+              (subtotal, q) => subtotal + q.lotes.filter((l) => l.tenantId !== null).length,
+              0,
+            ),
+          0,
+        ),
+      })),
+    };
+  }
+
+  async lerBairroResumo(cidadeSlug: string): Promise<BairroResumo[]> {
+    const mapa = await this.lerMapa();
+    const cidade = mapa.cidades.find((c) => c.slug === cidadeSlug);
+    if (!cidade) return [];
+    return cidade.bairros.map((b) => ({
+      slug: b.slug,
+      nome: b.nome,
+      totalNegocios: b.quarteiroes.reduce(
+        (total, q) => total + q.lotes.filter((l) => l.tenantId !== null).length,
+        0,
+      ),
+    }));
   }
 
   /** Aloca o primeiro lote livre e grava o mapa. Single-process: sem corrida. */
@@ -224,6 +269,9 @@ export class FileRepository implements GameRepository {
       nivel: nivelPorXp(dados.xpInicial),
       moedaVirtual: dados.moedaVirtual,
       atributos: dados.atributosIniciais,
+      perfilPublico: dados.perfilPublico,
+      consentimentoEm: new Date().toISOString(),
+      consentimentoVersao: dados.consentimentoVersao,
     };
     await escreverJson(path.join(tenantDir(id), "negocio.json"), negocio);
     return negocio;
@@ -234,6 +282,18 @@ export class FileRepository implements GameRepository {
       path.join(tenantDir(tenantId), "negocio.json"),
       null,
     );
+  }
+
+  async listarNegociosPublicos(): Promise<Negocio[]> {
+    const raiz = path.join(ROOT, "tenants");
+    let pastas: string[];
+    try {
+      pastas = await fs.readdir(raiz);
+    } catch {
+      return [];
+    }
+    const negocios = await Promise.all(pastas.map((id) => this.lerNegocio(id)));
+    return negocios.filter((n): n is Negocio => n !== null && n.perfilPublico);
   }
 
   async vincularMembro(usuario: Usuario): Promise<void> {
@@ -279,6 +339,67 @@ export class FileRepository implements GameRepository {
     const atuais = await lerJson<Oferta[]>(arquivo, []);
     atuais.push({ ...oferta, id: randomBytes(8).toString("hex") });
     await escreverJson(arquivo, atuais);
+  }
+
+  async listarLicoesConcluidas(tenantId: string): Promise<LicaoConcluida[]> {
+    return lerJson<LicaoConcluida[]>(
+      path.join(tenantDir(tenantId), "licoes.json"),
+      [],
+    );
+  }
+
+  async concluirLicao(
+    tenantId: string,
+    licaoId: string,
+    xp: number,
+    atributos?: Partial<Record<AtributoChave, number>>,
+  ): Promise<LicaoConcluida> {
+    const arquivo = path.join(tenantDir(tenantId), "licoes.json");
+    const atuais = await lerJson<LicaoConcluida[]>(arquivo, []);
+    const existente = atuais.find((l) => l.licaoId === licaoId);
+    if (existente) return existente;
+
+    const negocio = await this.lerNegocio(tenantId);
+    if (!negocio) throw new Error(`Negócio ${tenantId} não encontrado`);
+    negocio.xp += xp;
+    negocio.nivel = Math.min(NIVEL_MAX, nivelPorXp(negocio.xp));
+    if (atributos) {
+      negocio.atributos = aplicarGanhos(negocio.atributos, atributos);
+    }
+
+    const nova: LicaoConcluida = {
+      id: randomBytes(8).toString("hex"),
+      tenantId,
+      licaoId,
+      concluidaEm: new Date().toISOString(),
+    };
+    atuais.push(nova);
+
+    await escreverJson(path.join(tenantDir(tenantId), "negocio.json"), negocio);
+    await escreverJson(arquivo, atuais);
+    return nova;
+  }
+
+  async listarSolicitacoesContato(tenantId: string): Promise<SolicitacaoContato[]> {
+    return lerJson<SolicitacaoContato[]>(
+      path.join(tenantDir(tenantId), "contatos.json"),
+      [],
+    );
+  }
+
+  async criarSolicitacaoContato(
+    input: Omit<SolicitacaoContato, "id" | "criadaEm">,
+  ): Promise<SolicitacaoContato> {
+    const arquivo = path.join(tenantDir(input.tenantId), "contatos.json");
+    const atuais = await lerJson<SolicitacaoContato[]>(arquivo, []);
+    const nova: SolicitacaoContato = {
+      ...input,
+      id: randomBytes(8).toString("hex"),
+      criadaEm: new Date().toISOString(),
+    };
+    atuais.push(nova);
+    await escreverJson(arquivo, atuais);
+    return nova;
   }
 
   async listarVizinhos(tenantId: string): Promise<Negocio[]> {

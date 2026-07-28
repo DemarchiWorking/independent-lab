@@ -1,10 +1,12 @@
 # Estado do Projeto — snapshot para continuar
 
 > **Última atualização:** 2026-07-28 (seção `GH-ATR-03` em §3.1 — o resto do
-> arquivo é de 2026-07-27 e não reflete o Épico 11, ver nota de processo em
-> §3.1). Leia este documento **primeiro** ao retomar o trabalho — ele diz o
-> que está pronto, o que mudou de direção, e por onde continuar. Detalhes
-> técnicos ficam nos docs linkados, não aqui.
+> arquivo é de 2026-07-27 e não reflete o Épico 11 nem os lotes de
+> 2026-07-28, ver `docs/PROXIMA-TAREFA.md` para o estado mais recente e
+> `docs/GAPS-DE-INTEGRACAO.md` para achados de integração/dívida técnica
+> desta sessão). Leia este documento **primeiro** ao retomar o trabalho —
+> ele diz o que está pronto, o que mudou de direção, e por onde continuar.
+> Detalhes técnicos ficam nos docs linkados, não aqui.
 
 ---
 

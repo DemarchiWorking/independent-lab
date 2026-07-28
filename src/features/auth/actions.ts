@@ -7,6 +7,7 @@ import { criarSessao, encerrarSessao } from "@/lib/auth/sessao";
 import { slugify } from "@/lib/db/file-adapter";
 import { calcular } from "@/features/onboarding/scoring";
 import { itemMobilia } from "@/features/sede/catalogo";
+import { POLITICA_PRIVACIDADE_VERSAO } from "./politica";
 import type { GameRepository } from "@/lib/db";
 import type { Respostas, Segmento } from "@/lib/db/types";
 
@@ -81,6 +82,16 @@ export async function cadastrar(
   if (await auth.emailExiste(email))
     return { erro: "Já existe uma conta com esse e-mail." };
 
+  // Consentimento LGPD (GH-OPS-04) — checagem no servidor, nunca só
+  // desabilitar o botão no client: um checkbox desmarcado nunca aparece no
+  // FormData, então a ausência da chave já basta como sinal de recusa.
+  if (fd.get("consentimento") !== "on") {
+    return {
+      erro: "É necessário aceitar a política de privacidade para continuar.",
+    };
+  }
+  const perfilPublico = fd.get("perfilPublico") === "on";
+
   const segmentoBruto = texto(fd, "segmento") as Segmento;
   const respostas: Respostas = {
     nomeNegocio: texto(fd, "nomeNegocio"),
@@ -112,6 +123,8 @@ export async function cadastrar(
     xpInicial: resultado.xpInicial,
     moedaVirtual: 500,
     atributosIniciais: resultado.atributosIniciais,
+    perfilPublico,
+    consentimentoVersao: POLITICA_PRIVACIDADE_VERSAO,
   });
 
   await repo.salvarOnboarding({
