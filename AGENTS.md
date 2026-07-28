@@ -57,6 +57,7 @@ inovação aplicada a empreendedorismo/PMEs regionais).
 | Mexer na sala isométrica / no boneco que anda | `src/features/world/` — regra em `engine/` (puro, testado), desenho em `render/` (Pixi). **Nunca ponha regra dentro do `render/`.** |
 | Planejar a próxima evolução do jogo | [`docs/world/EVOLUCAO-MOTOR-2026.md`](docs/world/EVOLUCAO-MOTOR-2026.md) — pesquisa 2026, decisão de engine e roadmap G0–G6 |
 | Adicionar um móvel novo | `src/features/sede/catalogo.ts` (preço/bônus) — a silhueta 3D vem da `categoria`, desenhada em `world/render/desenho.ts` |
+| Criar/ver uma campanha com prazo p/ todos os jogadores | `/admin/eventos` (gated por `GAMEHUB_ADMIN_EMAILS`) — ver `src/features/eventos-globais/` |
 
 Estrutura completa: [`README.md`](README.md#estrutura). Design system e
 prints de referência: [`docs/design/`](docs/design/).

@@ -1198,13 +1198,13 @@ ordem usada para o motor de história.
 
 ---
 
-### GH-EVT-02 — Persistência (tipos, repository, adapters, migration)
+### GH-EVT-02 — Persistência (tipos, repository, adapters, migration) ✅
 
 | Campo | Valor |
 |---|---|
 | Prioridade | P1 |
 | Esforço | M |
-| Depende de | `GH-EVT-01`, e **espera `GH-ATR-03` commitar** (mesmos arquivos: `repository.ts`, `file-adapter.ts`, `supabase-adapter.ts`, `gamificacao/actions.ts`, `parcerias/actions.ts` — sessão concorrente ativa neles em 2026-07-27) |
+| Depende de | `GH-EVT-01`, `GH-ATR-03` (commitado antes, sem conflito) |
 
 **Descrição:** Ligar o modelo de dados à persistência real e ao dispatcher
 de gamificação.
@@ -1217,14 +1217,15 @@ de gamificação.
       1, e se bater a meta pela primeira vez aplica XP/moeda/atributo na
       MESMA transação — mesmo padrão de `desbloquear_no`); validada via
       `pg-query-emscripten` (parse + corpo plpgsql das duas funções OK)
-- [ ] `GameRepository` ganha `listarEventosGlobais`, `criarEventoGlobal`,
-      `listarProgressoEventos`, `incrementarProgressoEventos` — implementar
-      nos dois adapters
-- [ ] `incrementarProgressoEventos` chamado a partir de
+- [x] `GameRepository` ganha `listarEventosGlobais`, `criarEventoGlobal`,
+      `listarProgressoEventos`, `incrementarProgressoEventos` — implementados
+      nos dois adapters (`EventoGlobal`/`ProgressoEventoGlobal` movidos para
+      `lib/db/types.ts`, `objetivo` fica `string` ali — `lib/` não importa de
+      `features/`; a narrowing para `EventoKey` acontece em `NovoEventoGlobal`)
+- [x] `incrementarProgressoEventos` chamado a partir de
       `recompensar()` (`gamificacao/actions.ts`) e de `desbloquearNo()`
       (`parcerias/actions.ts`, para o objetivo `servico_desbloqueado`, que
-      não passa por `recompensar()` desde `GH-ARV-01`) — depois que ambos
-      arquivos estiverem livres da edição concorrente
+      não passa por `recompensar()` desde `GH-ARV-01`)
 
 **Regras de segurança:** escrita só via RPC (`service_role`), nunca insert
 direto do client — mesmo padrão de `comprarMobilia`/`desbloquearNo`.
@@ -1235,7 +1236,7 @@ que a recompensa base do evento já foi aplicada com sucesso — nunca antes
 
 ---
 
-### GH-EVT-03 — Server actions (admin cria, jogador lê)
+### GH-EVT-03 — Server actions (admin cria, jogador lê) ✅
 
 | Campo | Valor |
 |---|---|
@@ -1249,11 +1250,11 @@ valida `janelaValida` antes de chamar o repositório. `listarEventosAtivos()`
 `agoraGlobal()` de `features/historia/relogio.ts`.
 
 **Critérios de aceitação:**
-- [ ] Tentar criar evento sem ser admin retorna erro do servidor, nunca só
+- [x] Tentar criar evento sem ser admin retorna erro do servidor, nunca só
       esconde o botão na UI
-- [ ] Datas inválidas (fim ≤ início) rejeitadas no servidor, não só no
+- [x] Datas inválidas (fim ≤ início) rejeitadas no servidor, não só no
       `<input type="datetime-local">`
-- [ ] `listarEventosAtivos()` retorna também o progresso do tenant logado em
+- [x] `listarEventosAtivos()` retorna também o progresso do tenant logado em
       cada evento (uma chamada, não N+1)
 
 **Regras de segurança:** o e-mail usado no `souAdmin` vem da `Sessao`
@@ -1261,7 +1262,7 @@ assinada (`lerSessao()`), nunca de um campo enviado pelo client.
 
 ---
 
-### GH-EVT-04 — UI (tela de admin + banner do jogador)
+### GH-EVT-04 — UI (tela de admin + banner do jogador) ✅
 
 | Campo | Valor |
 |---|---|
@@ -1275,17 +1276,28 @@ jogador — nova entrada "Eventos" no menu lateral (`GameShell.tsx`), lista
 de eventos ativos/agendados com barra de progresso (`progressoPercentual`).
 
 **Critérios de aceitação:**
-- [ ] `/admin/eventos` inacessível (redirect ou mensagem neutra, não erro
-      técnico) para quem não está na allowlist
-- [ ] Evento criado aparece para outro tenant (não o admin) assim que a
-      janela abre — provado recarregando a página, sem WebSocket
-- [ ] Barra de progresso reflete `contagem/meta` do servidor, nunca
+- [x] `/admin/eventos` inacessível (mensagem neutra "Página não encontrada",
+      não erro técnico) para quem não está na allowlist
+- [x] Evento criado aparece para outro tenant assim que a janela abre —
+      provado end-to-end via rota temporária: admin criou o evento, ação de
+      jogador incrementou o progresso e a recompensa foi creditada
+      (`xp`/`moedaVirtual` conferidos em `data/negocio.json`), sem WebSocket
+- [x] Barra de progresso reflete `contagem/meta` do servidor, nunca
       `useState` local
-- [ ] Toast/feedback ao bater a meta (reusa `RecompensaContext` existente)
+- [ ] Toast/feedback ao bater a meta reusando `RecompensaContext` — **não
+      feito**; hoje o card na aba "Eventos" mostra "— concluído!" inline,
+      mas só aparece quando o jogador entra na aba, não como toast
+      imediato. Follow-up de baixo esforço, não bloqueia o épico.
 
 **Boas práticas:** reusar `ActionButton`/`HexTile`-style dos componentes já
 existentes em `components/ui/` — não criar estilo avulso (regra não
 negociável do `AGENTS.md`).
+
+**Nota de validação:** a troca de aba usa `AnimatePresence`, que trava sem
+`requestAnimationFrame` em navegador headless não composto (mesmo gotcha já
+documentado no `AGENTS.md` para o canvas do World) — verificado via rota
+temporária chamando as Server Actions direto, não via clique. Num navegador
+real isso não acontece.
 
 ---
 
