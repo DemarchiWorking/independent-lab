@@ -863,7 +863,7 @@ pública" — nunca onboarding/budget.
 
 ---
 
-### GH-MAPA-04 — Benchmark regional (com calibração editorial)
+### GH-MAPA-04 — Benchmark regional (com calibração editorial) ✅
 
 | Campo | Valor |
 |---|---|
@@ -877,21 +877,32 @@ pública" — nunca onboarding/budget.
 jogador 3%, o que é desmotivador para um empresário real.
 
 **Critérios de aceitação:**
-- [ ] Mostra a posição do negócio em relação à média do bairro/cidade, **não
-      um ranking humilhante**
-- [ ] Enquadramento sempre orientado a ação ("você está 2 pontos abaixo da
-      média em Presença — o serviço X resolve isso"), nunca a derrota
-- [ ] Nenhum negócio é exposto negativamente por nome para outro
+- [x] Mostra a posição do negócio em relação à média do bairro — seção
+      "Você e a média do seu bairro" em `/painel`, RPC `benchmark_bairro`
+      (migration `0022_benchmark_bairro.sql`, mesmo padrão de leitura
+      pública de `mapa_resumo`/`bairro_resumo` do `GH-MAPA-01`)
+- [x] Enquadramento sempre orientado a ação — `features/mapa/benchmark.ts`
+      (`eixoParaFocar`/`mensagemFoco`, puras, testadas): escolhe o eixo com
+      MAIOR distância abaixo da média e sugere a ação real do jogo que
+      resolve (ex.: "contratar o Comercial/SDR de IA"), nunca teoria solta
+- [x] Nenhum negócio exposto por nome — só a média agregada do bairro
+      (`totalNegocios` + `medias`), nunca lista individual
+
+**Verificação:** testado contra o dado semeado real (`GH-PITCH-01`, 6
+negócios) — a média de `tecnologia` calculada bateu exata (10,1666... =
+61/6) contra o cálculo manual.
 
 **Regras de segurança:** comparações usam **agregados anonimizados** (média
 do bairro), nunca "empresa X é melhor que você". Dados de onboarding
-(budget/score) **jamais** entram no benchmark público.
+(budget/score) **jamais** entram no benchmark — a RPC só toca as mesmas
+colunas de fachada já usadas no mapa (`GH-MAPA-01`).
 
 **Dados trafegados:** médias agregadas + atributos do próprio tenant.
 
 **Boas práticas:** este card carrega risco reputacional real — o produto é
 apresentado no Sebrae para PMEs. Revisar o texto com cuidado: benchmark que
-motiva, não que envergonha.
+motiva, não que envergonha. Teste de string dedicado garante que a
+mensagem nunca menciona "vizinho"/"concorrente"/"rival"/"melhor que".
 
 ---
 

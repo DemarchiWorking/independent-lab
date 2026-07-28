@@ -10,6 +10,7 @@ import { OfertasPainel } from "@/features/ofertas/OfertasPainel";
 import { ConvitePainel } from "@/features/growth/ConvitePainel";
 import { ConquistasPainel } from "@/features/conquistas/ConquistasPainel";
 import type { ContextoConquistas } from "@/features/conquistas/catalogo";
+import { compararComBenchmark, eixoParaFocar, mensagemFoco } from "@/features/mapa/benchmark";
 
 export const metadata = { title: "Painel · labdatadev gamehub" };
 
@@ -32,6 +33,13 @@ export default async function PainelPage() {
     ]);
 
   if (!negocio) redirect("/cadastro");
+
+  const benchmark = await repo.lerBenchmarkBairro(
+    negocio.endereco.cidadeSlug,
+    negocio.endereco.bairroSlug,
+  );
+  const comparados = compararComBenchmark(negocio.atributos, benchmark);
+  const foco = eixoParaFocar(comparados);
 
   const contextoConquistas: ContextoConquistas = {
     negocio,
@@ -137,6 +145,38 @@ export default async function PainelPage() {
         </p>
         <AtributosBar atributos={negocio.atributos} tom="dark" />
       </section>
+
+      {/* Benchmark regional (GH-MAPA-04) — deliberadamente NUNCA um ranking
+          (o Startup Panic mostra "rival 96% × você 3%", desmotivador para
+          empresário real). Só média anonimizada do bairro + uma frase de
+          ação, nunca comparação nome a nome. */}
+      {benchmark.totalNegocios > 1 ? (
+        <section className="mb-4 rounded-md bg-card p-5">
+          <h2 className="mb-1 text-base font-extrabold text-white">
+            Você e a média do seu bairro
+          </h2>
+          <p className="mb-3 text-xs text-muted">
+            Média entre {benchmark.totalNegocios} negócios de{" "}
+            {negocio.endereco.bairroSlug} — nunca um ranking, só contexto.
+          </p>
+          <ul className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {comparados.map((c) => (
+              <li key={c.chave} className="rounded-md bg-card2 p-2.5 text-center">
+                <small className="block text-[10px] text-muted">{c.label}</small>
+                <b className="block text-sm text-white">{c.seuValor}</b>
+                <span className="text-[10px] text-muted">média {Math.round(c.media)}</span>
+              </li>
+            ))}
+          </ul>
+          {foco ? (
+            <p className="text-xs font-bold text-teal">{mensagemFoco(foco)}</p>
+          ) : (
+            <p className="text-xs font-bold text-teal">
+              Você está na média ou acima em todos os eixos do seu bairro. 🎉
+            </p>
+          )}
+        </section>
+      ) : null}
 
       <div className="mb-4 grid gap-3 md:grid-cols-2">
         <OfertasPainel ofertas={ofertas} />

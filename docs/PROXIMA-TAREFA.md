@@ -47,12 +47,31 @@ tratado como prioridade máxima assim que isso ficou claro. **Está feito:**
 
 ## Estado cumulativo (todos os lotes desta sessão)
 
-`npm run typecheck && npm test && npm run build` verdes (224 testes).
-Completos: Épicos 1–4, Épico 5 (exceto `GH-SIM-01`, adiado), Épico 7
-(exceto `GH-GROW-04`/`GH-GROW-05`, adiados/bloqueados), Épico 8 parcial
-(`GH-EDU-01` feito), Épico 10 (Pitch Readiness, ver acima), Épico 11
-(exceto `GH-EVT-05`, dívida técnica documentada). Bug real corrigido:
+`npm run typecheck && npm test && npm run build` verdes (229 testes).
+Completos: Épicos 1–4, Épico 5 (exceto `GH-SIM-01`), Épico 7 (exceto
+`GH-GROW-04`, que só falta puxar — a dependência `GH-MAPA-04` já foi
+feita — e `GH-GROW-05`, adiado), Épico 8 parcial (`GH-EDU-01`), Épico 10
+(Pitch Readiness), Épico 11 (exceto `GH-EVT-05`). `GH-MAPA-04` (benchmark
+regional) feito e verificado contra o dado semeado de `GH-PITCH-01` (média
+de `tecnologia` bateu exata: 10,1666... = 61/6). Bug real corrigido:
 constraint `segmento` do Supabase desalinhada do tipo TS.
+
+**⚠️ Não é "backlog inteiro terminado"** — lista completa do que falta,
+mantida em sincronia com os checkboxes reais de `BACKLOG-PRODUTO.md`:
+
+| Card | Situação |
+|---|---|
+| `GH-SIM-01` — motor de simulação (ECS/tick) | Maior card do backlog, adiado de propósito |
+| `GH-MAPA-02` — zoom do mapa em 3 camadas | Não feito |
+| `GH-MAPA-03` — identidade visual do pin | Não feito — pequeno, autocontido, bom próximo passo |
+| `GH-GROW-04` — ranking/destaque do bairro | `GH-MAPA-04` (dependência) já feito — pode ser puxado agora |
+| `GH-GROW-05` — painel de oportunidades (admin) | Adiado de propósito — dado sensível cross-tenant |
+| `GH-EDU-02` — diagnóstico guiado em PDF | Não feito — precisa decidir lib de PDF, nenhuma existe hoje |
+| `GH-OPS-01/02/03` — deploy real, CI/CD, RLS em runtime | **Precisa do usuário** — VPS/GitHub/Supabase reais |
+| `GH-EVT-05` — roles reais via Supabase Auth | Dívida técnica documentada, P3, não puxada |
+| Épico 12 (equipe humana/finanças/rh-motivação) | Só placeholder no backlog — zero levantamento, zero código |
+| 🔴 de `GAPS-DE-INTEGRACAO.md` (RLS de `negocios`) | Adiado — precisa de Postgres real pra validar runtime |
+| `GH-PITCH-01` | Parcial — validado nos dados, **nunca num navegador real** |
 
 ## Próxima prioridade
 

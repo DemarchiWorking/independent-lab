@@ -12,6 +12,7 @@ import type {
   Alocacao,
   Bairro,
   BairroResumo,
+  BenchmarkBairro,
   CapituloEntregue,
   Cidade,
   ConviteResgatado,
@@ -196,6 +197,42 @@ export class FileRepository implements GameRepository {
         0,
       ),
     }));
+  }
+
+  async lerBenchmarkBairro(cidadeSlug: string, bairroSlug: string): Promise<BenchmarkBairro> {
+    const mapa = await this.lerMapa();
+    const bairro = mapa.cidades
+      .find((c) => c.slug === cidadeSlug)
+      ?.bairros.find((b) => b.slug === bairroSlug);
+    const vazio: BenchmarkBairro = {
+      totalNegocios: 0,
+      medias: { tecnologia: 0, processo: 0, presenca: 0, aquisicao: 0, capacidade: 0 },
+    };
+    if (!bairro) return vazio;
+
+    const ids = bairro.quarteiroes.flatMap((q) =>
+      q.lotes.map((l) => l.tenantId).filter((id): id is string => id !== null),
+    );
+    if (ids.length === 0) return vazio;
+
+    const negocios = (await Promise.all(ids.map((id) => this.lerNegocio(id)))).filter(
+      (n): n is Negocio => n !== null,
+    );
+    if (negocios.length === 0) return vazio;
+
+    const somar = (chave: AtributoChave) =>
+      negocios.reduce((soma, n) => soma + n.atributos[chave].valor, 0) / negocios.length;
+
+    return {
+      totalNegocios: negocios.length,
+      medias: {
+        tecnologia: somar("tecnologia"),
+        processo: somar("processo"),
+        presenca: somar("presenca"),
+        aquisicao: somar("aquisicao"),
+        capacidade: somar("capacidade"),
+      },
+    };
   }
 
   /** Aloca o primeiro lote livre e grava o mapa. Single-process: sem corrida. */

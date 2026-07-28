@@ -8,6 +8,7 @@ import type { DeltaProgresso, GameRepository, NovoNegocio } from "./repository";
 import type {
   Alocacao,
   BairroResumo,
+  BenchmarkBairro,
   CapituloEntregue,
   ConviteResgatado,
   EscopoMapa,
@@ -286,6 +287,31 @@ export class SupabaseRepository implements GameRepository {
       nome: l.bairro_nome,
       totalNegocios: Number(l.total_negocios),
     }));
+  }
+
+  async lerBenchmarkBairro(cidadeSlug: string, bairroSlug: string): Promise<BenchmarkBairro> {
+    const { data, error } = await this.db
+      .rpc("benchmark_bairro", { p_cidade_slug: cidadeSlug, p_bairro_slug: bairroSlug })
+      .single();
+    if (error) throw new Error(`lerBenchmarkBairro: ${error.message}`);
+    const l = data as {
+      total_negocios: number;
+      media_tecnologia: number;
+      media_processo: number;
+      media_presenca: number;
+      media_aquisicao: number;
+      media_capacidade: number;
+    };
+    return {
+      totalNegocios: Number(l.total_negocios),
+      medias: {
+        tecnologia: Number(l.media_tecnologia),
+        processo: Number(l.media_processo),
+        presenca: Number(l.media_presenca),
+        aquisicao: Number(l.media_aquisicao),
+        capacidade: Number(l.media_capacidade),
+      },
+    };
   }
 
   /** Cadastro atômico: a RPC cria cidade/bairro/quarteirão e reserva o lote. */

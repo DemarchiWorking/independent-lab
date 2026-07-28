@@ -2,6 +2,7 @@ import type { AtributoChave } from "@tokens";
 import type {
   Alocacao,
   BairroResumo,
+  BenchmarkBairro,
   CapituloEntregue,
   ConviteResgatado,
   Endereco,
@@ -51,6 +52,11 @@ export interface GameRepository {
   /** Contagem por bairro dentro de UMA cidade (GH-MAPA-01) — para o nível de
    *  zoom intermediário. */
   lerBairroResumo(cidadeSlug: string): Promise<BairroResumo[]>;
+  /** Médias agregadas dos 5 eixos entre os negócios de UM bairro (GH-MAPA-04)
+   *  — nunca por nome, sempre anonimizado. `totalNegocios` conta o próprio
+   *  tenant que chamou (a média inclui ele mesmo, mesmo critério de
+   *  qualquer benchmark honesto). */
+  lerBenchmarkBairro(cidadeSlug: string, bairroSlug: string): Promise<BenchmarkBairro>;
 
   /** ---- Tenant ---- */
   /**

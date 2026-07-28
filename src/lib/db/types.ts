@@ -368,6 +368,17 @@ export interface BairroResumo {
   totalNegocios: number;
 }
 
+/**
+ * Benchmark regional agregado (GH-MAPA-04) — médias anonimizadas dos 5
+ * eixos entre os negócios do MESMO bairro. Nunca compara nome a nome (só
+ * "você × média"), e nunca inclui dado de onboarding (budget/score) — só
+ * as mesmas colunas de fachada já usadas em `GH-MAPA-01`.
+ */
+export interface BenchmarkBairro {
+  totalNegocios: number;
+  medias: Record<AtributoChave, number>;
+}
+
 /** Escopo opcional de `lerMapaView()` (GH-MAPA-01) — quando informado, só o
  *  bairro pedido vem populado com quarteirões/lotes; os demais continuam na
  *  resposta com `quarteiroes: []` (mantém o shape de `MapaView` inteiro, só
