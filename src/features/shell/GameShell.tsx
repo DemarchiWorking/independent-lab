@@ -23,6 +23,7 @@ import type { Missao } from "@/features/gamificacao/missoes";
 import type {
   Atributos,
   Endereco,
+  FuncionarioContratado,
   ItemMobiliaColocado,
   MapaView,
   Sede,
@@ -92,6 +93,12 @@ interface GameShellProps {
   meuTenantId?: string;
   /** cargoIds já contratados. Presente (mesmo vazio) = habilita a aba "Equipe IA". */
   funcionariosContratados?: string[];
+  /** Registros completos (id/cargoId/disponibilidade) dos Funcionários de IA
+   *  contratados — alimenta o modal de seleção de equipe do Marketplace
+   *  (GH-EQP-02). `funcionariosContratados` acima continua só com cargoIds,
+   *  usado pela aba "Equipe IA"; este é um prop adicional, não substitui o
+   *  outro. */
+  funcionarios?: FuncionarioContratado[];
   degrauAtual?: number;
   /** Sede do jogador (rota autenticada). Presente = habilita a aba "Sede". */
   sede?: Sede;
@@ -103,6 +110,8 @@ interface GameShellProps {
   trabalhosAceitos?: string[];
   /** noIds da árvore de parcerias já desbloqueados (GH-FDN-02). */
   nosDesbloqueados?: string[];
+  /** vizinhoTenantIds com parceria já formada no Mapa (GH-FDN-03). */
+  parceriasFormadas?: string[];
   /** Eventos globais visíveis ao jogador, já com o progresso dele (Épico 11). */
   eventos?: EventoComProgresso[];
 }
@@ -117,6 +126,7 @@ export function GameShell({
   endereco,
   meuTenantId,
   funcionariosContratados,
+  funcionarios = [],
   degrauAtual,
   sede,
   mobilia,
@@ -124,6 +134,7 @@ export function GameShell({
   atributos,
   trabalhosAceitos = [],
   nosDesbloqueados = [],
+  parceriasFormadas = [],
   eventos = [],
 }: GameShellProps) {
   const [view, setView] = useState<View>(initialView);
@@ -198,7 +209,12 @@ export function GameShell({
               className="h-full"
             >
               {view === "hub" ? (
-                <HubScreen missao={missao} trabalhosAceitos={trabalhosAceitos} />
+                <HubScreen
+                  missao={missao}
+                  trabalhosAceitos={trabalhosAceitos}
+                  atributos={atributos}
+                  funcionarios={funcionarios}
+                />
               ) : (
                 <div className="relative h-full rounded-md bg-card/85 p-4 pt-5 backdrop-blur-sm">
                   <span className="clip-ribbon absolute -left-1.5 -top-3 rounded-sm bg-coral px-4 py-1.5 text-[13px] font-extrabold text-white shadow-[0_3px_0] shadow-coral-dark">
@@ -221,6 +237,7 @@ export function GameShell({
                         mapa={mapa}
                         endereco={endereco}
                         meuTenantId={meuTenantId}
+                        parceriasFormadas={parceriasFormadas}
                       />
                     ) : view === "equipe-ia" &&
                       funcionariosContratados !== undefined &&
@@ -233,6 +250,7 @@ export function GameShell({
                       <MarketplaceScreen
                         trabalhosAceitos={trabalhosAceitos}
                         atributos={atributos}
+                        funcionarios={funcionarios}
                       />
                     ) : view === "parcerias" ? (
                       <HexTreeScreen

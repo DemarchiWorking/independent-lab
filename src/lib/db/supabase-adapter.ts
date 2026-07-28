@@ -17,6 +17,7 @@ import type {
   NoDesbloqueado,
   Oferta,
   Onboarding,
+  ParceriaFormada,
   ProgressoEventoGlobal,
   Sede,
   Segmento,
@@ -719,6 +720,67 @@ export class SupabaseRepository implements GameRepository {
     return { no, negocio };
   }
 
+  private paraParceria(l: {
+    id: number;
+    tenant_id: number;
+    vizinho_tenant_id: number;
+    formada_em: string;
+  }): ParceriaFormada {
+    return {
+      id: String(l.id),
+      tenantId: String(l.tenant_id),
+      vizinhoTenantId: String(l.vizinho_tenant_id),
+      formadaEm: l.formada_em,
+    };
+  }
+
+  async listarParceriasFormadas(tenantId: string): Promise<ParceriaFormada[]> {
+    const { data, error } = await this.db
+      .from("parcerias_formadas")
+      .select("*")
+      .eq("tenant_id", Number(tenantId))
+      .order("formada_em", { ascending: true });
+
+    if (error) throw new Error(`listarParceriasFormadas: ${error.message}`);
+    return ((data ?? []) as Array<{
+      id: number;
+      tenant_id: number;
+      vizinho_tenant_id: number;
+      formada_em: string;
+    }>).map((l) => this.paraParceria(l));
+  }
+
+  /** Atômica via RPC `formar_parceria` (`0014_parcerias_mapa.sql`) — valida
+   *  que o vizinho é real (join de quarteirão) antes de aplicar XP/moeda/
+   *  atributo e inserir. */
+  async formarParceria(
+    tenantId: string,
+    vizinhoTenantId: string,
+    xp: number,
+    moeda: number,
+    atributos?: Partial<Record<AtributoChave, number>>,
+  ): Promise<{ parceria: ParceriaFormada; negocio: Negocio }> {
+    const a = atributos ?? {};
+    const { data, error } = await this.db
+      .rpc("formar_parceria", {
+        p_tenant_id: Number(tenantId),
+        p_vizinho_tenant_id: Number(vizinhoTenantId),
+        p_xp: xp,
+        p_moeda: moeda,
+        p_aquisicao: a.aquisicao ?? 0,
+      })
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "formar_parceria: sem retorno");
+    }
+    const parceria = this.paraParceria(
+      data as { id: number; tenant_id: number; vizinho_tenant_id: number; formada_em: string },
+    );
+    const negocio = await this.lerNegocio(tenantId);
+    if (!negocio) throw new Error(`Negócio ${tenantId} não encontrado`);
+    return { parceria, negocio };
+  }
+
   private paraSede(l: {
     tenant_id: number;
     nivel: number;
@@ -775,6 +837,7 @@ export class SupabaseRepository implements GameRepository {
     nivelEsperadoAtual: number,
     novoNivel: number,
     custoMoeda: number,
+    xp: number,
   ): Promise<{ sede: Sede; negocio: Negocio }> {
     const { data, error } = await this.db
       .rpc("evoluir_sede", {
@@ -782,6 +845,7 @@ export class SupabaseRepository implements GameRepository {
         p_nivel_esperado: nivelEsperadoAtual,
         p_novo_nivel: novoNivel,
         p_custo: custoMoeda,
+        p_xp: xp,
       })
       .single();
     if (error || !data) {

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { lerSessao } from "@/lib/auth/sessao";
 import { getRepository } from "@/lib/db";
 import { itemMobilia } from "./catalogo";
-import { nivelSede, proximoNivelSede } from "./niveis";
+import { nivelSede, proximoNivelSede, XP_EVOLUCAO_SEDE } from "./niveis";
 
 export interface ResultadoSede {
   ok: boolean;
@@ -40,6 +40,7 @@ export async function evoluirSede(): Promise<ResultadoSede> {
       sede.nivel,
       proximo.nivel,
       proximo.custoEvolucao,
+      XP_EVOLUCAO_SEDE,
     );
   } catch (e) {
     return { ok: false, erro: traduzirErro(e) };

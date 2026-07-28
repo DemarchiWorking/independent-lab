@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { springSnappy } from "@/lib/motion";
@@ -10,26 +11,47 @@ import { QuarteiraoIso } from "./QuarteiraoIso";
 import { SEGMENTOS } from "./segmentos";
 import { DEGRAUS } from "@/features/onboarding/scoring";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { useRecompensa } from "@/features/gamificacao/RecompensaContext";
+import { formarParceria } from "./actions";
 import type { Endereco, MapaView, NegocioResumo } from "@/lib/db/types";
 
 interface MapaScreenProps {
   mapa: MapaView;
   endereco: Endereco;
   meuTenantId: string;
+  /** vizinhoTenantIds já em parceria — vem do servidor (GH-FDN-03: guarda
+   *  anti-farm; não é `useState` local, que resetaria ao recarregar). */
+  parceriasFormadas?: readonly string[];
 }
 
 /** Mundo navegável: cidade → bairro → quarteirões isométricos, com o lote do
  *  jogador em destaque e o detalhe do negócio selecionado. */
-export function MapaScreen({ mapa, endereco, meuTenantId }: MapaScreenProps) {
+export function MapaScreen({
+  mapa,
+  endereco,
+  meuTenantId,
+  parceriasFormadas = [],
+}: MapaScreenProps) {
   const [cidadeSlug, setCidadeSlug] = useState(endereco.cidadeSlug);
   const [bairroSlug, setBairroSlug] = useState(endereco.bairroSlug);
   const [sel, setSel] = useState<{ q: string; lote: number } | null>({
     q: endereco.quarteiraoId,
     lote: endereco.lote,
   });
-  const [parceriaCom, setParceriaCom] = useState<Set<string>>(new Set());
-  const { disparar, pendente } = useRecompensa();
+  const [erro, setErro] = useState<string | null>(null);
+  const [pendente, iniciar] = useTransition();
+  const router = useRouter();
+
+  const formar = (vizinhoTenantId: string) => {
+    setErro(null);
+    iniciar(async () => {
+      const r = await formarParceria(vizinhoTenantId);
+      if (r.ok) {
+        router.refresh();
+      } else {
+        setErro(r.erro ?? "Não foi possível concluir.");
+      }
+    });
+  };
 
   const cidade =
     mapa.cidades.find((c) => c.slug === cidadeSlug) ?? mapa.cidades[0];
@@ -162,7 +184,7 @@ export function MapaScreen({ mapa, endereco, meuTenantId }: MapaScreenProps) {
                   <p className="mt-2 rounded-sm bg-teal/15 px-2 py-1 font-pixel text-[8px] uppercase text-teal">
                     Sua sede
                   </p>
-                ) : parceriaCom.has(selecionado.id) ? (
+                ) : parceriasFormadas.includes(selecionado.id) ? (
                   <p className="mt-2 rounded-sm bg-green/15 px-2 py-1 text-[11px] font-bold text-[#166534]">
                     Parceria formada ✓
                   </p>
@@ -181,13 +203,13 @@ export function MapaScreen({ mapa, endereco, meuTenantId }: MapaScreenProps) {
                     <ActionButton
                       icon="network"
                       disabled={pendente}
-                      onClick={() => {
-                        disparar("parceria_formada");
-                        setParceriaCom((s) => new Set(s).add(selecionado.id));
-                      }}
+                      onClick={() => formar(selecionado.id)}
                     >
                       {pendente ? "Formando…" : "Formar parceria"}
                     </ActionButton>
+                    {erro ? (
+                      <p className="text-[11px] font-bold text-coral-dark">{erro}</p>
+                    ) : null}
                   </div>
                 )}
               </>

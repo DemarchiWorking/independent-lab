@@ -7,6 +7,18 @@ import type { AtributoChave } from "@tokens";
 export const GANHO_ATRIBUTO_CONTRATACAO = 3;
 
 /**
+ * Contribuição de atributo de UM Funcionário de IA alocado a um job do
+ * marketplace (GH-EQP-02) — só no eixo que ele já fortalece
+ * (`eixoFortalecido`), nunca um vetor de 5 valores por cargo (o catálogo não
+ * tem esse dado calibrado; ver decisão registrada em `docs/PROXIMA-TAREFA.md`).
+ * Constante própria, separada de `GANHO_ATRIBUTO_CONTRATACAO`: uma é ganho
+ * permanente ao contratar, esta é contribuição transitória só para decidir
+ * se o requisito do job é atendido — não se confundem por mudarem por
+ * razões diferentes.
+ */
+export const CONTRIBUICAO_ATRIBUTO_ALOCACAO = 5;
+
+/**
  * Catálogo dos 4 Funcionários de IA — o produto central do gamehub.
  * Espelha docs/PRODUTO-IA-FUNCIONARIOS.md §4/§5 e os playbooks operacionais em
  * melhoria-continua/servicos-ti/*-ia.md. Preços são rascunho — validar com

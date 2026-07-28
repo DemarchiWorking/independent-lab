@@ -203,6 +203,17 @@ export interface TrabalhoAceito {
   aceitoEm: string;
 }
 
+/** Parceria formada com um vizinho de quarteirão (GH-FDN-03) — persistência
+ *  análoga a `NoDesbloqueado`, mas `vizinhoTenantId` referencia OUTRO
+ *  `Negocio` real (não um catálogo estático): no Supabase é FK de verdade
+ *  para `negocios`, diferente de `noId`/`jobId`/`cargoId`. */
+export interface ParceriaFormada {
+  id: string;
+  tenantId: string;
+  vizinhoTenantId: string;
+  formadaEm: string;
+}
+
 /**
  * Campanha com prazo, criada por um admin, visível a todos os tenants
  * (Épico 11 — Eventos Globais). `objetivo` é uma string livre por design —

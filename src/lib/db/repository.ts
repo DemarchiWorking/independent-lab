@@ -12,6 +12,7 @@ import type {
   NoDesbloqueado,
   Oferta,
   Onboarding,
+  ParceriaFormada,
   ProgressoEventoGlobal,
   Sede,
   TrabalhoAceito,
@@ -121,21 +122,39 @@ export interface GameRepository {
     requisitos?: Partial<Record<AtributoChave, number>>,
   ): Promise<{ no: NoDesbloqueado; negocio: Negocio }>;
 
+  /** ---- Parcerias formadas no Mapa (GH-FDN-03) ---- */
+  listarParceriasFormadas(tenantId: string): Promise<ParceriaFormada[]>;
+  /**
+   * Atômica: valida que `vizinhoTenantId` é de fato vizinho de quarteirão
+   * (nunca confia em ID arbitrário vindo do client) e que a parceria ainda
+   * não existe, antes de aplicar XP/moeda/atributo e inserir — mesmo padrão
+   * de `desbloquearNo`. Lança `vizinho_invalido` ou `parceria_ja_formada`.
+   */
+  formarParceria(
+    tenantId: string,
+    vizinhoTenantId: string,
+    xp: number,
+    moeda: number,
+    atributos?: Partial<Record<AtributoChave, number>>,
+  ): Promise<{ parceria: ParceriaFormada; negocio: Negocio }>;
+
   /** ---- Sede / World (ver docs/world/ARQUITETURA-WORLD.md) ---- */
   /** Sempre retorna uma sede — cria nível 1 automaticamente no primeiro acesso. */
   lerSede(tenantId: string): Promise<Sede>;
   /**
-   * Evolui a sede ATOMICAMENTE: valida saldo suficiente, debita a moeda e
-   * sobe o nível numa única operação. `novoNivel`/`custoMoeda` já vêm
-   * validados contra o catálogo estático pela Server Action (lib/db não
-   * conhece `features/sede/niveis.ts`). Lança erro se o saldo for insuficiente
-   * ou o nível já não for o esperado (evita corrida entre requisições).
+   * Evolui a sede ATOMICAMENTE: valida saldo suficiente, debita a moeda,
+   * aplica XP (GH-WORLD-02) e sobe o nível numa única operação.
+   * `novoNivel`/`custoMoeda`/`xp` já vêm validados/resolvidos contra o
+   * catálogo estático pela Server Action (lib/db não conhece
+   * `features/sede/niveis.ts`). Lança erro se o saldo for insuficiente ou o
+   * nível já não for o esperado (evita corrida entre requisições).
    */
   evoluirSede(
     tenantId: string,
     nivelEsperadoAtual: number,
     novoNivel: number,
     custoMoeda: number,
+    xp: number,
   ): Promise<{ sede: Sede; negocio: Negocio }>;
 
   /** ---- História (ver docs/world/EVOLUCAO-MOTOR-2026.md §7.1) ---- */

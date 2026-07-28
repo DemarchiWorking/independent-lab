@@ -138,12 +138,19 @@ npm run build
 |---|---|---|
 | **Nenhum deploy real feito ainda** — tudo preparado, mas ninguém rodou `vps-setup.sh` numa VPS de verdade | `deploy/` | 🔴 **Alta — é o próximo passo concreto** |
 | Sem remote/push no GitHub ainda (só commit local) | — | Alta (necessário pro CD automático) |
-| Estado da árvore de parcerias/mapa não persiste por tenant | `HexTreeScreen`, `MapaScreen` — hoje é `useState` local | Média |
-| Marketplace ("Aceitar trabalho") não bloqueia re-clique no mesmo job — pode farmar XP repetindo o mesmo job (mesma classe de bug que corrigimos na Equipe de IA, mas ali é aceitável pois um job "avulso" pode legitimamente repetir; vale revisar se faz sentido gate igual) | `MarketplaceScreen` | Baixa |
 | RLS do Supabase não testado em runtime (só parsing) | precisa `supabase start && supabase db reset` | Média |
 | Sem testes pgTAP de isolamento entre tenants | `supabase/migrations/` | Baixa |
-| Funcionário de IA contratado não aparece visualmente na sede isométrica (só no painel/lista) — decisão consciente, ver §6 | `features/equipe-ia/`, `features/hub/HubScreen` | Baixa (melhoria futura) |
 | Fluxo de "solicitar orçamento" (deals) ainda não existe | §7 de `PRODUTO-IA-FUNCIONARIOS.md` | Média |
+| Escolha alugar-vs-comprar na evolução da Sede é só rótulo fixo por nível, não uma decisão real do jogador (ver `GH-WORLD-02` em `BACKLOG-PRODUTO.md`) — deliberadamente adiado, é produto, não bug | `features/sede/niveis.ts` | Baixa |
+
+> **Nota (2026-07-28):** esta tabela estava desatualizada em duas linhas já
+> resolvidas por sessões anteriores/este lote, removidas acima: "árvore de
+> parcerias/mapa não persiste" (fechado — nó desbloqueado por `GH-FDN-02`,
+> parceria do mapa por `GH-FDN-03` nesta sessão) e "Funcionário de IA não
+> aparece na sede isométrica" (fechado por `GH-WORLD-05`, avatares). Ver
+> `docs/PROXIMA-TAREFA.md` para o estado mais recente — mesma lição de
+> processo já registrada em §3.1 abaixo: confira o código antes de confiar
+> cegamente numa tabela de gaps.
 
 ## 3.1 Sessão 2026-07-27 (tarde) — motor de história + próxima tarefa
 

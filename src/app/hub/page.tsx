@@ -17,7 +17,7 @@ export default async function HubPage() {
   if (!sessao) redirect("/entrar");
 
   const repo = getRepository();
-  const [negocio, onboarding, vizinhos, mapa, funcionarios, sede, mobilia, trabalhos, nos] =
+  const [negocio, onboarding, vizinhos, mapa, funcionarios, sede, mobilia, trabalhos, nos, parcerias] =
     await Promise.all([
       repo.lerNegocio(sessao.tenantId),
       repo.lerOnboarding(sessao.tenantId),
@@ -28,6 +28,7 @@ export default async function HubPage() {
       repo.listarMobiliaColocada(sessao.tenantId),
       repo.listarTrabalhosAceitos(sessao.tenantId),
       repo.listarNosDesbloqueados(sessao.tenantId),
+      repo.listarParceriasFormadas(sessao.tenantId),
     ]);
   if (!negocio) redirect("/cadastro");
 
@@ -69,6 +70,7 @@ export default async function HubPage() {
         endereco={negocio.endereco}
         meuTenantId={negocio.id}
         funcionariosContratados={funcionarios.map((f) => f.cargoId)}
+        funcionarios={funcionarios}
         degrauAtual={negocio.degrauAtual}
         sede={sede}
         mobilia={mobilia}
@@ -76,6 +78,7 @@ export default async function HubPage() {
         atributos={negocio.atributos}
         trabalhosAceitos={trabalhos.map((t) => t.jobId)}
         nosDesbloqueados={nos.map((n) => n.noId)}
+        parceriasFormadas={parcerias.map((p) => p.vizinhoTenantId)}
         eventos={eventos}
       />
     </>

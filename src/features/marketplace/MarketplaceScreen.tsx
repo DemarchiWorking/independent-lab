@@ -7,9 +7,10 @@ import { listContainer, listItem, springSnappy } from "@/lib/motion";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { Icon } from "@/components/ui/Icon";
 import { RequisitoAtributos } from "@/components/ui/RequisitoAtributos";
-import { atributosFaltantes, type Atributos } from "@/lib/atributos";
-import { useRecompensa } from "@/features/gamificacao/RecompensaContext";
-import { jobs, type Job } from "./data";
+import { type Atributos } from "@/lib/atributos";
+import type { FuncionarioContratado } from "@/lib/db/types";
+import { SelecionarFuncionarioModal } from "./SelecionarFuncionarioModal";
+import { jobs } from "./data";
 
 function Stars({ n }: { n: number }) {
   return (
@@ -25,29 +26,26 @@ function Stars({ n }: { n: number }) {
 
 /** Tela do marketplace de serviços de TI: lista + detalhe, ambos animados. */
 export function MarketplaceScreen({
-  onAccept,
   trabalhosAceitos = [],
   atributos,
+  funcionarios = [],
 }: {
-  onAccept?: (job: Job) => void;
   /** jobIds já aceitos — vem do servidor (GH-FDN-01: guarda anti-farm; não é
    *  `useState` local, que resetaria ao recarregar e escondia o farm). */
   trabalhosAceitos?: readonly string[];
-  /** atributos atuais do negócio — decide se o piso do job foi atingido
-   *  (GH-ATR-03). Ausente = modo demo, não valida. */
+  /** atributos atuais do negócio — mostrado como contexto na ficha do job
+   *  (GH-ATR-03). Ausente = modo demo. O gate real de "atende o requisito?"
+   *  agora vive no modal de seleção de equipe (GH-EQP-02), não mais aqui:
+   *  a baseline sozinha pode não bater, mas a equipe alocada pode completar. */
   atributos?: Atributos;
+  /** Funcionários de IA contratados — alimentam o modal "Selecionar
+   *  funcionário" (GH-EQP-02). Ausente/vazio = modal mostra lista vazia. */
+  funcionarios?: FuncionarioContratado[];
 }) {
   const [selectedId, setSelectedId] = useState(jobs[0].id);
+  const [modalAberto, setModalAberto] = useState(false);
   const selected = jobs.find((j) => j.id === selectedId) ?? jobs[0];
-  const { disparar, pendente } = useRecompensa();
   const jaAceito = trabalhosAceitos.includes(selected.id);
-  const faltantes = atributos ? atributosFaltantes(atributos, selected.requisitos) : [];
-  const semRequisito = faltantes.length > 0;
-
-  const aceitar = () => {
-    disparar("servico_contratado", selected.id);
-    onAccept?.(selected);
-  };
 
   return (
     <div className="grid h-full grid-cols-1 gap-3 md:grid-cols-[1fr_1.15fr]">
@@ -136,18 +134,21 @@ export function MarketplaceScreen({
               <ActionButton variant="ghost" icon="check" disabled>
                 Já aceito
               </ActionButton>
-            ) : semRequisito ? (
-              <ActionButton variant="ghost" icon="lock" disabled>
-                Requisito não atendido
-              </ActionButton>
             ) : (
-              <ActionButton onClick={aceitar} disabled={pendente}>
-                {pendente ? "Fechando…" : "Aceitar trabalho"}
-              </ActionButton>
+              <ActionButton onClick={() => setModalAberto(true)}>Aceitar trabalho</ActionButton>
             )}
           </div>
         </motion.div>
       </AnimatePresence>
+
+      <SelecionarFuncionarioModal
+        open={modalAberto}
+        job={selected}
+        atributos={atributos}
+        funcionarios={funcionarios}
+        onClose={() => setModalAberto(false)}
+        onConcluido={() => setModalAberto(false)}
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { Icon, type IconName } from "@/components/ui/Icon";
 import { MarketplaceScreen } from "@/features/marketplace/MarketplaceScreen";
 import { MissaoCard } from "@/features/gamificacao/MissaoCard";
 import type { Missao } from "@/features/gamificacao/missoes";
+import type { Atributos, FuncionarioContratado } from "@/lib/db/types";
 
 interface Room {
   id: string;
@@ -38,9 +39,13 @@ const rooms: Room[] = [
 export function HubScreen({
   missao = null,
   trabalhosAceitos = [],
+  atributos,
+  funcionarios = [],
 }: {
   missao?: Missao | null;
   trabalhosAceitos?: readonly string[];
+  atributos?: Atributos;
+  funcionarios?: FuncionarioContratado[];
 }) {
   const [open, setOpen] = useState(false);
 
@@ -118,8 +123,9 @@ export function HubScreen({
       <RibbonPanel title="Prestação de serviço" open={open} onClose={() => setOpen(false)}>
         <div className="h-[300px]">
           <MarketplaceScreen
-            onAccept={() => setOpen(false)}
             trabalhosAceitos={trabalhosAceitos}
+            atributos={atributos}
+            funcionarios={funcionarios}
           />
         </div>
       </RibbonPanel>

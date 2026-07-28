@@ -24,6 +24,7 @@ import type {
   NoDesbloqueado,
   Oferta,
   Onboarding,
+  ParceriaFormada,
   ProgressoEventoGlobal,
   Quarteirao,
   Sede,
@@ -489,6 +490,59 @@ export class FileRepository implements GameRepository {
     return { no, negocio };
   }
 
+  async listarParceriasFormadas(tenantId: string): Promise<ParceriaFormada[]> {
+    return lerJson<ParceriaFormada[]>(
+      path.join(tenantDir(tenantId), "parcerias.json"),
+      [],
+    );
+  }
+
+  async formarParceria(
+    tenantId: string,
+    vizinhoTenantId: string,
+    xp: number,
+    moeda: number,
+    atributos?: Partial<Record<AtributoChave, number>>,
+  ): Promise<{ parceria: ParceriaFormada; negocio: Negocio }> {
+    if (vizinhoTenantId === tenantId) throw new Error("vizinho_invalido");
+
+    // garantia real de segurança deste card: nunca confiar que o vizinho
+    // informado é de fato vizinho de quarteirão (mesmo motivo do join em
+    // formar_parceria/0014 no adapter Supabase).
+    const vizinhos = await this.listarVizinhos(tenantId);
+    if (!vizinhos.some((v) => v.id === vizinhoTenantId)) {
+      throw new Error("vizinho_invalido");
+    }
+
+    const arquivo = path.join(tenantDir(tenantId), "parcerias.json");
+    const atuais = await lerJson<ParceriaFormada[]>(arquivo, []);
+    if (atuais.some((p) => p.vizinhoTenantId === vizinhoTenantId)) {
+      throw new Error("parceria_ja_formada");
+    }
+
+    const negocio = await this.lerNegocio(tenantId);
+    if (!negocio) throw new Error(`Negócio ${tenantId} não encontrado`);
+
+    negocio.moedaVirtual += moeda;
+    negocio.xp += xp;
+    negocio.nivel = Math.min(NIVEL_MAX, nivelPorXp(negocio.xp));
+    if (atributos) {
+      negocio.atributos = aplicarGanhos(negocio.atributos, atributos);
+    }
+
+    const parceria: ParceriaFormada = {
+      id: randomBytes(8).toString("hex"),
+      tenantId,
+      vizinhoTenantId,
+      formadaEm: new Date().toISOString(),
+    };
+    atuais.push(parceria);
+
+    await escreverJson(path.join(tenantDir(tenantId), "negocio.json"), negocio);
+    await escreverJson(arquivo, atuais);
+    return { parceria, negocio };
+  }
+
   async lerSede(tenantId: string): Promise<Sede> {
     const arquivo = path.join(tenantDir(tenantId), "sede.json");
     const existente = await lerJson<Sede | null>(arquivo, null);
@@ -505,6 +559,7 @@ export class FileRepository implements GameRepository {
     nivelEsperadoAtual: number,
     novoNivel: number,
     custoMoeda: number,
+    xp: number,
   ): Promise<{ sede: Sede; negocio: Negocio }> {
     const sede = await this.lerSede(tenantId);
     if (sede.nivel !== nivelEsperadoAtual) {
@@ -517,6 +572,8 @@ export class FileRepository implements GameRepository {
     }
 
     negocio.moedaVirtual -= custoMoeda;
+    negocio.xp += xp;
+    negocio.nivel = Math.min(NIVEL_MAX, nivelPorXp(negocio.xp));
     sede.nivel = novoNivel;
     sede.atualizadaEm = new Date().toISOString();
 

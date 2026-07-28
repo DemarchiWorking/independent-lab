@@ -45,6 +45,7 @@ RLS forçada), isso está explícito para o Claude Code reusar, não reinventar.
 | 9 | [Deploy Real + Segurança em Produção](#épico-9--deploy-real--segurança-em-produção-p0) | Sem isso nada dos épicos acima chega a usuário real |
 | 10 | [Pitch Readiness](#épico-10--pitch-readiness-sebrae-p0) | Checklist final antes da apresentação |
 | 11 | [Eventos Globais — Gamificação em Tempo Real](#épico-11--eventos-globais--gamificação-em-tempo-real-p1) | Campanhas com prazo que todos os jogadores veem ao mesmo tempo — dá "pulso" de comunidade ao ecossistema |
+| 12 | [Módulos Futuros do App-Drawer](#épico-12--módulos-futuros-do-app-drawer-sem-levantamento-ainda) | Placeholders sem levantamento (equipe humana, finanças, rh-motivação) — formalizados nesta sessão, não executáveis ainda |
 
 ---
 
@@ -439,7 +440,7 @@ não ter desbloqueado o pai".
 > Maior impacto visual para o pitch — mas o maior esforço. Construído em
 > fases **W1→W6**, cada uma demonstrável isoladamente. **Não pular fases.**
 
-### GH-WORLD-01 — Fundação de dados (sedes, catálogo de mobília, avatares)
+### GH-WORLD-01 — Fundação de dados (sedes, catálogo de mobília, avatares) ✅
 
 | Campo | Valor |
 |---|---|
@@ -452,14 +453,31 @@ não ter desbloqueado o pai".
 `sedes`, `itens_mobilia_catalogo`, `itens_mobilia_colocados`, `avatares` —
 schema já rascunhado em `ARQUITETURA-WORLD.md` §4.
 
+**Nota de correção (2026-07-28):** os checkboxes abaixo ficaram
+desatualizados — a fundação já estava pronta desde `0004_sede.sql`, só com
+schema **deliberadamente mais simples** que o rascunho original:
+- `sedes` e `itens_mobilia_colocados` são tabelas reais (RLS forçada); ✅
+- `itens_mobilia_catalogo` **nunca virou tabela** — é catálogo estático
+  (`CATALOGO_MOBILIA` em `features/sede/catalogo.ts`), mesmo padrão de
+  `CARGOS_IA`, já citado como intenção em `ARQUITETURA-WORLD.md` linha 94;
+- **não existe tabela `avatares`** — avatar (dono + Funcionários de IA) é
+  projeção client-side de `funcionarios_contratados` + sessão, nunca
+  persistido (`ESTADO-DO-PROJETO.md` linha 211: "avatar do World já existe,
+  sem migration nova"). Decisão consciente, não gap.
+
 **Critérios de aceitação:**
-- [ ] Migration Supabase seguindo o padrão de `0001`–`0003` (RLS forçada,
-      índice em `tenant_id`, `unique` onde fizer sentido)
-- [ ] File-adapter espelha a mesma capacidade
-- [ ] Toda empresa cadastrada recebe uma sede inicial automaticamente (nível
-      "alugada", grid pequeno) — sem intervenção manual
-- [ ] SQL validado por parser real (mesma técnica usada nas migrations
-      anteriores — `pg_query_emscripten`) já que não há Docker/Postgres local
+- [x] Migration Supabase seguindo o padrão de `0001`–`0003` (RLS forçada,
+      índice em `tenant_id`, `unique` onde fizer sentido) — `0004_sede.sql`
+- [x] File-adapter espelha a mesma capacidade —
+      `lerSede`/`evoluirSede`/`listarMobiliaColocada`/`comprarMobilia`/
+      `moverMobilia` em `file-adapter.ts`
+- [x] Toda empresa cadastrada recebe uma sede inicial automaticamente (nível
+      1) — lazy-create no primeiro `lerSede()`, não dentro da transação de
+      cadastro; aceito porque é idempotente e nunca deixa um tenant sem sede
+      (mesmo critério de "boas práticas" abaixo)
+- [x] SQL validado por parser real (`pg-query-emscripten`, scratchpad) —
+      `0004_sede.sql` parseado (sintaxe + corpo plpgsql) nesta sessão, único
+      item que ainda não tinha essa confirmação registrada
 
 **Regras de segurança:**
 - RLS: layout/mobília da sede é **privado por padrão** (`sede.publicada =
@@ -477,7 +495,7 @@ cadastro (ou logo em seguida, idempotente) — nunca deixar um tenant sem sede.
 
 ---
 
-### GH-WORLD-02 — Tela estática "Minha Sede" (comprar/ver, sem canvas)
+### GH-WORLD-02 — Tela estática "Minha Sede" (comprar/ver, sem canvas) 🟡 parcial
 
 | Campo | Valor |
 |---|---|
@@ -492,14 +510,28 @@ cadastro (ou logo em seguida, idempotente) — nunca deixar um tenant sem sede.
 `master-detail` já existentes no design system. **Não abrir o Pixi ainda** —
 provar a mecânica antes de investir em renderização.
 
+**Nota de correção (2026-07-28):** o comparativo atual×próxima e a grade de
+mobília já estavam prontos (`SedeScreen.tsx`), só não registrados. Dos dois
+critérios restantes, o de XP foi fechado nesta sessão; o de alugar-vs-comprar
+segue **deliberadamente em aberto** — é decisão de produto (muda o modelo de
+progressão da Sede), não algo para inventar sem alinhar com o usuário.
+
 **Critérios de aceitação:**
-- [ ] Comparativo "sede atual × próxima" com capacidade e custo recorrente
+- [x] Comparativo "sede atual × próxima" com capacidade e custo recorrente —
+      `SedeScreen.tsx`, painel "Melhorar sede"
 - [x] Grade de mobília com preço e bônus percentual por atributo (liga com
       `GH-ATR-02` — comprar móvel eleva atributo)
-- [ ] Evoluir de sede é um evento de gamificação (mesmo padrão de
-      `funcionario_ia_contratado`): XP, pode contar como avanço de degrau
+- [x] Evoluir de sede é um evento de gamificação: `XP_EVOLUCAO_SEDE` (150,
+      `features/sede/niveis.ts`) aplicado atomicamente na RPC `evoluir_sede`
+      (migration `0015_sede_evoluir_xp.sql`) — **não** conta como avanço de
+      degrau (o critério original dizia "pode", não "deve"; adicionar isso
+      exigiria decidir SE evoluir a sede deveria empurrar o negócio na
+      escada de valor, o que é produto, não bug)
 - [ ] Escolha explícita entre **alugar** (menor capacidade, custo recorrente
-      menor) e **comprar/própria** (custo único alto, sem mensalidade)
+      menor) e **comprar/própria** (custo único alto, sem mensalidade) — hoje
+      `tipo: "alugada"|"propria"` em `niveis.ts` é um rótulo FIXO por nível
+      (progressão linear 1→2→3→4), não uma bifurcação que o jogador escolhe.
+      Gap real, mantido em aberto de propósito.
 
 **Regras de segurança:** compra de mobília só com moeda virtual (nunca R$
 real); custo recorrente da sede é **simulado**, não cobrado de verdade
@@ -659,6 +691,41 @@ a exigência de opt-in `sede.publicada` desta versão anterior do card — ver
 produto do MVP (não mais "só quando publicada"). Nunca expõe dado
 financeiro/onboarding do visitado (moeda virtual, XP, respostas de
 onboarding continuam privados).
+
+---
+
+### GH-SIM-01 — Motor de simulação: tick determinístico + ECS mínimo
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | **G** (o maior card do backlog inteiro) |
+| Depende de | — |
+| Corresponde a | **G0→G1** de `world/EVOLUCAO-MOTOR-2026.md` §10 |
+
+**Descrição:** formalização de um card que já existia como plano em
+`docs/world/EVOLUCAO-MOTOR-2026.md` (pesquisa de mercado 2026 + roadmap
+G0–G6), mas nunca tinha virado item do backlog formal — encontrado nesta
+sessão ao alinhar o que está em `.md` soltos contra `BACKLOG-PRODUTO.md`.
+O próprio documento de pesquisa considera este o "desbloqueio conceitual"
+do World: uma camada de simulação (ECS + tick determinístico) que viabiliza
+humor/rotina da equipe, produção e progressão ociosa — sem ela, G3
+(temporada/retenção) vira "checklist com pontos" e G2 (pipeline de arte)
+"troca visual sem ganho de profundidade" (§10 do documento).
+
+**Não implementar sem sessão dedicada.** É esforço G — múltiplas fases,
+arquitetura nova (pasta `sim/`, ver §5.3 do documento) — não cabe no ritmo
+de cards P/M desta sessão. Registrado aqui só para o backlog formal não
+ficar cego a um plano que já existe e já tem pesquisa feita por trás.
+
+**Critérios de aceitação:** ver `world/EVOLUCAO-MOTOR-2026.md` §10 e §11
+(riscos) antes de abrir este card — não duplicado aqui de propósito, o
+documento é a fonte única e evolui independente deste índice.
+
+**Regras de segurança:** relevantes quando o card for aberto — o próprio
+documento já adianta a mais importante (§7.4): "forjar tempo decorrido"
+precisa ser guardado com `now()` do servidor, nunca do cliente, mesmo
+princípio já usado em `lib/disponibilidade.ts`/`features/historia/relogio.ts`.
 
 ---
 
@@ -1376,6 +1443,60 @@ já não é `souAdmin()` — é que toda escrita em `eventos_globais` só
 acontece via RPC com `service_role`, nunca policy de insert direta (ver
 `0013_eventos_globais.sql`). `souAdmin()`/`role` é só a UX de esconder o
 menu de quem não é admin.
+
+---
+
+## Épico 12 — Módulos Futuros do App-Drawer (sem levantamento ainda)
+
+> Encontrados nesta sessão ao alinhar o que existe em `.md` soltos contra
+> este backlog formal: `features/roadmap/modules.tsx` já cadastra estes 3
+> stubs (aparecem com selo "Em breve" no app-drawer do `GameShell`), e
+> `docs/menu-inicial/ARQUITETURA-MENU-INICIAL.md` §4 já registra a intenção
+> de cada um — mas nenhum teve requisito funcional levantado (nenhum print
+> do Startup Panic analisado para eles, ao contrário de todo outro épico
+> deste documento). **Não inventar critérios de aceitação aqui sem
+> levantamento** — são placeholders de escopo, não cards prontos para
+> execução.
+
+### GH-EQP-03 — Contratação de equipe humana (distinta de Funcionários de IA)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P3 |
+| Esforço | G (sem levantamento) |
+| Depende de | — |
+
+**Descrição:** stub `contratar` em `features/roadmap/modules.tsx`. Precisa de
+levantamento próprio antes de virar card executável — em particular, como
+se distingue de Funcionários de IA na mecânica de alocação (`GH-EQP-01/02`
+já cobre IA; equipe humana levanta questões novas: custo real vs. simulado,
+disponibilidade, talvez folha de pagamento simulada).
+
+### GH-FIN-01 — Simulador de fluxo de caixa (sem transação real)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P3 |
+| Esforço | G (sem levantamento) |
+| Depende de | — |
+
+**Descrição:** stub `financas` em `features/roadmap/modules.tsx`. Regra de
+ouro já vale de antemão (repetida de todo o resto do backlog): moeda virtual
+🪙 e R$ real nunca se misturam — qualquer simulação de caixa é só gamificação,
+nunca cobrança de verdade.
+
+### GH-RH-01 — Saúde/motivação da equipe (afeta velocidade de entrega)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P3 |
+| Esforço | G (sem levantamento) |
+| Depende de | — |
+
+**Descrição:** stub `rh-motivacao` em `features/roadmap/modules.tsx`. Tem
+sobreposição conceitual com a camada de "humor/necessidades" que
+`world/EVOLUCAO-MOTOR-2026.md` §7.2 já desenha para `GH-SIM-01` (G1) — ao
+levantar este card, ler aquela seção primeiro para não duplicar mecânica.
 
 ---
 

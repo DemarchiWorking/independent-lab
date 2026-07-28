@@ -26,6 +26,14 @@ export interface NivelSede {
 
 export const NIVEL_SEDE_MAX = 4;
 
+/** XP concedido ao evoluir a sede (GH-WORLD-02) — gap fechado: evoluir de
+ *  nível não disparava nenhum evento de gamificação, ao contrário de todo
+ *  outro evento do catálogo (`funcionario_ia_contratado`, `servico_*` etc).
+ *  Valor fixo por evolução, não escalado por nível — mesma ordem de
+ *  grandeza de `parceria_formada` (150), sem dado de produto que justifique
+ *  variar por nível ainda. */
+export const XP_EVOLUCAO_SEDE = 150;
+
 export const NIVEIS_SEDE: Record<number, NivelSede> = {
   1: {
     nivel: 1,
