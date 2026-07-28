@@ -119,5 +119,7 @@ sede vira **cartão de visitas**, não só progressão pessoal.
   dimensões do nível contratado.
 - **RF-SED-06** — O estado da equipe (motivação/capacidade) deve ser
   perceptível visualmente no ambiente, sem abrir menu.
-- **RF-SED-07** — A sede é visitável por vizinhos apenas se o dono
-  **publicá-la** (opt-in), conforme decisão de privacidade em MAPA-MUNDI §2.
+- **RF-SED-07** — A sede é visitável por qualquer vizinho logado, somente
+  leitura, sem opt-in (decisão 2026-07-28) — ver
+  `docs/world/VISITAR-VIZINHO.md`. Opt-in fica documentado como evolução
+  futura, não construído agora.

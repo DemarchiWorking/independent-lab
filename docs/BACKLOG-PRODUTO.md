@@ -622,33 +622,43 @@ informação sensível.
 
 ---
 
-### GH-WORLD-06 — Visitar sede de vizinho (somente leitura)
+### GH-WORLD-06 — Visitar sede de vizinho (somente leitura) ✅
 
 | Campo | Valor |
 |---|---|
 | Prioridade | P2 |
 | Esforço | M |
-| Depende de | `GH-WORLD-05`, Épico 6 |
+| Depende de | `GH-WORLD-05` |
 | Corresponde a | Fase **W6** |
 
-**Descrição:** A partir do Mapa, visitar a sede de um vizinho que optou por
-publicar (`sede.publicada = true`) — somente leitura, fecha o ciclo social
-do World.
+**Descrição:** A partir do Mapa/Painel, visitar a sede de QUALQUER
+vizinho — somente leitura, aberta por padrão no MVP (decisão que substitui
+a exigência de opt-in `sede.publicada` desta versão anterior do card — ver
+`docs/world/VISITAR-VIZINHO.md` §1). Painel de proposta comercial
+(Funcionários de IA) é o entregável central desta feature — ver
+`docs/vendas/PITCH-VISITA-FUNCIONARIOS-IA.md`.
 
 **Critérios de aceitação:**
-- [ ] Botão "Visitar" só aparece se o vizinho publicou a sede
-- [ ] Visita é read-only (nenhuma ação de compra/edição possível na sede
-      alheia)
-- [ ] Dono da sede pode revogar a publicação a qualquer momento
+- [x] Botão "Visitar" aparece para qualquer vizinho — visita é aberta por
+      padrão no MVP, sem publicação/opt-in
+- [x] Visita é read-only (nenhuma ação de compra/edição possível na sede
+      alheia) — `VisitaScreen.tsx` nunca importa `moverMobilia`/
+      `comprarMobilia`/`evoluirSede`
+- [x] Painel de pitch comercial mostra proposta personalizada pelo eixo
+      mais fraco do negócio visitado
 
 **Regras de segurança:**
-- RLS: `select` liberado só quando `publicada = true`, sempre validado no
-  servidor (RPC dedicada, não policy aberta por engano)
-- Publicar é **opt-in explícito** — nunca padrão (`false` por default, ver
-  `MAPA-MUNDI-VALE-DO-CAFE.md` §2)
+- Leitura via Server Component autenticado (`lerSessao` exige sessão),
+  mesmo padrão de `lerSede`/`listarMobiliaColocada` hoje — nenhuma RLS ou
+  RPC nova necessária (`SupabaseRepository` sempre usa `service_role`,
+  ver `docs/world/VISITAR-VIZINHO.md` §2)
+- Visitar a própria sede redireciona para `/world` (não é bug, é caso
+  degenerado sem UI própria)
 
-**Dados trafegados:** layout da sede do vizinho (só quando publicada) —
-dado de produto voluntariamente compartilhado, nunca dado financeiro/PII.
+**Dados trafegados:** layout da sede do vizinho — aberto por decisão de
+produto do MVP (não mais "só quando publicada"). Nunca expõe dado
+financeiro/onboarding do visitado (moeda virtual, XP, respostas de
+onboarding continuam privados).
 
 ---
 

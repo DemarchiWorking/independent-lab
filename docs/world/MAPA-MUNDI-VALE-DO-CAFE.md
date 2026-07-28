@@ -49,15 +49,17 @@ visibilidade** convivendo no mesmo mundo:
 | Dado do World | Camada | Justificativa |
 |---|---|---|
 | Nível/tipo da sede (alugada, própria, andar completo) | **fachada** | É o "tamanho do prédio" que o vizinho vê no mapa — sinal de status, motiva progressão |
-| Layout interno / mobília colocada | **privado** por padrão | É a "casa" do jogador; abrir só se ele **publicar** a sede para visitação |
-| Avatares (dono + Funcionários de IA) | **privado**, com opção de exibir | Quantos funcionários de IA você tem é informação comercial sensível |
+| Layout interno / mobília colocada | **aberto no MVP** (decisão 2026-07-28) | Visitável por qualquer vizinho logado — ver nota abaixo. Volta a ficar privado por padrão só se um opt-in for reintroduzido no futuro |
+| Avatares (dono + Funcionários de IA) | **aberto no MVP**, mesma decisão | Visível durante a visita, junto com o layout — é a prova social que sustenta o pitch comercial |
 | Visitas recebidas / conexões formadas | **fachada** (agregado) | "12 parceiros conectados" é prova social; a lista de quem é pode ser privada |
 
-> ⚠️ Decisão de produto a confirmar: a sede é **visitável por padrão** ou
-> só quando o dono publica? Recomendo **opt-in** (`sede.publicada = false`
-> por padrão) — respeita a privacidade do empresário real e cria um gesto
-> deliberado de "abrir as portas", que pode virar até um evento de
-> gamificação.
+> ✅ Decisão tomada (2026-07-28, ver `docs/world/VISITAR-VIZINHO.md`): a
+> sede é **visitável por padrão** no MVP — qualquer jogador logado visita
+> qualquer vizinho, somente leitura, sem opt-in. A recomendação de opt-in
+> (`sede.publicada = false` por padrão) que estava aqui fica documentada
+> como **evolução futura** (`VISITAR-VIZINHO.md` §8), não construída
+> agora — reintroduzir é uma coluna nova em `sedes` + uma checagem na rota
+> de visita, nada estrutural.
 
 ## 3. O mapa como experiência de jogo (não como diagrama)
 
@@ -163,7 +165,7 @@ create view public.mapa_agregado_cidade as
 | **M3** | Tela de zoom Z1 (região) → Z2 (cidade) → Z3 (quarteirão atual) | M2 |
 | **M4** | Sede inicial criada no cadastro (`sedes`) | World W1 |
 | **M5** | Altura/estilo do pin refletindo nível da sede | M4 |
-| **M6** | Visitar sede de vizinho (somente leitura, se `publicada`) | World W3 |
+| **M6** | Visitar sede de vizinho (somente leitura, aberto no MVP) ✅ | World W3 |
 
 M0 e M1 são pequenos e destravam o resto — bons candidatos ao próximo
 prompt de implementação.

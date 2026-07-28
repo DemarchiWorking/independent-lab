@@ -258,6 +258,13 @@ L1/L2 decide valor econômico. A simulação do cliente é **preditiva e cosmét
 a verdade é sempre L0. É o que já fazemos com `aplicarProgresso` e é o que
 mantém o jogo à prova de fraude com F12 aberto.
 
+> **Nota (2026-07-28):** a visita estática/somente-leitura à sede de um
+> vizinho já foi implementada de forma **desacoplada** de L1/G4 — ver
+> `docs/world/VISITAR-VIZINHO.md`. Ela usa só L2/L0 (lê `Sede`/`ItemMobiliaColocado`
+> de qualquer tenant, monta `EstadoCena`, renderiza) e não precisa de ECS
+> nem ainda de L4/presença. `G4` (linha abaixo, §10) passa a significar
+> apenas "somar presença ao vivo por cima da visita já existente".
+
 ### 5.2 A decisão central: dois relógios
 
 O erro clássico em simulador web é ter **um** loop. Precisamos de dois, com
@@ -695,7 +702,7 @@ typecheck, teste e build não pegariam. **Manter esse gancho.**
 | **G2** | Pipeline de arte + atlas + sprites | G | G0 | 🔴 Salto visual |
 | **G2.5** | **Telemetria (§7.5) + FTUE (§7.6)** | **P** | G1 | 🔴 **Pré-requisito de G3** |
 | **G3** | Temporada 90d + missões + Rive no HUD | M | **G2.5** | 🔴 Retenção |
-| **G4** | Presença via Supabase Realtime + visitar vizinho | M | G1 | 🟡 Diferencial |
+| **G4** | Presença ao vivo via Supabase Realtime (visitar vizinho ✅ já feito, desacoplado — ver nota 2026-07-28 em §5.1) | M | G1 | 🟡 Diferencial |
 | **G5** | Culling + spatial hash + salas grandes | M | G2 | 🟡 Escala |
 | **G6** | Editor de layout, andares, mobília multi-tile | G | G2, G5 | 🟢 Profundidade |
 
