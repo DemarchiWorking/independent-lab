@@ -1,0 +1,287 @@
+/**
+ * Tipos de domínio — multi-tenant.
+ * Regra: tudo que não é geografia global carrega `tenantId`.
+ * Ver docs/ARQUITETURA-MULTITENANT.md
+ */
+
+import type { Atributos } from "@/lib/atributos";
+export type { Atributos, AtributoValor } from "@/lib/atributos";
+
+export type Segmento =
+  | "imobiliaria"
+  | "construtora"
+  | "loteadora"
+  | "comercio"
+  | "servico"
+  | "outro";
+
+export type PapelUsuario = "dono" | "equipe";
+
+/** ---------- Geografia (global, compartilhada) ---------- */
+
+export interface Lote {
+  numero: number;
+  /** tenant que ocupa o lote; null = livre */
+  tenantId: string | null;
+}
+
+export interface Quarteirao {
+  id: string;
+  nome: string;
+  lotes: Lote[];
+}
+
+export interface Bairro {
+  slug: string;
+  nome: string;
+  quarteiroes: Quarteirao[];
+}
+
+export interface Cidade {
+  slug: string;
+  nome: string;
+  /** cidade prioritária no ICP do labdatadev */
+  prioritaria: boolean;
+  bairros: Bairro[];
+}
+
+export interface Mapa {
+  cidades: Cidade[];
+}
+
+/** Endereço do negócio no mapa gamificado. */
+export interface Endereco {
+  cidadeSlug: string;
+  bairroSlug: string;
+  quarteiraoId: string;
+  lote: number;
+}
+
+/** ---------- Tenant ---------- */
+
+export interface Negocio {
+  id: string;
+  nome: string;
+  segmento: Segmento;
+  endereco: Endereco;
+  criadoEm: string;
+  /** posição na escada de valor (1–5) */
+  degrauAtual: number;
+  degrauAlvo: number;
+  nivel: number;
+  xp: number;
+  moedaVirtual: number;
+  /** os 5 eixos da economia de atributos — ver lib/atributos.ts */
+  atributos: Atributos;
+}
+
+export interface Usuario {
+  id: string;
+  tenantId: string;
+  nome: string;
+  email: string;
+  papel: PapelUsuario;
+  criadoEm: string;
+}
+
+/** As 10 respostas + o que foi calculado a partir delas. */
+export interface Onboarding {
+  tenantId: string;
+  respostas: Respostas;
+  scoreFit: number;
+  degrauAlvo: number;
+  servicosRecomendados: string[];
+  respondidoEm: string;
+}
+
+export interface Respostas {
+  nomeNegocio: string;
+  segmento: Segmento;
+  cidade: string;
+  bairro: string;
+  equipe: "so-eu" | "2-5" | "6-15" | "16-30" | "30+";
+  presencaDigital:
+    | "nada"
+    | "social"
+    | "portais"
+    | "site-desatualizado"
+    | "site-portais";
+  captacao: string[];
+  objetivo:
+    | "mais-leads"
+    | "organizar"
+    | "vender-mais"
+    | "aparecer"
+    | "automatizar";
+  gargalo:
+    | "perco-leads"
+    | "manual"
+    | "sem-dados"
+    | "imagem-fraca"
+    | "sem-processo";
+  investimento: "nao-sei" | "ate-500" | "500-1500" | "1500-3500" | "3500+";
+}
+
+/** O que o negócio divulga no hub (vitrine regional). */
+export interface Oferta {
+  id: string;
+  tenantId: string;
+  titulo: string;
+  descricao: string;
+  preco: string;
+  criadaEm: string;
+}
+
+/**
+ * Um Funcionário de IA contratado pelo tenant (produto central — ver
+ * docs/PRODUTO-IA-FUNCIONARIOS.md). `cargoId` referencia o catálogo estático
+ * em `features/equipe-ia/catalogo.ts` — mantido como string aqui para não
+ * inverter a dependência (lib/db não importa de features/).
+ *
+ * ⚠️ Contratar aqui registra a INTENÇÃO/relação real (uma entrada de
+ * pipeline para o Antonio seguir), não cobra automaticamente — não há
+ * gateway de pagamento integrado ainda.
+ */
+/**
+ * Disponibilidade de um Funcionário de IA (GH-EQP-01) — derivada na leitura
+ * a partir de `Alocacao`, nunca um flag persistido: liberar um recurso ao
+ * expirar o prazo não depende de cron nem job de fundo, mesmo princípio
+ * "relógio lazy" já usado em atributos (0005) e história (0007).
+ */
+export type Disponibilidade =
+  | { estado: "livre" }
+  | { estado: "alocado"; jobId: string; expiraEm: string };
+
+export interface FuncionarioContratado {
+  id: string;
+  tenantId: string;
+  cargoId: string;
+  contratadoEm: string;
+  disponibilidade: Disponibilidade;
+}
+
+/**
+ * Alocação de um recurso (Funcionário de IA hoje, humano no futuro) a um
+ * job/entrega — GH-EQP-01. `funcionarioId` É a chave (não um `id` avulso):
+ * existe no máximo UMA linha por funcionário, sobrescrita a cada nova
+ * alocação — é log de "estado atual", não histórico append-only (YAGNI por
+ * ora; se um dia precisar de histórico de alocações, é migration nova).
+ */
+export interface Alocacao {
+  funcionarioId: string;
+  tenantId: string;
+  jobId: string;
+  alocadoEm: string;
+  expiraEm: string;
+}
+
+/** Nó da árvore de parcerias desbloqueado por um tenant — persistência
+ *  (GH-FDN-02): `noId` referencia `features/parcerias/data.ts` (catálogo
+ *  estático, mesmo padrão de `cargoId`/`jobId`), nunca duplicado por tenant. */
+export interface NoDesbloqueado {
+  id: string;
+  tenantId: string;
+  noId: string;
+  desbloqueadoEm: string;
+}
+
+/** Job do marketplace aceito por um tenant — guarda anti-farm (GH-FDN-01):
+ *  `jobId` referencia `features/marketplace/data.ts` (catálogo estático,
+ *  mesmo padrão de `cargoId`), nunca duplicado por tenant. */
+export interface TrabalhoAceito {
+  id: string;
+  tenantId: string;
+  jobId: string;
+  aceitoEm: string;
+}
+
+/** Sessão autenticada. */
+export interface Sessao {
+  usuarioId: string;
+  tenantId: string;
+  nome: string;
+  email: string;
+}
+
+/** ---------- Read model do mapa (para a UI, não o domínio) ----------
+ *  Enriquece a geografia com um resumo do negócio em cada lote ocupado. */
+
+export interface NegocioResumo {
+  id: string;
+  nome: string;
+  segmento: Segmento;
+  nivel: number;
+  degrauAtual: number;
+}
+
+export interface LoteView {
+  numero: number;
+  negocio: NegocioResumo | null;
+}
+
+export interface QuarteiraoView {
+  id: string;
+  nome: string;
+  lotes: LoteView[];
+}
+
+export interface BairroView {
+  slug: string;
+  nome: string;
+  quarteiroes: QuarteiraoView[];
+}
+
+export interface CidadeView {
+  slug: string;
+  nome: string;
+  prioritaria: boolean;
+  bairros: BairroView[];
+}
+
+export interface MapaView {
+  cidades: CidadeView[];
+}
+
+/** ---------- Sede (o "World" — ver docs/world/ARQUITETURA-WORLD.md) ---------- */
+
+/**
+ * A sede física do negócio. `nivel` referencia o catálogo estático
+ * `features/sede/niveis.ts` (mesmo padrão de `cargoId` → catálogo estático
+ * usado em Funcionários de IA — lib/db não conhece o catálogo, só o id).
+ */
+export interface Sede {
+  tenantId: string;
+  nivel: number;
+  criadaEm: string;
+  atualizadaEm: string;
+}
+
+/**
+ * Um móvel comprado e posicionado num slot fixo da sede. `itemId` referencia
+ * `features/sede/catalogo.ts`. `slot` é a posição (0..N-1) dentro do grid da
+ * sala — reposicionável, nunca duplicado (unique por tenant+slot).
+ */
+export interface ItemMobiliaColocado {
+  id: string;
+  tenantId: string;
+  itemId: string;
+  slot: number;
+  colocadoEm: string;
+}
+
+/**
+ * Um capítulo de história entregue ao jogador. `capituloId` referencia o
+ * catálogo estático `features/historia/catalogo.ts` — mesmo padrão de
+ * `cargoId`/`itemId`: lib/db guarda só o id, nunca o conteúdo narrativo.
+ *
+ * `escolhaId` nulo = entregue mas ainda não respondido (carta aberta na mesa).
+ * Preenchido = o jogador decidiu, e o efeito já foi aplicado atomicamente.
+ */
+export interface CapituloEntregue {
+  id: string;
+  tenantId: string;
+  capituloId: string;
+  entregueEm: string;
+  escolhaId: string | null;
+  resolvidoEm: string | null;
+}

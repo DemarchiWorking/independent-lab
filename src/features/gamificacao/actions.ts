@@ -1,0 +1,122 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { lerSessao } from "@/lib/auth/sessao";
+import { getRepository } from "@/lib/db";
+import { nivelPorXp } from "@/lib/gamificacao";
+import { ATRIBUTO_LABEL } from "@/lib/atributos";
+import { cargoPorId, GANHO_ATRIBUTO_CONTRATACAO } from "@/features/equipe-ia/catalogo";
+import { jaAceitouTrabalho } from "@/features/marketplace/guarda";
+import { EVENTOS, type EventoKey } from "./engine";
+import type { AtributoChave } from "@tokens";
+
+export interface ResultadoRecompensa {
+  ok: boolean;
+  erro?: string;
+  ganhoXp?: number;
+  ganhoMoeda?: number;
+  subiuNivel?: boolean;
+  nivel?: number;
+  subiuDegrau?: boolean;
+  degrauAtual?: number;
+  /** qual eixo da economia de atributos subiu, se algum (feedback no toast) */
+  atributoGanho?: { chave: AtributoChave; label: string; ganho: number };
+}
+
+/**
+ * Aplica um evento de gamificação ao negócio do usuário logado.
+ * As recompensas vêm do catálogo (`EVENTOS`) — a UI nunca escolhe valores.
+ * O incremento é atômico no repositório; aqui só decidimos o delta.
+ *
+ * `contextoId` identifica QUAL entidade disparou o evento, quando o evento
+ * sozinho não basta: cargo contratado (`funcionario_ia_contratado`) ou job
+ * aceito (`servico_contratado`). Serve de guarda anti-farm — repetir a mesma
+ * entidade não paga XP/moeda de novo (checado no servidor, nunca só na UI;
+ * a garantia real é o `unique` na migration, isto aqui é a mensagem amigável).
+ */
+export async function recompensar(
+  evento: EventoKey,
+  contextoId?: string,
+): Promise<ResultadoRecompensa> {
+  const sessao = await lerSessao();
+  if (!sessao) return { ok: false, erro: "Sessão expirada. Entre novamente." };
+
+  const def = EVENTOS[evento];
+  if (!def) return { ok: false, erro: "Evento inválido." };
+
+  const repo = getRepository();
+  const antes = await repo.lerNegocio(sessao.tenantId);
+  if (!antes) return { ok: false, erro: "Negócio não encontrado." };
+
+  if (evento === "funcionario_ia_contratado") {
+    if (!contextoId) return { ok: false, erro: "Cargo não especificado." };
+    const cargo = cargoPorId(contextoId);
+    if (!cargo) return { ok: false, erro: "Cargo inválido." };
+    if (antes.degrauAtual < cargo.degrauMinimo) {
+      return {
+        ok: false,
+        erro: `Esse cargo é liberado a partir do degrau ${cargo.degrauMinimo}.`,
+      };
+    }
+    const jaContratado = (await repo.listarFuncionarios(sessao.tenantId)).some(
+      (f) => f.cargoId === contextoId,
+    );
+    if (jaContratado) {
+      return { ok: false, erro: "Você já contratou esse cargo." };
+    }
+    await repo.contratarFuncionario(sessao.tenantId, contextoId);
+  }
+
+  if (evento === "servico_contratado") {
+    if (!contextoId) return { ok: false, erro: "Job não especificado." };
+    const aceitos = await repo.listarTrabalhosAceitos(sessao.tenantId);
+    if (jaAceitouTrabalho(aceitos, contextoId)) {
+      return { ok: false, erro: "Você já aceitou esse trabalho." };
+    }
+    await repo.aceitarTrabalho(sessao.tenantId, contextoId);
+  }
+
+  // "servico_desbloqueado" NÃO passa mais por aqui: desde GH-ARV-01 o custo
+  // varia por nó (features/parcerias/data.ts) e precisa de checagem de saldo
+  // + débito na MESMA transação — o dispatcher genérico deste arquivo não dá
+  // conta disso (mesmo motivo de `comprarMobilia`/`evoluirSede` terem action
+  // própria). Ver `features/parcerias/actions.ts` → `desbloquearNo()`.
+
+  const nivelAntes = nivelPorXp(antes.xp);
+  const subeDegrau = Boolean(def.subeDegrau) && antes.degrauAtual < 5;
+
+  // Qual eixo ganha e quanto: eventos genéricos declaram no próprio catálogo
+  // (EVENTOS); `funcionario_ia_contratado` é a exceção — o eixo depende do
+  // CARGO contratado, não do evento em si (ver comentário em engine.ts).
+  const atributoEvento =
+    evento === "funcionario_ia_contratado" && contextoId
+      ? { chave: cargoPorId(contextoId)!.eixoFortalecido, ganho: GANHO_ATRIBUTO_CONTRATACAO }
+      : def.atributo;
+
+  const depois = await repo.aplicarProgresso(sessao.tenantId, {
+    xp: def.xp,
+    moeda: def.moeda,
+    degraus: subeDegrau ? 1 : 0,
+    atributos: atributoEvento ? { [atributoEvento.chave]: atributoEvento.ganho } : undefined,
+  });
+
+  revalidatePath("/painel");
+  revalidatePath("/hub");
+
+  return {
+    ok: true,
+    ganhoXp: def.xp,
+    ganhoMoeda: def.moeda,
+    subiuNivel: depois.nivel > nivelAntes,
+    nivel: depois.nivel,
+    subiuDegrau: depois.degrauAtual > antes.degrauAtual,
+    degrauAtual: depois.degrauAtual,
+    atributoGanho: atributoEvento
+      ? {
+          chave: atributoEvento.chave,
+          label: ATRIBUTO_LABEL[atributoEvento.chave],
+          ganho: atributoEvento.ganho,
+        }
+      : undefined,
+  };
+}

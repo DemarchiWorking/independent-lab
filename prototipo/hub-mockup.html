@@ -1,0 +1,227 @@
+<title>labdatadev-gamehub — protótipo do hub</title>
+<style>
+  :root{
+    --night:#080E1D; --card:#0F1A2E; --card2:#132241; --ink:#EAF2FF; --muted:#8CA0C6;
+    --orange:#F59E0B; --orange-d:#B4720A; --teal:#00D4C8; --green:#22C55E; --coral:#EF5350;
+    --coral-d:#B23732; --wall:#2E7D74; --floor:#C79B6E; --grid:#1a2a4d;
+    --line:#22345c; --pixel:"Lucida Console","Courier New",monospace;
+    --ui:"Trebuchet MS",Verdana,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 100% at 50% -10%,#101d38 0,#060a15 70%);
+    color:var(--ink);font-family:var(--ui);-webkit-font-smoothing:antialiased;
+    padding:28px 16px 56px}
+  .wrap{max-width:1100px;margin:0 auto}
+  .kicker{font-family:var(--pixel);text-transform:uppercase;letter-spacing:3px;
+    font-size:11px;color:var(--teal);margin:0 0 6px}
+  h1{font-size:clamp(22px,4vw,34px);margin:0 0 4px;text-wrap:balance;letter-spacing:.5px}
+  .sub{color:var(--muted);margin:0 0 22px;font-size:14px}
+
+  /* ---- game frame ---- */
+  .screen{position:relative;aspect-ratio:20/9;min-height:360px;border-radius:14px;overflow:hidden;
+    border:3px solid #05304a;box-shadow:0 0 0 4px #041018,0 18px 50px rgba(0,0,0,.55);
+    background:
+      linear-gradient(180deg,rgba(4,10,20,.15),rgba(4,10,20,.35)),
+      linear-gradient(180deg,#3a938a 0%,#2e7d74 46%,#c79b6e 46%,#b98f61 100%);
+    image-rendering:pixelated;font-size:13px}
+  /* iso floor grid */
+  .floor{position:absolute;left:0;right:0;bottom:0;height:54%;overflow:hidden}
+  .floor:before{content:"";position:absolute;inset:-40% -10% -10%;
+    background-image:linear-gradient(rgba(255,255,255,.10) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.10) 1px,transparent 1px);
+    background-size:38px 38px;transform:rotateX(58deg) rotateZ(0deg);transform-origin:bottom}
+  /* wall art */
+  .art{position:absolute;top:8%;display:flex;gap:8px}
+  .art span{width:26px;height:20px;border:2px solid #1c554e;border-radius:2px;display:block}
+  /* desks with pixel workers */
+  .desk{position:absolute;width:96px;height:52px;border-radius:4px;
+    background:#1c3766;
+    border:2px solid #0d1f3d;box-shadow:0 6px 0 #0a1730}
+  .worker{position:absolute;width:16px;height:16px;border-radius:50%;
+    box-shadow:0 8px 0 -2px #0a1730}
+  .bubble{position:absolute;font-size:12px;background:#fff;color:#0a1628;border-radius:8px;
+    padding:1px 6px;font-weight:bold;box-shadow:0 2px 0 rgba(0,0,0,.25)}
+
+  /* ---- HUD ---- */
+  .hud{position:absolute;inset:0;pointer-events:none}
+  .stats{position:absolute;top:12px;left:12px;display:flex;gap:8px}
+  .stat{background:#fff;color:#0a1628;border-radius:8px;padding:6px 10px;min-width:78px;
+    box-shadow:0 3px 0 rgba(0,0,0,.25);display:flex;gap:8px;align-items:center}
+  .stat .ic{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;flex:0 0 auto}
+  .stat small{display:block;font-size:9px;color:#5b6b86;text-transform:uppercase;letter-spacing:.5px;
+    font-family:var(--pixel)}
+  .stat b{font-size:14px;line-height:1.05;font-variant-numeric:tabular-nums}
+  .pause{background:#fff;color:#0a1628;border-radius:8px;padding:6px 9px;box-shadow:0 3px 0 rgba(0,0,0,.25);
+    font-weight:bold}
+  .bar{height:5px;width:52px;background:#dbe3f0;border-radius:3px;margin-top:3px;overflow:hidden}
+  .bar i{display:block;height:100%;width:64%;background:var(--green)}
+  .obj{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.92);color:#0a1628;
+    border-radius:8px;padding:8px 12px;font-weight:bold;box-shadow:0 3px 0 rgba(0,0,0,.25);
+    display:flex;gap:18px;align-items:center;font-size:12px}
+  .obj span{font-size:9px;color:#5b6b86;font-family:var(--pixel);text-transform:uppercase}
+  .alert{position:absolute;top:58px;left:12px;background:var(--coral-d);color:#fff;
+    border-radius:6px;padding:4px 10px;font-size:11px;font-weight:bold;box-shadow:0 3px 0 rgba(0,0,0,.3)}
+  .tools{position:absolute;left:12px;top:96px;display:flex;flex-direction:column;gap:7px}
+  .tool{width:34px;height:34px;border-radius:8px;background:#fdf6ea;color:#7a4a12;
+    display:grid;place-items:center;box-shadow:0 3px 0 rgba(0,0,0,.25);border:1px solid #e3c99a}
+  .corner{position:absolute;bottom:12px;background:rgba(255,255,255,.95);color:#0a1628;border-radius:8px;
+    padding:8px 12px;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+  .share{left:12px;display:flex;gap:12px;align-items:center;font-weight:bold;font-size:12px}
+  .share small{display:block;font-size:9px;color:#5b6b86;font-family:var(--pixel);text-transform:uppercase;margin-bottom:2px}
+  .ava{width:22px;height:22px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:4px}
+  .saldo{right:12px;display:flex;flex-direction:column}
+  .saldo small{font-size:9px;color:#5b6b86;font-family:var(--pixel);text-transform:uppercase}
+  .saldo b{color:var(--green);font-variant-numeric:tabular-nums}
+  .drawer{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+    width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.55);
+    display:grid;grid-template-columns:1fr 1fr;gap:4px;place-content:center;padding:11px}
+  .drawer i{width:9px;height:9px;border-radius:2px;background:#0a1628;opacity:.7}
+
+  /* ---- modal ---- */
+  .modal{position:absolute;inset:0;background:rgba(4,8,16,.55);display:flex;align-items:center;justify-content:center;padding:22px}
+  .panel{position:relative;width:min(560px,94%);background:#fff;color:#0a1628;border-radius:12px;
+    box-shadow:0 20px 50px rgba(0,0,0,.5);padding:16px 16px 14px}
+  .ribbon{position:absolute;top:-14px;left:-6px;background:var(--coral);color:#fff;font-weight:bold;
+    font-size:13px;padding:7px 18px 7px 14px;border-radius:6px;box-shadow:0 3px 0 var(--coral-d);
+    clip-path:polygon(0 0,100% 0,92% 100%,0 100%)}
+  .x{position:absolute;top:-12px;right:10px;width:28px;height:28px;border-radius:6px;background:var(--coral);
+    color:#fff;border:none;font-weight:bold;box-shadow:0 3px 0 var(--coral-d);cursor:pointer}
+  .cols{display:grid;grid-template-columns:1fr 1.15fr;gap:12px;margin-top:12px}
+  .jobs{display:flex;flex-direction:column;gap:7px;max-height:230px;overflow:auto}
+  .job{background:#f1f4f9;border-radius:8px;padding:8px 10px;cursor:pointer;border:2px solid transparent}
+  .job.on{background:#dcefff;border-color:#8fc6ff}
+  .job small{font-size:10px;color:#5b6b86}
+  .job .rw{color:var(--green);font-weight:bold;float:right;font-variant-numeric:tabular-nums}
+  .job b{display:block;font-size:12px;margin-top:2px}
+  .detail{background:#f7f9fc;border-radius:8px;padding:10px}
+  .dhead{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .dava{width:34px;height:34px;border-radius:6px;background:#e0b3ff}
+  .detail h3{margin:0;font-size:13px;color:var(--coral-d)}
+  .stars{color:var(--orange);font-size:12px}
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px;font-size:11px;margin:6px 0}
+  .meta i{color:#5b6b86;font-style:normal}
+  .desc{font-size:11px;color:#33415c;line-height:1.5}
+  .cta{display:flex;gap:8px;margin-top:10px}
+  .btn{flex:1;border:none;border-radius:8px;padding:10px;font-weight:bold;font-size:12px;cursor:pointer}
+  .btn.primary{background:var(--orange);color:#3a2400;box-shadow:0 3px 0 var(--orange-d)}
+  .btn.ghost{background:#e6eaf1;color:#33415c;box-shadow:0 3px 0 #c7cedb}
+  .tag{display:inline-block;font-size:9px;font-family:var(--pixel);text-transform:uppercase;
+    background:#eafff9;color:#0a6e60;border-radius:4px;padding:2px 6px;margin-left:6px}
+
+  /* ---- hex tree ---- */
+  .tree{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .tree h2{font-size:16px;margin:0 0 2px}
+  .tree p{color:var(--muted);font-size:13px;margin:0 0 14px}
+  .hexrow{display:flex;flex-wrap:wrap;gap:14px}
+  .hex{width:78px;text-align:center}
+  .hexshape{width:74px;height:64px;display:grid;place-items:center;margin:0 auto 6px;
+    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+    color:#0a1628;font-weight:bold;font-size:11px;position:relative;box-shadow:0 4px 0 rgba(0,0,0,.35)}
+  .hexshape .n{position:absolute;bottom:6px;font-family:var(--pixel);font-size:9px}
+  .hex small{font-size:10px;color:var(--muted);display:block;line-height:1.25}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;font-size:11px;color:var(--muted)}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:middle}
+  .note{margin-top:16px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+  .note b{color:var(--ink)}
+</style>
+
+<div class="wrap">
+  <p class="kicker">labdatadev · gamehub</p>
+  <h1>Protótipo do hub — estilo Startup Panic, negócio de verdade</h1>
+  <p class="sub">Metaverso isométrico + simulação anos 2000, com marketplace de serviços de TI reais e parcerias regionais. Mockup de direção visual (não é build final).</p>
+
+  <div class="screen">
+    <div class="floor"></div>
+    <div class="art" style="left:26%"><span style="background:#c0563f"></span><span style="background:#4a86c0"></span><span style="background:#e0b24a"></span></div>
+
+    <div class="desk" style="left:20%;bottom:16%"></div>
+    <span class="worker" style="left:23%;bottom:24%;background:#8b5a2b"></span>
+    <span class="bubble" style="left:22%;bottom:33%">🙂</span>
+    <div class="desk" style="left:38%;bottom:10%"></div>
+    <span class="worker" style="left:41%;bottom:18%;background:#d9a441"></span>
+    <span class="bubble" style="left:40%;bottom:27%">💡</span>
+
+    <div class="hud">
+      <div class="stats">
+        <div class="stat"><span class="ic" style="background:#cdefe6;color:#0a6e60">◈</span><div><small>Moeda</small><b>🪙 2.460</b></div></div>
+        <div class="stat"><span class="ic" style="background:#e7edfb;color:#2a4a8f">◕</span><div><small>Rede</small><b>38</b></div></div>
+        <div class="stat"><span class="ic" style="background:#fdeccf;color:#7a4a12">▦</span><div><small>Ciclo 90d</small><b>Q3 · S6</b><div class="bar"><i></i></div></div></div>
+        <div class="pause">❚❚</div>
+      </div>
+
+      <div class="obj"><div><span>Objetivo</span><br>Fechar 3 serviços reais</div>▾</div>
+      <div class="alert">⚠ Faltam 12 dias para a retro de 90 dias</div>
+
+      <div class="tools">
+        <div class="tool">▤</div><div class="tool">☺</div><div class="tool">◈</div><div class="tool">▣</div><div class="tool">⚙</div>
+      </div>
+
+      <div class="corner share">
+        <div><small>Ranking regional</small>
+          <span><span class="ava" style="background:#5b7fb5"></span>Você 41%</span> &nbsp;
+          <span><span class="ava" style="background:#c98b4a"></span>Rival 59%</span>
+        </div>
+      </div>
+      <div class="corner saldo"><small>Saldo do mês</small><b>+ R$ 8.740</b></div>
+      <div class="drawer"><i></i><i></i><i></i><i></i></div>
+    </div>
+
+    <div class="modal">
+      <div class="panel">
+        <div class="ribbon">Prestação de serviço</div>
+        <button class="x" aria-label="Fechar">✕</button>
+        <div class="cols">
+          <div class="jobs">
+            <div class="job on"><span class="rw">R$ 1.880</span><small>Dados</small><b>Migração Excel → SQL Server</b></div>
+            <div class="job"><span class="rw">R$ 3.830</span><small>UX/UI</small><b>Designer p/ consultoria em crescimento</b></div>
+            <div class="job"><span class="rw">R$ 2.911</span><small>Web</small><b>Landing page + banner de produtos</b></div>
+            <div class="job"><span class="rw">R$ 4.200</span><small>Infra</small><b>Deploy AWS + VPS p/ imobiliária</b></div>
+            <div class="job"><span class="rw">R$ 2.600</span><small>Automação</small><b>Fluxo n8n: leads no WhatsApp</b></div>
+          </div>
+          <div class="detail">
+            <div class="dhead"><div class="dava"></div><h3>Migração Excel → SQL Server</h3></div>
+            <div class="stars">★★★☆☆ <span class="tag">TI real</span></div>
+            <div class="meta">
+              <div><i>Recompensa</i><br><b>R$ 1.880</b></div>
+              <div><i>Pontuação mín.</i><br><b>6</b></div>
+              <div><i>Tempo est.</i><br><b>12 dias</b></div>
+              <div><i>Parceiro</i><br><b>Imob. Vale</b></div>
+            </div>
+            <p class="desc">Cliente da região precisa migrar planilhas de imóveis para um banco SQL Server estruturado, com carga automática e validação — segue o playbook de <b>melhoria contínua</b>.</p>
+            <div class="cta"><button class="btn ghost">Revisão</button><button class="btn primary">Aceitar trabalho</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tree">
+    <h2>Árvore de parceiros & serviços</h2>
+    <p>Progressão estilo árvore de recursos: cada hexágono é um serviço de TI ou uma parceria regional a desbloquear.</p>
+    <div class="hexrow">
+      <div class="hex"><div class="hexshape" style="background:#8BC34A">▣<span class="n">9.4</span></div><small>Site &amp; Landing</small></div>
+      <div class="hex"><div class="hexshape" style="background:#5B9BD5">◈<span class="n">8.5</span></div><small>Automação</small></div>
+      <div class="hex"><div class="hexshape" style="background:#F4C430">▤<span class="n">7.8</span></div><small>BI / Dados</small></div>
+      <div class="hex"><div class="hexshape" style="background:#B15FC4">▶<span class="n">6.8</span></div><small>Tráfego pago</small></div>
+      <div class="hex"><div class="hexshape" style="background:#00D4C8">⇄<span class="n">10</span></div><small>Integração CRM</small></div>
+      <div class="hex"><div class="hexshape" style="background:#E86A6A;color:#fff">🔒<span class="n">—</span></div><small>Infra AWS</small></div>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:#8BC34A"></span>Social/Web</span>
+      <span><span class="dot" style="background:#5B9BD5"></span>Mídia</span>
+      <span><span class="dot" style="background:#F4C430"></span>Growth/Dados</span>
+      <span><span class="dot" style="background:#B15FC4"></span>Ads</span>
+      <span><span class="dot" style="background:#E86A6A"></span>Bloqueado</span>
+    </div>
+    <p class="note"><b>Ponte de marca:</b> laranja <b style="color:var(--orange)">#F59E0B</b> (CTA do Startup Panic = accent labdatadev), teal <b style="color:var(--teal)">#00D4C8</b>, verde dinheiro <b style="color:var(--green)">#22C55E</b> e fundo noite <b>#080E1D</b>. Moeda virtual 🪙 e R$ real nunca se misturam.</p>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.job').forEach(function(j){
+    j.addEventListener('click',function(){
+      document.querySelectorAll('.job').forEach(function(x){x.classList.remove('on')});
+      j.classList.add('on');
+    });
+  });
+</script>

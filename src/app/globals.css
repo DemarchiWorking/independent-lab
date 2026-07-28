@@ -1,0 +1,56 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Press+Start+2P&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-ui: "Nunito";
+  --font-body: "Nunito";
+  --font-pixel: "Press Start 2P";
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background:
+    radial-gradient(120% 100% at 50% -10%, #101d38 0, #060a15 70%);
+  color: #eaf2ff;
+  font-family: var(--font-ui), "Trebuchet MS", Verdana, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+@layer utilities {
+  /* piso isométrico quadriculado (estilo Startup Panic) */
+  .iso-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+    background-size: 40px 40px;
+    transform: perspective(600px) rotateX(56deg);
+    transform-origin: bottom center;
+  }
+  .pixelated {
+    image-rendering: pixelated;
+  }
+  .clip-ribbon {
+    clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+  }
+  .clip-hex {
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

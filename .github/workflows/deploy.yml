@@ -1,0 +1,43 @@
+name: Deploy VPS
+
+# Esteira de melhoria contínua: todo push na main tenta publicar na VPS.
+# O gate de verdade roda DENTRO de deploy/deploy.sh (typecheck+test+build) —
+# se algo quebrar lá, a VPS mantém a versão anterior no ar.
+#
+# Configuração necessária (Settings → Secrets and variables → Actions):
+#   VPS_HOST     ex.: 2.25.146.39
+#   VPS_USER     ex.: root
+#   VPS_SSH_KEY  chave privada com acesso à VPS (par da chave já autorizada)
+#   VPS_PATH     (opcional) caminho do projeto na VPS — padrão ~/labdatadev-gamehub
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  deploy:
+    needs: lint-and-typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd "${{ secrets.VPS_PATH || '~/labdatadev-gamehub' }}"
+            ./deploy/deploy.sh
