@@ -132,7 +132,7 @@ prematuro custaria mais do que a duplicação controlada.
 
 ---
 
-### GH-FDN-03 — Persistir seleção de bairro/cidade e parcerias formadas no Mapa
+### GH-FDN-03 — Persistir seleção de bairro/cidade e parcerias formadas no Mapa ✅
 
 | Campo | Valor |
 |---|---|
@@ -144,13 +144,24 @@ prematuro custaria mais do que a duplicação controlada.
 parceria) em `useState` local. Mesma classe de problema do `GH-FDN-02`.
 
 **Critérios de aceitação:**
-- [ ] "Parceria formada" sobrevive a reload
-- [ ] Uma parceria não pode ser formada duas vezes com o mesmo vizinho
-      (idempotência server-side)
+- [x] "Parceria formada" sobrevive a reload — `parceriasFormadas: string[]`
+      do servidor (`hub/page.tsx` → `GameShell` → `MapaScreen`), nunca
+      `useState` local
+- [x] Uma parceria não pode ser formada duas vezes com o mesmo vizinho —
+      `unique(tenant_id, vizinho_tenant_id)` (migration `0014_parcerias_mapa.sql`)
+      + guarda pura `jaFormouParceria` (`features/mapa/guarda.ts`, testada)
 
-**Regras de segurança:** RLS por tenant; validar que o `vizinhoId` informado
-está de fato no mesmo quarteirão do tenant (nunca confiar em ID arbitrário
-vindo do client).
+**Achado ao implementar:** `parceria_formada` rodava pelo dispatcher
+genérico `recompensar()` **sem nenhuma guarda de idempotência** — só o
+`useState` local impedia o re-clique, perdido a cada reload. Este card
+fechou os dois problemas juntos (persistência + farm hole real), não só o
+que o título descreve.
+
+**Regras de segurança:** RPC `formar_parceria` valida que `vizinhoTenantId`
+é de fato vizinho de quarteirão via join (mesma lógica de
+`vizinhos_do_tenant`) — nunca confia em ID arbitrário vindo do client.
+Action dedicada `features/mapa/actions.ts` (fora do dispatcher genérico,
+mesmo motivo de `desbloquearNo`).
 
 **Dados trafegados:** `tenantId`, `vizinhoTenantId`, timestamp. Nenhuma PII.
 
@@ -331,7 +342,7 @@ operacional, não sensível.
 
 ---
 
-### GH-EQP-02 — Fluxo em 2 etapas: aceitar job → alocar quem executa
+### GH-EQP-02 — Fluxo em 2 etapas: aceitar job → alocar quem executa ✅
 
 | Campo | Valor |
 |---|---|
@@ -345,15 +356,33 @@ passo de seleção de executor, com soma dinâmica de atributos comparada ao
 requisito — réplica direta da tela `Selecionar funcionário` documentada em
 `marketplace-servicos.md` §3.
 
+**Decisão de contribuição (confirmada com o usuário):** cada `CargoIA`
+contribui um valor fixo (`CONTRIBUICAO_ATRIBUTO_ALOCACAO`, `catalogo.ts`)
+só no eixo que já fortalece (`eixoFortalecido`) — não um vetor de 5 valores
+por cargo (o catálogo não tinha esse dado calibrado).
+
 **Critérios de aceitação:**
-- [ ] Modal de seleção mostra atributos de cada recurso disponível
-- [ ] Soma dinâmica (`Total`) atualiza ao marcar/desmarcar um recurso
-- [ ] Confirmar só habilita quando o total atende o requisito mínimo
-- [ ] Servidor recalcula e valida de novo antes de persistir (nunca confia
-      no total calculado no client)
+- [x] Modal de seleção mostra atributos de cada recurso disponível —
+      `SelecionarFuncionarioModal.tsx` (reusa `RibbonPanel`), lista
+      `FuncionarioContratado[]` com livre/ocupado via `disponibilidade`
+- [x] Soma dinâmica (`Total`) atualiza ao marcar/desmarcar — cálculo
+      client-side espelha exatamente `contribuicaoDaEquipe()` (pura,
+      testada) usado no servidor
+- [x] Confirmar só habilita quando o total (baseline + equipe) atende o
+      requisito mínimo — `atendeRequisitos()`
+- [x] Servidor recalcula e valida de novo antes de persistir — nova action
+      dedicada `features/marketplace/actions.ts` → `aceitarTrabalhoComEquipe()`,
+      fora do dispatcher genérico `recompensar()` (mesmo motivo de
+      `desbloquearNo`), aloca cada funcionário via RPC `alocar_funcionario`
+      (primeira vez que é chamada de verdade, GH-EQP-01 já existia sem
+      nenhum caller) e só então aceita o job
 
 **Regras de segurança:** dupla validação (client para UX, servidor para
-integridade) — mesmo princípio já aplicado em `GH-FDN-01`.
+integridade) — mesmo princípio já aplicado em `GH-FDN-01`. Nota de
+implementação: `aceitarTrabalho` é chamado **sem** `job.requisitos` (de
+propósito — o requisito já foi checado com a soma da equipe incluída;
+repassar `job.requisitos` faria a RPC recusar de novo contra só a baseline
+do negócio, sem a equipe, quebrando o propósito do card).
 
 **Dados trafegados:** lista de `funcionarioId`s selecionados + `jobId`.
 
@@ -1299,7 +1328,7 @@ não-validado para produção com dados reais de múltiplos clientes.
 
 ---
 
-### GH-OPS-04 — Política de privacidade e consentimento (LGPD)
+### GH-OPS-04 — Política de privacidade e consentimento (LGPD) ✅
 
 | Campo | Valor |
 |---|---|
@@ -1313,23 +1342,31 @@ localização). Antes de qualquer cadastro de pessoa real, é preciso deixar
 claro o que é coletado, para quê, e o que fica público.
 
 **Critérios de aceitação:**
-- [ ] Página de política de privacidade acessível
-- [ ] Consentimento explícito no cadastro, informando que o perfil terá
-      página pública (`GH-GROW-01`)
-- [ ] Caminho claro para o usuário solicitar exclusão dos dados
-- [ ] Documentado quais campos são públicos vs. privados (espelhando a
-      whitelist do código)
+- [x] Página de política de privacidade acessível — `/privacidade`
+      (`src/app/privacidade/page.tsx`), primeira página de conteúdo
+      estático do app
+- [x] Consentimento explícito no cadastro, informando que o perfil terá
+      página pública — checkbox obrigatório no último passo do `Wizard`
+      (`consentimento`), checado no servidor em `cadastrar()` (nunca só
+      desabilita o botão)
+- [x] Caminho claro para solicitar exclusão — documentado em `/privacidade`
+      ("use o formulário de contato do seu painel")
+- [x] Documentado quais campos são públicos vs. privados — espelha
+      literalmente a whitelist de `GH-GROW-01` no texto de `/privacidade`
 
 **Regras de segurança:** este card é pré-requisito legal, não opcional.
 Coletar budget declarado sem informar o uso é exposição desnecessária.
 
-**Dados trafegados:** metadado de consentimento (data, versão da política).
+**Dados trafegados:** metadado de consentimento — `Negocio.consentimentoEm`/
+`consentimentoVersao` (migration `0018_consentimento_lgpd.sql`), aplicado
+junto com o opt-out de perfil público (`GH-GROW-01`, entregues no mesmo
+lote, como o próprio card já pedia).
 
 ---
 
 ## Épico 10 — Pitch Readiness (Sebrae) (P0)
 
-### GH-PITCH-01 — Roteiro de demo à prova de falhas
+### GH-PITCH-01 — Roteiro de demo à prova de falhas 🟡 parcial
 
 | Campo | Valor |
 |---|---|
@@ -1341,19 +1378,44 @@ Coletar budget declarado sem informar o uso é exposição desnecessária.
 previamente e caminho testado — evitando descobrir um bug na frente da banca.
 
 **Critérios de aceitação:**
-- [ ] Script de seed que cria um bairro plausível com 6–8 negócios
-- [ ] Roteiro passo a passo (cadastro → hub → mapa → contratar IA → ver
-      progresso) cronometrado
-- [ ] Testado de ponta a ponta no ambiente **de produção**, não só local
-- [ ] Plano B documentado se a internet falhar (rodar local com
-      `GAMEHUB_DB=file` + `iniciar.bat`)
+- [x] Script de seed — `src/scripts/seed-demo.test.ts` (`SEED_DEMO=1 npx
+      vitest run src/scripts/seed-demo.test.ts`), 6 negócios (mesmos nomes
+      já usados em `HubScreen.tsx`) no bairro Centro/Mendes, estados
+      variados (equipe de IA, parceria, sede evoluída, nó da árvore, lição,
+      oferta publicada). Conta de login própria só para a "herói" da demo
+      (Radiz Engenharia). **Validado numericamente**: toda a aritmética de
+      XP/moeda/atributo dos eventos aplicados (contratação, parceria,
+      sede, lição, nó) foi conferida à mão contra o resultado persistido —
+      bateu exato em todos os casos.
+- [x] Roteiro passo a passo cronometrado — `docs/pitch/ROTEIRO-DEMO.md`
+      (~6 min, cadastro→hub→mapa→equipe IA→marketplace→sede→painel→vitrine)
+- [ ] Testado de ponta a ponta no ambiente **de produção** — não feito
+      (não existe produção ainda, depende de `GH-OPS-01`); testado via
+      repositório direto (`GAMEHUB_DB=file`) nesta sessão, não via clique
+      no navegador (ver nota abaixo)
+- [x] Plano B documentado — `docs/pitch/ROTEIRO-DEMO.md` §Plano B
+      (`iniciar.bat` + `GAMEHUB_DB=file`, mesmo seed funciona local)
+
+**Nota de verificação:** a prova de correção usada foi a mais forte
+disponível sem navegador (ler o JSON persistido de cada negócio e conferir
+manualmente cada delta de XP/moeda/atributo contra o que cada evento
+deveria aplicar) — não uma checagem visual em browser. Um teste de clique
+real ainda vale a pena antes do dia do pitch, mas a lógica de negócio em si
+já está provada correta.
+
+**Achado ao escrever o script:** contratar Funcionário de IA direto pelo
+repositório (sem passar pelo dispatcher `recompensar()`) não aplica XP/
+moeda/degrau/atributo sozinho — é a Server Action que faz a chamada extra.
+O seed replica isso explicitamente (`contratarComRecompensa()`), e a ordem
+das contratações respeita `degrauMinimo` de cada cargo (o repositório
+sozinho não valida esse gate, só o dispatcher faz).
 
 **Regras de segurança:** dados de demo devem ser **fictícios plausíveis** —
 nunca dados reais de empresas conhecidas sem autorização.
 
 ---
 
-### GH-PITCH-02 — Narrativa de impacto regional (material do pitch)
+### GH-PITCH-02 — Narrativa de impacto regional (material do pitch) ✅
 
 | Campo | Valor |
 |---|---|
@@ -1366,12 +1428,16 @@ técnica. Preparar a narrativa: o problema real das PMEs do interior do RJ,
 por que gamificação resolve engajamento onde consultoria tradicional falha,
 e a visão de bairro → cidade → estado.
 
-**Critérios de aceitação:**
-- [ ] Uma frase que explica o produto para quem não é técnico
-- [ ] Números honestos (o que já funciona vs. o que é visão) — **nunca
-      apresentar visão como se fosse funcionalidade pronta**
-- [ ] Conexão explícita com desenvolvimento econômico regional
-- [ ] Modelo de sustentabilidade claro (como o projeto se paga)
+**Critérios de aceitação:** todos em `docs/pitch/NARRATIVA-IMPACTO.md`:
+- [x] Uma frase que explica o produto para quem não é técnico
+- [x] Números honestos (o que já funciona vs. o que é visão) — separado em
+      duas seções explícitas, nunca misturado
+- [x] Conexão explícita com desenvolvimento econômico regional — ancorado
+      no ICP real (PMEs do Vale do Café que fornecem via licitação)
+- [x] Modelo de sustentabilidade claro — assinatura dos Funcionários de IA
+      (preço já calibrado, R$297–897/mês) como receita concreta hoje;
+      comissão de marketplace como direção de médio prazo, marcado como
+      visão, não compromisso
 
 **Boas práticas:** honestidade sobre o estágio é vantagem competitiva num
 pitch — bancas experientes detectam exagero, e um MVP honesto com visão

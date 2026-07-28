@@ -47,6 +47,30 @@ passaria a consultar a VIEW, nunca a tabela.
 
 ## 🟡 Médio — funcional, mas com uma ponta solta
 
+### Chamar `GameRepository` direto (sem passar pela Server Action) não aplica a recompensa completa
+
+Achado ao escrever `src/scripts/seed-demo.test.ts` (`GH-PITCH-01`):
+`repo.contratarFuncionario(tenantId, cargoId)` só registra a contratação —
+o XP/moeda/degrau/atributo de `funcionario_ia_contratado` são aplicados
+pela Server Action (`features/gamificacao/actions.ts::recompensar()`), não
+pelo repositório. Isso é arquitetura correta (repositório = persistência
+pura, regra de negócio fica na camada de cima) mas é uma pegadinha real
+para qualquer script/seed futuro que chame o repositório diretamente sem
+passar pelo dispatcher — o negócio fica com "equipe contratada" mas sem o
+efeito colateral que o clique real sempre teria. O seed de demo resolve
+isso replicando manualmente o efeito (`contratarComRecompensa()`); qualquer
+novo script parecido precisa fazer o mesmo, ou os números ficam
+inconsistentes com o que a UI real produziria.
+
+**Mesmo tema em `desbloquearNo`/`formarParceria`/`concluirLicao`**: esses
+sim já incluem a recompensa na própria chamada do repositório
+(`xp`/`atributos` são parâmetros diretos) — a inconsistência é
+especificamente do par `contratarFuncionario`/`aceitarTrabalho`, que ficou
+"fino" porque historicamente sempre foi chamado através do dispatcher
+genérico. Se um dia esses dois ganharem action dedicada (fora do
+dispatcher, como os outros já têm), vale considerar mover o efeito de
+XP/moeda pra dentro do repositório também, por consistência.
+
 ### `souAdmin()` sem auditoria, e `GH-GROW-05` é candidato natural pra resolver isso
 
 `src/lib/admin.ts` é allowlist por env var **ou substring `"demarchi"`** no

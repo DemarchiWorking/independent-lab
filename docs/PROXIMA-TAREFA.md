@@ -1,64 +1,82 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
-> Atualizado: 2026-07-28, após o lote 3 (`GH-GROW-02`, `GH-GROW-03`, e
-> fechamento de 2 gaps do lote 2 — Oferta sem produtor, contato sem inbox).
-> Sempre confira `git log -1` antes de confiar neste arquivo. **Leia também
-> [`GAPS-DE-INTEGRACAO.md`](GAPS-DE-INTEGRACAO.md)** — registro vivo,
-> atualizado a cada lote.
+> Atualizado: 2026-07-28, após fechar **Épico 10 — Pitch Readiness**
+> (`GH-PITCH-01`/`GH-PITCH-02`) e corrigir 3 casos de drift no backlog
+> (`GH-EQP-02`, `GH-FDN-03`, `GH-OPS-04` — implementados em lotes
+> anteriores, mas com o checkbox esquecido). Sempre confira `git log -1`
+> antes de confiar neste arquivo. Leia também
+> [`GAPS-DE-INTEGRACAO.md`](GAPS-DE-INTEGRACAO.md).
 
-## Estado
+## ⚠️ Lição de processo (repetida, vale reforçar)
 
-MVP para pitch Sebrae. Lote 3 fechou com `npm run typecheck && npm test &&
-npm run build` verdes (223 testes).
+Três cards foram implementados por completo em lotes anteriores desta
+sessão, mas os checkboxes deles em `BACKLOG-PRODUTO.md` só foram
+atualizados numa releitura posterior. **Ao fechar qualquer card, marcar o
+checkbox NO MESMO TURNO em que o código é verificado.**
 
-- **Fechados 2 gaps do lote anterior:** `features/ofertas/` (dono publica
-  ofertas na própria vitrine — primeiro produtor de `Oferta`, que já tinha
-  persistência pronta sem UI) e seção "Mensagens recebidas" em `/painel`
-  (lê `listarSolicitacoesContato`, que também já existia sem tela).
-- **`GH-GROW-02` — feito.** Convite de vizinho com recompensa mútua: token
-  HMAC assinado (`features/growth/convite.ts`), resgatado dentro de
-  `cadastrar()` (nunca ao clicar/gerar o link), teto de 5 convites
-  recompensados por convidante a cada 30 dias (acima disso só o convidante
-  para de ganhar — o convidado sempre ganha), RPC atômica
-  `resgatar_convite` (migration `0021_convites.sql`). Link gerado e
-  copiado manualmente pelo dono em `/painel` (`ConvitePainel.tsx`) — app
-  nunca envia e-mail sozinho.
-- **`GH-GROW-03` — feito.** 6 conquistas (`features/conquistas/catalogo.ts`)
-  — **sem tabela própria**, tudo derivado do estado já existente (degrau,
-  equipe, parcerias, nós da árvore, nível de sede). Imagem OG dinâmica ao
-  compartilhar (`src/app/api/og/conquista/route.tsx`, `next/og`), pública
-  de propósito (é assim que redes sociais buscam o preview), mesma
-  whitelist de campos da vitrine pública.
+## 🎯 Estado do objetivo real: pitch Sebrae
 
-Estado dos lotes anteriores (ainda válido): `GH-EQP-02`, `GH-FDN-03`,
-`GH-MAPA-01` (parcial), `GH-OPS-04`+`GH-GROW-01` (LGPD + vitrine pública),
-`GH-EDU-01` (lições), correção de checkboxes `GH-WORLD-01`/`02`,
-formalização de `GH-SIM-01`+3 stubs (Épico 12), correção da constraint de
-`segmento` no Supabase. `GH-GROW-05` segue **deliberadamente não
-implementado** (ver o próprio card no backlog).
+O usuário confirmou que a prioridade é o **pitch Sebrae funcionando
+corretamente** — Épico 10 (Pitch Readiness) estava vazio até agora e foi
+tratado como prioridade máxima assim que isso ficou claro. **Está feito:**
 
-## Próxima tarefa recomendada
+- **`GH-PITCH-01` (parcial, o suficiente para demo):**
+  `src/scripts/seed-demo.test.ts` — script de seed reusando `vitest` (sem
+  instalar `tsx`/`ts-node`; roda direto contra `GameRepository`, não contra
+  as Server Actions, que dependem de contexto HTTP do Next.js). Cria 6
+  negócios (mesmos nomes já usados em `HubScreen.tsx`) no bairro
+  Centro/Mendes, com equipe de IA, parceria, sede evoluída, nó da árvore,
+  lição concluída e oferta publicada. Um deles (Radiz Engenharia) ganha
+  login de demo (`radiz@demo.labdatadev.local` / `SebraeDemo2026!`) para o
+  apresentador logar direto nela. **Toda a aritmética de XP/moeda/atributo
+  foi conferida manualmente contra o JSON persistido e bateu exata** — é a
+  validação de integração mais forte feita nesta sessão inteira, cobrindo
+  contratação de equipe, parceria, evolução de sede, desbloqueio de nó e
+  conclusão de lição juntos. Rodar com:
+  ```bash
+  SEED_DEMO=1 npx vitest run src/scripts/seed-demo.test.ts
+  ```
+  Roteiro cronometrado em `docs/pitch/ROTEIRO-DEMO.md` (~6 min, com Plano B
+  offline). Falta só testar num ambiente de produção real (depende de
+  `GH-OPS-01`, que ainda não existe) e um passe de clique real em browser
+  (a validação feita foi via dado persistido, não via UI).
+- **`GH-PITCH-02` (feito):** `docs/pitch/NARRATIVA-IMPACTO.md` — frase-resumo,
+  o que já funciona vs. visão (honesto, nada de vaporware), conexão com o
+  Vale do Café/PMEs de licitação, modelo de sustentabilidade (assinatura
+  dos Funcionários de IA, preço já calibrado).
 
-Nenhum card em andamento. Ordem sugerida (pulando Épico 9 — deploy, precisa
-de VPS real):
+## Estado cumulativo (todos os lotes desta sessão)
 
-1. **`GH-MAPA-02`** (navegação por zoom em 3 camadas) — depende de
-   `GH-MAPA-01` (parcial, mas o suficiente: as consultas agregadas já
-   existem). É o consumidor natural do `escopo` inerte em `lerMapaView()`.
-2. **`GH-GROW-04`** (ranking/destaque do bairro) — depende de `GH-MAPA-04`,
-   que por sua vez depende de `GH-ATR-01` (pronto) — mas `GH-MAPA-04`
-   (benchmark regional) ainda não foi feito; abrir esse primeiro se for
-   por aqui.
-3. **Revisar `docs/GAPS-DE-INTEGRACAO.md`** — o item 🔴 (RLS de `negocios`
-   expõe a linha inteira a `anon`) é o mais importante do documento, mas
-   **exige teste em Postgres real antes de mexer** (não dá pra validar só
-   com `pg-query-emscripten` — é semântica de RLS em runtime, não sintaxe).
-   Não tentar corrigir numa sessão sem acesso a um Postgres real para
-   verificar o resultado.
+`npm run typecheck && npm test && npm run build` verdes (224 testes).
+Completos: Épicos 1–4, Épico 5 (exceto `GH-SIM-01`, adiado), Épico 7
+(exceto `GH-GROW-04`/`GH-GROW-05`, adiados/bloqueados), Épico 8 parcial
+(`GH-EDU-01` feito), Épico 10 (Pitch Readiness, ver acima), Épico 11
+(exceto `GH-EVT-05`, dívida técnica documentada). Bug real corrigido:
+constraint `segmento` do Supabase desalinhada do tipo TS.
 
-Ao puxar o próximo card: ler os arquivos reais antes de assumir o que
-existe, implementar em passos pequenos com `npm run typecheck` a cada um,
-e só então rodar `npm test && npm run build` completo antes de commitar.
+## Próxima prioridade
+
+### 1. Épico 9 (deploy real) — precisa do usuário, não é autônomo
+
+`GH-OPS-01` exige VPS real (SSH), `GH-OPS-02` exige repositório remoto no
+GitHub + secrets, `GH-OPS-03` exige projeto Supabase real. **Perguntar ao
+usuário antes de tentar qualquer coisa aqui** — nenhuma sessão autônoma
+tem essas credenciais. O ferramental (`deploy/`) já está pronto.
+
+### 2. Se o usuário quiser continuar por funcionalidade (não deploy)
+
+`GH-MAPA-02` (zoom do mapa) → `GH-MAPA-04` (benchmark regional, destrava
+`GH-GROW-04`) → revisar o item 🔴 de `GAPS-DE-INTEGRACAO.md` (RLS de
+`negocios`, só com Postgres real disponível para validar em runtime).
+
+### 3. Antes do dia do pitch de verdade (mesmo sem código novo)
+
+- Rodar `docs/pitch/ROTEIRO-DEMO.md` de ponta a ponta, ao vivo, num
+  navegador real (a validação desta sessão foi por dado persistido, não
+  por clique) — inclusive testar o Plano B (`iniciar.bat`) uma vez.
+- Se houver tempo: um passe de clique real cobrindo os passos do roteiro,
+  já que `AGENTS.md` documenta que navegador headless não é confiável para
+  fluxos com `AnimatePresence` — só um navegador real garante isso.
 
 ## Antes de considerar pronto
 
@@ -69,24 +87,24 @@ npm run build
 ```
 
 Para fluxo dependente de tempo/estado, teste manual via rota temporária em
-`src/app/api/selftest-*/route.ts` chamando a Server Action direto — bypassa
-o clique na UI, que é **não confiável em navegador headless não composto**
-(o `AnimatePresence` trava sem `requestAnimationFrame`; ver "Armadilhas
-conhecidas" no `AGENTS.md`). **Apague a rota antes de commitar.**
+`src/app/api/selftest-*/route.ts` chamando a Server Action direto —
+bypassa o clique na UI, não confiável em navegador headless não composto
+(ver "Armadilhas conhecidas" no `AGENTS.md`). **Apague a rota antes de
+commitar.**
 
-Migrations novas: validar com `pg-query-emscripten` (instalar num
-scratchpad — não há Docker/Postgres local, ver `AGENTS.md`).
+Migrations novas: validar com `pg-query-emscripten` (scratchpad — não há
+Docker/Postgres local, ver `AGENTS.md`).
 
-**Env vars novas desta sessão:**
-- `NEXT_PUBLIC_SITE_URL` (`GH-GROW-01`) — usado por `sitemap.ts`/`robots.ts`.
-- Nenhuma nova no lote 3 (convite/conquistas reusam `GAMEHUB_SECRET` já
-  existente).
+**Env vars novas desta sessão:** `NEXT_PUBLIC_SITE_URL` (`GH-GROW-01`,
+usado por `sitemap.ts`/`robots.ts`).
 
 ## Docs de referência (nessa ordem, só se precisar de mais contexto)
 
 1. `AGENTS.md` — regras não-negociáveis e mapa rápido do repo.
 2. Este arquivo.
-3. `docs/GAPS-DE-INTEGRACAO.md` — o que existe mas não está costurado.
-4. `docs/BACKLOG-PRODUTO.md` — todos os cards, prioridade e dependências.
-5. `docs/ESTADO-DO-PROJETO.md` §3.1 — relato detalhado de sessões
+3. `docs/pitch/ROTEIRO-DEMO.md` + `docs/pitch/NARRATIVA-IMPACTO.md` — o
+   material do pitch em si.
+4. `docs/GAPS-DE-INTEGRACAO.md` — o que existe mas não está costurado.
+5. `docs/BACKLOG-PRODUTO.md` — todos os cards, prioridade e dependências.
+6. `docs/ESTADO-DO-PROJETO.md` §3.1 — relato detalhado de sessões
    anteriores (só abrir se precisar entender uma decisão específica).
