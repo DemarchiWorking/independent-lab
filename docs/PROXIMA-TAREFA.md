@@ -27,6 +27,16 @@ npm run build` verdes (190 testes):
   "close", nunca só cor) quanto no painel de detalhe. "Bloqueado" continua
   estático no catálogo (só `infra`) — não existe dependência pai→filho
   entre nós hoje, então generalizar isso ficou fora de escopo (YAGNI).
+- **`GH-WORLD-06` completo** — visitar a sede de um vizinho, somente
+  leitura, aberta por padrão no MVP (sem opt-in — decisão documentada em
+  `docs/world/VISITAR-VIZINHO.md`, que supera a recomendação antiga de
+  `sede.publicada`). Rota `/world/visitar/[tenantId]` reusa o renderer Pixi
+  existente sem tocar nele; painel de pitch comercial real (Funcionários de
+  IA) personalizado pelo atributo mais fraco do visitado — copy em
+  `docs/vendas/PITCH-VISITA-FUNCIONARIOS-IA.md`. Validado end-to-end em
+  navegador logado. Não colide com o trabalho de `GH-EQP-02` abaixo (arquivos
+  disjuntos, exceto `MapaScreen.tsx`/`painel/page.tsx` — só um `Link`
+  adicionado em cada, sem tocar no resto).
 
 ## Próxima tarefa: `GH-EQP-02` — EM ANDAMENTO, retomar por aqui
 
