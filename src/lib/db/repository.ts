@@ -5,6 +5,7 @@ import type {
   BenchmarkBairro,
   CapituloEntregue,
   ConviteResgatado,
+  DestaqueBairro,
   Endereco,
   EscopoMapa,
   EventoGlobal,
@@ -57,6 +58,18 @@ export interface GameRepository {
    *  tenant que chamou (a média inclui ele mesmo, mesmo critério de
    *  qualquer benchmark honesto). */
   lerBenchmarkBairro(cidadeSlug: string, bairroSlug: string): Promise<BenchmarkBairro>;
+  /**
+   * Destaque rotativo do bairro (GH-GROW-04) — negócio com mais eventos de
+   * progresso dentro dos últimos `diasJanela` dias. `null` se ninguém no
+   * bairro teve atividade na janela. Só considera `perfilPublico = true`
+   * — reusa o opt-out já existente da vitrine pública (GH-GROW-01) em vez
+   * de um segundo toggle de privacidade dedicado a isto.
+   */
+  lerDestaqueBairro(
+    cidadeSlug: string,
+    bairroSlug: string,
+    diasJanela: number,
+  ): Promise<DestaqueBairro | null>;
 
   /** ---- Tenant ---- */
   /**

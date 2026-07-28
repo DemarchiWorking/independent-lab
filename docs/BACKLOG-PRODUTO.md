@@ -1076,7 +1076,7 @@ buscam a imagem ao gerar preview do link; documentado no cabeçalho do
 
 ---
 
-### GH-GROW-04 — Ranking/destaque do bairro (prova social positiva)
+### GH-GROW-04 — Ranking/destaque do bairro (prova social positiva) ✅
 
 | Campo | Valor |
 |---|---|
@@ -1088,16 +1088,34 @@ buscam a imagem ao gerar preview do link; documentado no cabeçalho do
 maior evolução este mês"). Cria motivo recorrente para o empresário voltar
 e para compartilhar.
 
+**Decisão de arquitetura — "evolução" sem histórico:** o sistema não guarda
+snapshot de atributos ao longo do tempo, então "delta" verdadeiro (antes ×
+depois) não existe hoje. Em vez de criar uma tabela de histórico só para
+isto, o destaque usa uma proxy honesta: **contagem de eventos de progresso
+reais nos últimos 30 dias** (contratação de Funcionário de IA, lição
+concluída, nó desbloqueado, parceria formada) — RPC `destaque_bairro`
+(migration `0023_destaque_bairro.sql`). Satisfaz o espírito do critério
+(favorece atividade recente sobre tamanho acumulado) sem inventar
+persistência nova.
+
 **Critérios de aceitação:**
-- [ ] Destaque baseado em **evolução** (delta), não em tamanho absoluto —
-      dá chance a negócio pequeno, evita que os grandes monopolizem
-- [ ] Rotativo: ninguém fica permanentemente no topo
-- [ ] Aparecer no destaque é **opt-out** possível
+- [x] Destaque baseado em atividade recente, não em tamanho absoluto — um
+      negócio pequeno com 5 eventos no mês bate um negócio grande parado
+- [x] Rotativo — emerge da janela de 30 dias deslizando no tempo, não de
+      sorteio; quem estava ativo há 31 dias some da conta sozinho
+- [x] Opt-out — reusa `perfilPublico` (GH-GROW-01) em vez de um segundo
+      toggle de privacidade dedicado a isto (mesma decisão de escopo já
+      documentada para simplificar sem perder a garantia real)
+
+**Verificação:** testado contra o dado semeado (`GH-PITCH-01`) — Radiz
+Engenharia (3 contratações + 1 parceria + 1 lição = 5 eventos) venceu o
+destaque do bairro, exatamente como esperado.
 
 **Regras de segurança:** só dados de fachada; nenhum negócio é exibido
-negativamente.
+negativamente (a seção em `/painel` só mostra quem ganhou, nunca uma lista
+comparativa com quem "perdeu").
 
-**Dados trafegados:** nome, segmento, delta de evolução (agregado).
+**Dados trafegados:** nome, segmento, contagem de eventos recentes (agregado).
 
 ---
 

@@ -11,6 +11,7 @@ import { ConvitePainel } from "@/features/growth/ConvitePainel";
 import { ConquistasPainel } from "@/features/conquistas/ConquistasPainel";
 import type { ContextoConquistas } from "@/features/conquistas/catalogo";
 import { compararComBenchmark, eixoParaFocar, mensagemFoco } from "@/features/mapa/benchmark";
+import { SEGMENTOS } from "@/features/mapa/segmentos";
 
 export const metadata = { title: "Painel · labdatadev gamehub" };
 
@@ -40,6 +41,11 @@ export default async function PainelPage() {
   );
   const comparados = compararComBenchmark(negocio.atributos, benchmark);
   const foco = eixoParaFocar(comparados);
+  const destaque = await repo.lerDestaqueBairro(
+    negocio.endereco.cidadeSlug,
+    negocio.endereco.bairroSlug,
+    30,
+  );
 
   const contextoConquistas: ContextoConquistas = {
     negocio,
@@ -175,6 +181,24 @@ export default async function PainelPage() {
               Você está na média ou acima em todos os eixos do seu bairro. 🎉
             </p>
           )}
+        </section>
+      ) : null}
+
+      {/* Destaque rotativo do bairro (GH-GROW-04) — baseado em atividade
+          recente (30 dias), nunca tamanho absoluto. Opt-out reusa
+          `perfilPublico` da vitrine pública, não é um segundo toggle. */}
+      {destaque ? (
+        <section className="mb-4 rounded-md bg-card p-5">
+          <h2 className="mb-1 text-base font-extrabold text-white">
+            Destaque do bairro
+          </h2>
+          <p className="text-xs text-muted">
+            <span className={`mr-1.5 rounded-sm px-1.5 py-0.5 text-[10px] font-bold text-ink ${SEGMENTOS[destaque.segmento].cor}`}>
+              {SEGMENTOS[destaque.segmento].label}
+            </span>
+            <b className="text-white">{destaque.nome}</b> é quem mais evoluiu
+            no seu bairro nos últimos 30 dias — pode ser você no próximo mês.
+          </p>
         </section>
       ) : null}
 

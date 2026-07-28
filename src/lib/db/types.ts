@@ -369,6 +369,20 @@ export interface BairroResumo {
 }
 
 /**
+ * Destaque rotativo do bairro (GH-GROW-04) — negócio com mais eventos de
+ * PROGRESSO RECENTE (contratação, lição, nó desbloqueado, parceria) numa
+ * janela de dias — nunca por tamanho absoluto (dá chance a negócio
+ * pequeno; "rotativo" emerge naturalmente porque a janela desliza no
+ * tempo, não porque há sorteio). Só fachada pública, nunca dado sensível.
+ */
+export interface DestaqueBairro {
+  tenantId: string;
+  nome: string;
+  segmento: Segmento;
+  eventosRecentes: number;
+}
+
+/**
  * Benchmark regional agregado (GH-MAPA-04) — médias anonimizadas dos 5
  * eixos entre os negócios do MESMO bairro. Nunca compara nome a nome (só
  * "você × média"), e nunca inclui dado de onboarding (budget/score) — só

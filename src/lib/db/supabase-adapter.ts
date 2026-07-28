@@ -11,6 +11,7 @@ import type {
   BenchmarkBairro,
   CapituloEntregue,
   ConviteResgatado,
+  DestaqueBairro,
   EscopoMapa,
   EventoGlobal,
   FuncionarioContratado,
@@ -311,6 +312,40 @@ export class SupabaseRepository implements GameRepository {
         aquisicao: Number(l.media_aquisicao),
         capacidade: Number(l.media_capacidade),
       },
+    };
+  }
+
+  /** RPC `destaque_bairro` (`0023_destaque_bairro.sql`) — devolve no máximo
+   *  1 linha (já filtrada e ordenada no banco); `maybeSingle()` porque 0
+   *  linhas (ninguém ativo na janela) é resultado válido, não erro. */
+  async lerDestaqueBairro(
+    cidadeSlug: string,
+    bairroSlug: string,
+    diasJanela: number,
+  ): Promise<DestaqueBairro | null> {
+    const desde = new Date(Date.now() - diasJanela * 86_400_000).toISOString();
+    const { data, error } = await this.db
+      .rpc("destaque_bairro", {
+        p_cidade_slug: cidadeSlug,
+        p_bairro_slug: bairroSlug,
+        p_desde: desde,
+      })
+      .maybeSingle();
+    if (error) throw new Error(`lerDestaqueBairro: ${error.message}`);
+    if (!data) return null;
+
+    const l = data as {
+      tenant_id: number;
+      nome: string;
+      segmento: Segmento;
+      eventos_recentes: number;
+    };
+    if (Number(l.eventos_recentes) === 0) return null;
+    return {
+      tenantId: String(l.tenant_id),
+      nome: l.nome,
+      segmento: l.segmento,
+      eventosRecentes: Number(l.eventos_recentes),
     };
   }
 

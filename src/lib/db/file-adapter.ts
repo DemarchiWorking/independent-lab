@@ -16,6 +16,7 @@ import type {
   CapituloEntregue,
   Cidade,
   ConviteResgatado,
+  DestaqueBairro,
   Endereco,
   EscopoMapa,
   EventoGlobal,
@@ -233,6 +234,48 @@ export class FileRepository implements GameRepository {
         capacidade: somar("capacidade"),
       },
     };
+  }
+
+  async lerDestaqueBairro(
+    cidadeSlug: string,
+    bairroSlug: string,
+    diasJanela: number,
+  ): Promise<DestaqueBairro | null> {
+    const mapa = await this.lerMapa();
+    const bairro = mapa.cidades
+      .find((c) => c.slug === cidadeSlug)
+      ?.bairros.find((b) => b.slug === bairroSlug);
+    if (!bairro) return null;
+
+    const ids = bairro.quarteiroes.flatMap((q) =>
+      q.lotes.map((l) => l.tenantId).filter((id): id is string => id !== null),
+    );
+    if (ids.length === 0) return null;
+
+    const desde = new Date(Date.now() - diasJanela * 86_400_000).toISOString();
+    let melhor: DestaqueBairro | null = null;
+
+    for (const id of ids) {
+      const negocio = await this.lerNegocio(id);
+      if (!negocio || !negocio.perfilPublico) continue;
+
+      const [licoes, parcerias, nos, funcionarios] = await Promise.all([
+        this.listarLicoesConcluidas(id),
+        this.listarParceriasFormadas(id),
+        this.listarNosDesbloqueados(id),
+        this.listarFuncionarios(id),
+      ]);
+      const eventosRecentes =
+        licoes.filter((l) => l.concluidaEm >= desde).length +
+        parcerias.filter((p) => p.formadaEm >= desde).length +
+        nos.filter((n) => n.desbloqueadoEm >= desde).length +
+        funcionarios.filter((f) => f.contratadoEm >= desde).length;
+
+      if (eventosRecentes > 0 && (!melhor || eventosRecentes > melhor.eventosRecentes)) {
+        melhor = { tenantId: id, nome: negocio.nome, segmento: negocio.segmento, eventosRecentes };
+      }
+    }
+    return melhor;
   }
 
   /** Aloca o primeiro lote livre e grava o mapa. Single-process: sem corrida. */
