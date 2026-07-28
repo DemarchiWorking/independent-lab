@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { springSnappy } from "@/lib/motion";
@@ -166,10 +167,17 @@ export function MapaScreen({ mapa, endereco, meuTenantId }: MapaScreenProps) {
                     Parceria formada ✓
                   </p>
                 ) : (
-                  <div className="mt-2">
-                    <p className="mb-2 text-[11px] text-[#5b6b86]">
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    <p className="mb-0.5 text-[11px] text-[#5b6b86]">
                       Vizinho de negócio — candidato a parceria.
                     </p>
+                    <Link
+                      href={`/world/visitar/${selecionado.id}`}
+                      className="flex items-center justify-center gap-1.5 rounded-md bg-card2 px-3 py-2.5 text-xs font-extrabold text-ink"
+                    >
+                      <Icon name="home" size={14} />
+                      Visitar sede
+                    </Link>
                     <ActionButton
                       icon="network"
                       disabled={pendente}

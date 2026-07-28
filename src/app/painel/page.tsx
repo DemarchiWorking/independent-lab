@@ -147,8 +147,13 @@ export default async function PainelPage() {
               {vizinhos.map((v) => (
                 <li key={v.id} className="flex items-center gap-2 text-sm text-muted">
                   <span className="text-teal">◈</span>
-                  {v.nome}
-                  <span className="text-xs opacity-60">({v.segmento})</span>
+                  <Link
+                    href={`/world/visitar/${v.id}`}
+                    className="flex-1 hover:text-white hover:underline"
+                  >
+                    {v.nome}
+                    <span className="ml-1 text-xs opacity-60">({v.segmento})</span>
+                  </Link>
                 </li>
               ))}
             </ul>
