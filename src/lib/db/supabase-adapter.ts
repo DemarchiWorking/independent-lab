@@ -8,6 +8,7 @@ import type { DeltaProgresso, GameRepository, NovoNegocio } from "./repository";
 import type {
   Alocacao,
   CapituloEntregue,
+  EventoGlobal,
   FuncionarioContratado,
   ItemMobiliaColocado,
   Mapa,
@@ -16,6 +17,7 @@ import type {
   NoDesbloqueado,
   Oferta,
   Onboarding,
+  ProgressoEventoGlobal,
   Sede,
   Segmento,
   TrabalhoAceito,
@@ -928,6 +930,122 @@ export class SupabaseRepository implements GameRepository {
     }
     return this.paraItemColocado(
       data as Parameters<typeof this.paraItemColocado>[0],
+    );
+  }
+
+  private paraEventoGlobal(l: {
+    id: string;
+    titulo: string;
+    descricao: string;
+    objetivo: string;
+    meta: number;
+    inicio_em: string;
+    fim_em: string;
+    recompensa_xp: number;
+    recompensa_moeda: number;
+    recompensa_atributo_chave: AtributoChave | null;
+    recompensa_atributo_ganho: number | null;
+    criado_por: string;
+    criado_em: string;
+  }): EventoGlobal {
+    return {
+      id: l.id,
+      titulo: l.titulo,
+      descricao: l.descricao,
+      objetivo: l.objetivo,
+      meta: l.meta,
+      inicioEm: l.inicio_em,
+      fimEm: l.fim_em,
+      recompensa: {
+        xp: l.recompensa_xp,
+        moeda: l.recompensa_moeda,
+        atributo:
+          l.recompensa_atributo_chave && l.recompensa_atributo_ganho != null
+            ? { chave: l.recompensa_atributo_chave, ganho: l.recompensa_atributo_ganho }
+            : undefined,
+      },
+      criadoPor: l.criado_por,
+      criadoEm: l.criado_em,
+    };
+  }
+
+  async listarEventosGlobais(): Promise<EventoGlobal[]> {
+    const { data, error } = await this.db
+      .from("eventos_globais")
+      .select("*")
+      .order("inicio_em", { ascending: true });
+    if (error) throw new Error(`listarEventosGlobais: ${error.message}`);
+    return ((data ?? []) as Array<Parameters<typeof this.paraEventoGlobal>[0]>).map(
+      (l) => this.paraEventoGlobal(l),
+    );
+  }
+
+  async criarEventoGlobal(
+    evento: Omit<EventoGlobal, "criadoEm">,
+  ): Promise<EventoGlobal> {
+    const { data, error } = await this.db
+      .rpc("criar_evento_global", {
+        p_id: evento.id,
+        p_titulo: evento.titulo,
+        p_descricao: evento.descricao,
+        p_objetivo: evento.objetivo,
+        p_meta: evento.meta,
+        p_inicio_em: evento.inicioEm,
+        p_fim_em: evento.fimEm,
+        p_recompensa_xp: evento.recompensa.xp,
+        p_recompensa_moeda: evento.recompensa.moeda,
+        p_criado_por: evento.criadoPor,
+        p_atributo_chave: evento.recompensa.atributo?.chave ?? null,
+        p_atributo_ganho: evento.recompensa.atributo?.ganho ?? null,
+      })
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "criar_evento_global: sem retorno");
+    }
+    return this.paraEventoGlobal(data as Parameters<typeof this.paraEventoGlobal>[0]);
+  }
+
+  private paraProgresso(l: {
+    evento_id: string;
+    tenant_id: number;
+    contagem: number;
+    completo_em: string | null;
+  }): ProgressoEventoGlobal {
+    return {
+      eventoId: l.evento_id,
+      tenantId: String(l.tenant_id),
+      contagem: l.contagem,
+      completoEm: l.completo_em,
+    };
+  }
+
+  async listarProgressoEventos(tenantId: string): Promise<ProgressoEventoGlobal[]> {
+    const { data, error } = await this.db
+      .from("progresso_eventos_globais")
+      .select("*")
+      .eq("tenant_id", Number(tenantId));
+    if (error) throw new Error(`listarProgressoEventos: ${error.message}`);
+    return ((data ?? []) as Array<Parameters<typeof this.paraProgresso>[0]>).map((l) =>
+      this.paraProgresso(l),
+    );
+  }
+
+  /** Atômica via RPC `incrementar_progresso_eventos` — soma 1 em todo
+   *  evento ativo com esse objetivo e, na primeira vez que bate a meta,
+   *  aplica a recompensa na mesma transação (ver `0013_eventos_globais.sql`). */
+  async incrementarProgressoEventos(
+    tenantId: string,
+    eventoKey: string,
+  ): Promise<ProgressoEventoGlobal[]> {
+    const { data, error } = await this.db.rpc("incrementar_progresso_eventos", {
+      p_tenant_id: Number(tenantId),
+      p_evento_key: eventoKey,
+    });
+    if (error) {
+      throw new Error(error.message ?? "incrementar_progresso_eventos: erro");
+    }
+    return ((data ?? []) as Array<Parameters<typeof this.paraProgresso>[0]>).map((l) =>
+      this.paraProgresso(l),
     );
   }
 }

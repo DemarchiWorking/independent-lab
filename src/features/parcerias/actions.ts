@@ -61,6 +61,11 @@ export async function desbloquearNo(noId: string): Promise<ResultadoParceria> {
     return { ok: false, erro: traduzirErro(e) };
   }
 
+  // Eventos globais (Épico 11): "servico_desbloqueado" não passa por
+  // `recompensar()` (ver comentário acima), então conta aqui — mesma regra,
+  // depois da recompensa base já aplicada com sucesso.
+  await repo.incrementarProgressoEventos(sessao.tenantId, "servico_desbloqueado");
+
   revalidatePath("/hub");
   revalidatePath("/painel");
   return { ok: true };

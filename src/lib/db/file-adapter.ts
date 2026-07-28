@@ -5,6 +5,7 @@ import { CIDADES_REGIAO } from "@/lib/regiao";
 import { nivelPorXp, NIVEL_MAX } from "@/lib/gamificacao";
 import { aplicarGanhos, atributosFaltantes } from "@/lib/atributos";
 import { alocacoesAtivasEm, disponibilidadeDe } from "@/lib/disponibilidade";
+import { eventoAtivoEm } from "@/lib/eventos-globais";
 import type { AtributoChave } from "@tokens";
 import type { DeltaProgresso, GameRepository, NovoNegocio } from "./repository";
 import type {
@@ -13,6 +14,7 @@ import type {
   CapituloEntregue,
   Cidade,
   Endereco,
+  EventoGlobal,
   FuncionarioContratado,
   ItemMobiliaColocado,
   Mapa,
@@ -22,6 +24,7 @@ import type {
   NoDesbloqueado,
   Oferta,
   Onboarding,
+  ProgressoEventoGlobal,
   Quarteirao,
   Sede,
   TrabalhoAceito,
@@ -36,6 +39,8 @@ import type {
 const ROOT = path.join(process.cwd(), "data");
 const MAPA = path.join(ROOT, "geografia", "mapa.json");
 const INDEX_MEMBROS = path.join(ROOT, "index", "membros.json");
+/** Global (não por tenant) — mesmo "cartaz" para todo mundo, ver MAPA acima. */
+const EVENTOS_GLOBAIS = path.join(ROOT, "eventos-globais.json");
 export const LOTES_POR_QUARTEIRAO = 8;
 
 /** Cidades do ICP primário — fonte única em lib/regiao.ts (espelhada em
@@ -628,5 +633,70 @@ export class FileRepository implements GameRepository {
     item.slot = novoSlot;
     await escreverJson(arquivo, atuais);
     return item;
+  }
+
+  async listarEventosGlobais(): Promise<EventoGlobal[]> {
+    return lerJson<EventoGlobal[]>(EVENTOS_GLOBAIS, []);
+  }
+
+  async criarEventoGlobal(
+    evento: Omit<EventoGlobal, "criadoEm">,
+  ): Promise<EventoGlobal> {
+    const atuais = await lerJson<EventoGlobal[]>(EVENTOS_GLOBAIS, []);
+    const novo: EventoGlobal = { ...evento, criadoEm: new Date().toISOString() };
+    atuais.push(novo);
+    await escreverJson(EVENTOS_GLOBAIS, atuais);
+    return novo;
+  }
+
+  async listarProgressoEventos(tenantId: string): Promise<ProgressoEventoGlobal[]> {
+    return lerJson<ProgressoEventoGlobal[]>(
+      path.join(tenantDir(tenantId), "progresso-eventos.json"),
+      [],
+    );
+  }
+
+  async incrementarProgressoEventos(
+    tenantId: string,
+    eventoKey: string,
+  ): Promise<ProgressoEventoGlobal[]> {
+    const agora = new Date().toISOString();
+    const eventos = await this.listarEventosGlobais();
+    const relevantes = eventos.filter(
+      (e) => e.objetivo === eventoKey && eventoAtivoEm(e, agora),
+    );
+    if (relevantes.length === 0) return this.listarProgressoEventos(tenantId);
+
+    const arquivo = path.join(tenantDir(tenantId), "progresso-eventos.json");
+    const progresso = await lerJson<ProgressoEventoGlobal[]>(arquivo, []);
+    let negocio: Negocio | null = null;
+
+    for (const evento of relevantes) {
+      let linha = progresso.find((p) => p.eventoId === evento.id);
+      if (!linha) {
+        linha = { eventoId: evento.id, tenantId, contagem: 0, completoEm: null };
+        progresso.push(linha);
+      }
+      linha.contagem += 1;
+
+      if (linha.contagem >= evento.meta && linha.completoEm === null) {
+        linha.completoEm = agora;
+        negocio ??= await this.lerNegocio(tenantId);
+        if (!negocio) throw new Error(`Negócio ${tenantId} não encontrado`);
+        negocio.xp += evento.recompensa.xp;
+        negocio.moedaVirtual += evento.recompensa.moeda;
+        negocio.nivel = Math.min(NIVEL_MAX, nivelPorXp(negocio.xp));
+        if (evento.recompensa.atributo) {
+          const { chave, ganho } = evento.recompensa.atributo;
+          negocio.atributos = aplicarGanhos(negocio.atributos, { [chave]: ganho });
+        }
+      }
+    }
+
+    await escreverJson(arquivo, progresso);
+    if (negocio) {
+      await escreverJson(path.join(tenantDir(tenantId), "negocio.json"), negocio);
+    }
+    return progresso;
   }
 }

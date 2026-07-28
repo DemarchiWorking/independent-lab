@@ -111,6 +111,13 @@ export async function recompensar(
     atributos: atributoEvento ? { [atributoEvento.chave]: atributoEvento.ganho } : undefined,
   });
 
+  // Eventos globais (Épico 11): conta essa ação para qualquer campanha ativa
+  // com esse objetivo. DEPOIS da recompensa base já aplicada com sucesso —
+  // nunca antes (evita contar progresso de uma ação que falhou). No-op se
+  // não houver campanha ativa com esse objetivo (a maioria das ações não
+  // está dentro de nenhuma).
+  await repo.incrementarProgressoEventos(sessao.tenantId, evento);
+
   revalidatePath("/painel");
   revalidatePath("/hub");
 

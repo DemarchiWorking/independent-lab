@@ -3,6 +3,7 @@ import type {
   Alocacao,
   CapituloEntregue,
   Endereco,
+  EventoGlobal,
   FuncionarioContratado,
   ItemMobiliaColocado,
   Mapa,
@@ -11,6 +12,7 @@ import type {
   NoDesbloqueado,
   Oferta,
   Onboarding,
+  ProgressoEventoGlobal,
   Sede,
   TrabalhoAceito,
   Usuario,
@@ -177,6 +179,29 @@ export interface GameRepository {
     itemColocadoId: string,
     novoSlot: number,
   ): Promise<ItemMobiliaColocado>;
+
+  /** ---- Eventos globais (Épico 11, ver docs/BACKLOG-PRODUTO.md) ---- */
+  /** Todos os eventos, de qualquer status — o chamador filtra por
+   *  agendado/ativo/encerrado (relógio lazy, `features/eventos-globais/motor.ts`).
+   *  Não é por tenant: é o mesmo "cartaz" para todo mundo. */
+  listarEventosGlobais(): Promise<EventoGlobal[]>;
+  /** Cria o evento. Sem validação de negócio aqui — quem chama (a Server
+   *  Action) já checou `souAdmin` e `janelaValida`; o `check` da migration é
+   *  a garantia real (fim > início, meta > 0). */
+  criarEventoGlobal(evento: Omit<EventoGlobal, "criadoEm">): Promise<EventoGlobal>;
+  listarProgressoEventos(tenantId: string): Promise<ProgressoEventoGlobal[]>;
+  /**
+   * Incrementa em 1 o progresso do tenant em TODO evento ativo cujo
+   * `objetivo` bate com `eventoKey` — ATÔMICO por evento: soma a contagem e,
+   * na primeira vez que bate a meta, aplica XP/moeda/atributo na MESMA
+   * transação (mesmo padrão de `desbloquearNo`/`comprarMobilia`). Nunca
+   * lança se não houver evento ativo com esse objetivo — é um no-op válido,
+   * a maioria das ações do jogo não está dentro de nenhuma campanha.
+   */
+  incrementarProgressoEventos(
+    tenantId: string,
+    eventoKey: string,
+  ): Promise<ProgressoEventoGlobal[]>;
 }
 
 export interface DeltaProgresso {

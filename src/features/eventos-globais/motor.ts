@@ -1,17 +1,20 @@
+import { eventoAtivoEm } from "@/lib/eventos-globais";
 import type { EventoGlobal, ProgressoEventoGlobal, StatusEvento } from "./tipos";
 
 type Janela = Pick<EventoGlobal, "inicioEm" | "fimEm">;
 
 /** Deriva o status a partir da janela — nunca um campo gravado (relógio
- *  lazy, mesmo padrão de `features/historia/relogio.ts`). */
+ *  lazy, mesmo padrão de `features/historia/relogio.ts`). "Ativo" usa a
+ *  MESMA regra do adapter (`lib/eventos-globais.ts`), para a UI nunca
+ *  divergir de quando o progresso realmente incrementa. */
 export function statusDe(evento: Janela, agoraIso: string): StatusEvento {
   if (agoraIso < evento.inicioEm) return "agendado";
-  if (agoraIso > evento.fimEm) return "encerrado";
+  if (!eventoAtivoEm(evento, agoraIso)) return "encerrado";
   return "ativo";
 }
 
 export function estaAtivo(evento: Janela, agoraIso: string): boolean {
-  return statusDe(evento, agoraIso) === "ativo";
+  return eventoAtivoEm(evento, agoraIso);
 }
 
 /** Janela válida: início estritamente antes do fim. Checagem de UI do

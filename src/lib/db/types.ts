@@ -5,6 +5,7 @@
  */
 
 import type { Atributos } from "@/lib/atributos";
+import type { AtributoChave } from "@tokens";
 export type { Atributos, AtributoValor } from "@/lib/atributos";
 
 export type Segmento =
@@ -193,6 +194,42 @@ export interface TrabalhoAceito {
   tenantId: string;
   jobId: string;
   aceitoEm: string;
+}
+
+/**
+ * Campanha com prazo, criada por um admin, visível a todos os tenants
+ * (Épico 11 — Eventos Globais). `objetivo` é uma string livre por design —
+ * mesmo padrão de `jobId`/`noId`/`cargoId` nesta camada: o catálogo que dá
+ * significado a ela (`EventoKey` de `features/gamificacao/engine.ts`) é
+ * responsabilidade da action, não do repositório (`lib/` nunca importa de
+ * `features/`). Status (agendado/ativo/encerrado) nunca é gravado — é
+ * sempre derivado de `inicioEm`/`fimEm` comparado com "agora" (relógio
+ * lazy, ver `features/eventos-globais/motor.ts`). */
+export interface EventoGlobal {
+  id: string;
+  titulo: string;
+  descricao: string;
+  objetivo: string;
+  meta: number;
+  inicioEm: string;
+  fimEm: string;
+  recompensa: {
+    xp: number;
+    moeda: number;
+    atributo?: { chave: AtributoChave; ganho: number };
+  };
+  criadoPor: string;
+  criadoEm: string;
+}
+
+/** Progresso de UM tenant em UM evento global. Nasce só quando a primeira
+ *  ação relevante acontece dentro da janela — sem linha "zerada"
+ *  pré-criada para cada par tenant×evento. */
+export interface ProgressoEventoGlobal {
+  eventoId: string;
+  tenantId: string;
+  contagem: number;
+  completoEm: string | null;
 }
 
 /** Sessão autenticada. */
