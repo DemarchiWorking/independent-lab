@@ -9,6 +9,10 @@ export type CampoResposta = keyof Respostas;
 export interface Opcao {
   valor: string;
   rotulo: string;
+  /** opção travada (ex.: "Produto Marca Própria (importação)") — visível
+   *  como teaser, mas nunca selecionável nesta etapa; não precisa ser um
+   *  `Segmento` válido porque nunca chega a ser submetida. */
+  locked?: boolean;
 }
 
 export interface Pergunta {
@@ -31,14 +35,23 @@ export const perguntas: Pergunta[] = [
   {
     campo: "segmento",
     titulo: "Qual o seu segmento?",
+    // Nichos calibrados no ICP do labdatadev/Siga Pregão — empresas
+    // regionais que fornecem para o poder público via licitação.
     tipo: "escolha",
     opcoes: [
-      { valor: "imobiliaria", rotulo: "Imobiliária" },
-      { valor: "construtora", rotulo: "Construtora" },
-      { valor: "loteadora", rotulo: "Loteadora" },
-      { valor: "comercio", rotulo: "Comércio local" },
-      { valor: "servico", rotulo: "Prestador de serviço" },
+      { valor: "engenharia", rotulo: "Engenharia & Construção" },
+      { valor: "contabilidade", rotulo: "Contabilidade & Consultoria" },
+      { valor: "saude", rotulo: "Saúde & Equipamentos" },
+      { valor: "tecnologia", rotulo: "Tecnologia & TI" },
+      { valor: "alimentacao", rotulo: "Alimentação & Merenda Escolar" },
       { valor: "outro", rotulo: "Outro" },
+      { valor: "comercio", rotulo: "Loja Produto (estoque)" },
+      { valor: "servico", rotulo: "Prestador de Serviço" },
+      {
+        valor: "marca-propria-importacao",
+        rotulo: "Produto Marca Própria (importação)",
+        locked: true,
+      },
     ],
   },
   {

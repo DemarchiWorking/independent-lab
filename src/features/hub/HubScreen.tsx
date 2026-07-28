@@ -17,12 +17,20 @@ interface Room {
   segment: string;
   icon: IconName;
   color: string;
+  /** cliente-alvo ainda não ativado nesta região — visível, não clicável. */
+  locked?: boolean;
 }
 
+/** Sedes parceiras = clientes-alvo reais do labdatadev/Siga Pregão (empresas
+ *  regionais que fornecem para o poder público via licitação), não mais o
+ *  elenco fictício original de imobiliárias. */
 const rooms: Room[] = [
-  { id: "vale", name: "Imobiliária Vale", segment: "Imobiliária", icon: "briefcase", color: "bg-cat-social" },
-  { id: "norte", name: "Construtora Norte", segment: "Construtora", icon: "cube", color: "bg-cat-media" },
-  { id: "sol", name: "Loteadora Sol", segment: "Loteadora", icon: "globe", color: "bg-cat-growth" },
+  { id: "mercado-fiel", name: "Mercado Fiel", segment: "Comércio & Varejo", icon: "cube", color: "bg-orange" },
+  { id: "contabilizy", name: "Contabilizy", segment: "Contabilidade & Consultoria", icon: "chart", color: "bg-cat-media" },
+  { id: "radiz", name: "Radiz Engenharia", segment: "Engenharia & Construção", icon: "wrench", color: "bg-cat-social" },
+  { id: "vitalys", name: "Vitalys Saúde", segment: "Saúde & Equipamentos", icon: "users", color: "bg-cat-ads" },
+  { id: "tecnorte", name: "TecNorte TI", segment: "Tecnologia & TI", icon: "monitor", color: "bg-teal", locked: true },
+  { id: "sabor-cia", name: "Sabor & Cia Alimentos", segment: "Alimentação & Merenda Escolar", icon: "grid", color: "bg-cat-growth", locked: true },
 ];
 
 /** Tela inicial do hub: salas de parceiros clicáveis (pixel/iso) + missão atual
@@ -62,21 +70,35 @@ export function HubScreen({
           <motion.button
             key={room.id}
             variants={listItem}
-            {...pressable}
-            onClick={() => setOpen(true)}
-            className="w-28 text-center"
+            {...(room.locked ? {} : pressable)}
+            onClick={room.locked ? undefined : () => setOpen(true)}
+            aria-disabled={room.locked}
+            className={cn("w-28 text-center", room.locked && "cursor-not-allowed")}
           >
             <span
               className={cn(
-                "mx-auto mb-2 grid h-20 w-24 place-items-center rounded-md text-ink shadow-hard-lg",
-                room.color,
+                "relative mx-auto mb-2 grid h-20 w-24 place-items-center rounded-md text-ink shadow-hard-lg",
+                room.locked ? "bg-cat-locked text-white" : room.color,
+                room.locked && "opacity-70",
               )}
             >
-              <Icon name={room.icon} size={30} />
+              <Icon name={room.locked ? "lock" : room.icon} size={30} />
             </span>
-            <b className="block text-xs text-white drop-shadow">{room.name}</b>
-            <small className="font-pixel text-[8px] uppercase text-white/80">
-              {room.segment}
+            <b
+              className={cn(
+                "block text-xs drop-shadow",
+                room.locked ? "text-white/70" : "text-white",
+              )}
+            >
+              {room.name}
+            </b>
+            <small
+              className={cn(
+                "font-pixel text-[8px] uppercase",
+                room.locked ? "text-white/50" : "text-white/80",
+              )}
+            >
+              {room.locked ? "Em breve" : room.segment}
             </small>
           </motion.button>
         ))}

@@ -128,9 +128,11 @@ function atributosIniciais(r: Respostas): Atributos {
 export function calcular(r: Respostas): Resultado {
   let score = 0;
 
-  // fit de segmento — ICP primário do labdatadev é imobiliária
-  if (r.segmento === "imobiliaria") score += 25;
-  else if (r.segmento === "construtora" || r.segmento === "loteadora")
+  // fit de segmento — ICP primário do labdatadev/Siga Pregão é engenharia e
+  // construção (maiores contratos públicos via licitação); alimentação e
+  // saúde são o segundo grupo mais comum em editais municipais/estaduais
+  if (r.segmento === "engenharia") score += 25;
+  else if (r.segmento === "alimentacao" || r.segmento === "saude")
     score += 18;
   else score += 8;
 
@@ -146,7 +148,7 @@ export function calcular(r: Respostas): Resultado {
   // degrau-alvo com ajustes de fit
   let alvo = DEGRAU_POR_INVESTIMENTO[r.investimento];
   const porteBom = r.equipe === "6-15" || r.equipe === "16-30";
-  if (r.segmento === "imobiliaria" && porteBom) alvo += 1;
+  if (r.segmento === "engenharia" && porteBom) alvo += 1;
   if (r.presencaDigital === "nada") alvo -= 1; // precisa de base antes
   alvo = Math.max(1, Math.min(5, alvo));
 

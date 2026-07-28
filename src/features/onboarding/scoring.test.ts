@@ -5,7 +5,7 @@ import type { Respostas } from "@/lib/db/types";
 function respostas(over: Partial<Respostas> = {}): Respostas {
   return {
     nomeNegocio: "Teste",
-    segmento: "imobiliaria",
+    segmento: "engenharia",
     cidade: "Vassouras",
     bairro: "Centro",
     equipe: "6-15",
@@ -33,7 +33,7 @@ describe("scoring do onboarding", () => {
   it("ICP ideal pontua alto e mira degrau alto", () => {
     const r = calcular(respostas());
     expect(r.scoreFit).toBeGreaterThanOrEqual(90);
-    // imobiliária + equipe 6-15 dá +1 no degrau-alvo (base 3 → 4)
+    // engenharia + equipe 6-15 dá +1 no degrau-alvo (base 3 → 4)
     expect(r.degrauAlvo).toBe(4);
     expect(r.degrauAtual).toBe(1); // nunca pula degraus
   });

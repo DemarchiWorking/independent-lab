@@ -103,6 +103,24 @@ export function Wizard() {
                   ) : (
                     <div className="grid gap-2 sm:grid-cols-2">
                       {pergunta.opcoes?.map((op) => {
+                        if (op.locked) {
+                          // Teaser de nicho futuro (ex.: "Produto Marca
+                          // Própria (importação)") — nunca selecionável
+                          // aqui, só sinaliza que existe mais por vir.
+                          return (
+                            <div
+                              key={op.valor}
+                              aria-disabled="true"
+                              className="flex cursor-not-allowed items-center gap-1.5 rounded-md border-2 border-transparent bg-[#f1f4f9] px-3 py-2.5 text-left text-sm font-bold text-muted opacity-60"
+                            >
+                              <Icon name="lock" size={14} />
+                              <span className="flex-1">{op.rotulo}</span>
+                              <span className="font-pixel text-[8px] uppercase tracking-wide">
+                                Em breve
+                              </span>
+                            </div>
+                          );
+                        }
                         const ativo =
                           pergunta.tipo === "multipla"
                             ? Array.isArray(valorAtual) &&

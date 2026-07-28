@@ -200,11 +200,11 @@ describe("motor — seleção de capítulos", () => {
   });
 
   it("respeita filtro de segmento", () => {
-    const soImob: Capitulo[] = [
-      { ...cat[1], id: "so-imob", segmentos: ["imobiliaria"] },
+    const soEngenharia: Capitulo[] = [
+      { ...cat[1], id: "so-engenharia", segmentos: ["engenharia"] },
     ];
-    expect(capitulosPendentes(soImob, estado({ segmento: "comercio" }), dia(0))).toHaveLength(0);
-    expect(capitulosPendentes(soImob, estado({ segmento: "imobiliaria" }), dia(0))).toHaveLength(1);
+    expect(capitulosPendentes(soEngenharia, estado({ segmento: "comercio" }), dia(0))).toHaveLength(0);
+    expect(capitulosPendentes(soEngenharia, estado({ segmento: "engenharia" }), dia(0))).toHaveLength(1);
   });
 
   it("é determinístico — mesma entrada, mesma saída", () => {

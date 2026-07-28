@@ -8,10 +8,17 @@ import type { Atributos } from "@/lib/atributos";
 import type { AtributoChave } from "@tokens";
 export type { Atributos, AtributoValor } from "@/lib/atributos";
 
+/**
+ * Nichos calibrados no perfil de cliente do labdatadev/Siga Pregão
+ * (empresas regionais que fornecem para o poder público via licitação) —
+ * substituiu o conjunto original focado em imobiliárias.
+ */
 export type Segmento =
-  | "imobiliaria"
-  | "construtora"
-  | "loteadora"
+  | "engenharia"
+  | "contabilidade"
+  | "saude"
+  | "tecnologia"
+  | "alimentacao"
   | "comercio"
   | "servico"
   | "outro";

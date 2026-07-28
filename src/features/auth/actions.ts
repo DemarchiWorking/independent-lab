@@ -46,9 +46,11 @@ async function darMesaDeBoasVindas(
 }
 
 const SEGMENTOS: Segmento[] = [
-  "imobiliaria",
-  "construtora",
-  "loteadora",
+  "engenharia",
+  "contabilidade",
+  "saude",
+  "tecnologia",
+  "alimentacao",
   "comercio",
   "servico",
   "outro",
