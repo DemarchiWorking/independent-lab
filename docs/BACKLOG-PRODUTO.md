@@ -44,6 +44,7 @@ RLS forçada), isso está explícito para o Claude Code reusar, não reinventar.
 | 8 | [Camada Educacional](#épico-8--camada-educacional-p1-p2) | Diferencial para o pitch do Sebrae — "ensino", não só "jogo" |
 | 9 | [Deploy Real + Segurança em Produção](#épico-9--deploy-real--segurança-em-produção-p0) | Sem isso nada dos épicos acima chega a usuário real |
 | 10 | [Pitch Readiness](#épico-10--pitch-readiness-sebrae-p0) | Checklist final antes da apresentação |
+| 11 | [Eventos Globais — Gamificação em Tempo Real](#épico-11--eventos-globais--gamificação-em-tempo-real-p1) | Campanhas com prazo que todos os jogadores veem ao mesmo tempo — dá "pulso" de comunidade ao ecossistema |
 
 ---
 
@@ -1153,6 +1154,138 @@ e a visão de bairro → cidade → estado.
 **Boas práticas:** honestidade sobre o estágio é vantagem competitiva num
 pitch — bancas experientes detectam exagero, e um MVP honesto com visão
 clara pontua mais que um protótipo vendido como produto maduro.
+
+---
+
+## Épico 11 — Eventos Globais / Gamificação em Tempo Real (P1)
+
+> Campanhas com prazo definido, criadas pelo fundador (admin), visíveis a
+> **todos os negócios ao mesmo tempo** — "Semana da Automação: 3 serviços
+> vendidos ganham bônus". Reusa o catálogo `EventoKey` de
+> `features/gamificacao/engine.ts` como `objetivo`: contar "quantos
+> `servico_contratado` esse tenant gerou dentro da janela" é o que
+> `recompensar()` já sabe fazer, não uma taxonomia nova. Decisão de
+> arquitetura (perguntada ao usuário, não assumida): criação via **tela de
+> admin no app** (não catálogo em código) e visibilidade via **relógio lazy**
+> (não WebSocket/SSE) — sem infraestrutura de tempo real nova, mesmo padrão
+> já usado no motor de história.
+
+### GH-EVT-01 — Modelo de dados + regras puras ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | P |
+| Depende de | — |
+
+**Descrição:** Tipos (`EventoGlobal`, `ProgressoEventoGlobal`), status
+derivado da janela (`agendado`/`ativo`/`encerrado`, nunca gravado) e guarda
+anti-farm, testados isoladamente antes de qualquer persistência — mesma
+ordem usada para o motor de história.
+
+**Critérios de aceitação:**
+- [x] `features/eventos-globais/tipos.ts` — `EventoGlobal.objetivo:
+      EventoKey` (reusa o catálogo existente, não inventa um novo)
+- [x] `features/eventos-globais/motor.ts` — `statusDe`, `progressoPercentual`
+      (nunca passa de 100), `atingiuMeta`, `janelaValida`, `eventosVisiveis`
+      (esconde encerrados) — puro, 19 testes
+- [x] `features/eventos-globais/guarda.ts` — `jaRecompensado` (mesma classe
+      de `jaAceitouTrabalho`/`jaDesbloqueouNo`)
+- [x] `lib/admin.ts` — `souAdmin(email)`, allowlist via
+      `GAMEHUB_ADMIN_EMAILS` (MVP sem tabela de roles)
+
+**Regras de segurança:** nenhuma ainda — camada pura, sem I/O.
+
+---
+
+### GH-EVT-02 — Persistência (tipos, repository, adapters, migration)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | M |
+| Depende de | `GH-EVT-01`, e **espera `GH-ATR-03` commitar** (mesmos arquivos: `repository.ts`, `file-adapter.ts`, `supabase-adapter.ts`, `gamificacao/actions.ts`, `parcerias/actions.ts` — sessão concorrente ativa neles em 2026-07-27) |
+
+**Descrição:** Ligar o modelo de dados à persistência real e ao dispatcher
+de gamificação.
+
+**Critérios de aceitação:**
+- [x] Migration `0013_eventos_globais.sql` — tabelas `eventos_globais`
+      (leitura pública, mesmo padrão de `negocios`/`ofertas`) e
+      `progresso_eventos_globais` (RLS por `tenant_atual()`); RPCs
+      `criar_evento_global` e `incrementar_progresso_eventos` (atômica: soma
+      1, e se bater a meta pela primeira vez aplica XP/moeda/atributo na
+      MESMA transação — mesmo padrão de `desbloquear_no`); validada via
+      `pg-query-emscripten` (parse + corpo plpgsql das duas funções OK)
+- [ ] `GameRepository` ganha `listarEventosGlobais`, `criarEventoGlobal`,
+      `listarProgressoEventos`, `incrementarProgressoEventos` — implementar
+      nos dois adapters
+- [ ] `incrementarProgressoEventos` chamado a partir de
+      `recompensar()` (`gamificacao/actions.ts`) e de `desbloquearNo()`
+      (`parcerias/actions.ts`, para o objetivo `servico_desbloqueado`, que
+      não passa por `recompensar()` desde `GH-ARV-01`) — depois que ambos
+      arquivos estiverem livres da edição concorrente
+
+**Regras de segurança:** escrita só via RPC (`service_role`), nunca insert
+direto do client — mesmo padrão de `comprarMobilia`/`desbloquearNo`.
+
+**Boas práticas:** ao integrar, chamar `incrementarProgressoEventos` DEPOIS
+que a recompensa base do evento já foi aplicada com sucesso — nunca antes
+(evita contar progresso de uma ação que falhou).
+
+---
+
+### GH-EVT-03 — Server actions (admin cria, jogador lê)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | P–M |
+| Depende de | `GH-EVT-02` |
+
+**Descrição:** `criarEventoGlobal(input)` — gated por `souAdmin(sessao.email)`,
+valida `janelaValida` antes de chamar o repositório. `listarEventosAtivos()`
+— sem gate (qualquer jogador logado), filtra com `eventosVisiveis` +
+`agoraGlobal()` de `features/historia/relogio.ts`.
+
+**Critérios de aceitação:**
+- [ ] Tentar criar evento sem ser admin retorna erro do servidor, nunca só
+      esconde o botão na UI
+- [ ] Datas inválidas (fim ≤ início) rejeitadas no servidor, não só no
+      `<input type="datetime-local">`
+- [ ] `listarEventosAtivos()` retorna também o progresso do tenant logado em
+      cada evento (uma chamada, não N+1)
+
+**Regras de segurança:** o e-mail usado no `souAdmin` vem da `Sessao`
+assinada (`lerSessao()`), nunca de um campo enviado pelo client.
+
+---
+
+### GH-EVT-04 — UI (tela de admin + banner do jogador)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | M |
+| Depende de | `GH-EVT-03` |
+
+**Descrição:** `/admin/eventos` — formulário com os parâmetros do evento
+(título, descrição, objetivo, meta, início/fim, recompensa). Tela do
+jogador — nova entrada "Eventos" no menu lateral (`GameShell.tsx`), lista
+de eventos ativos/agendados com barra de progresso (`progressoPercentual`).
+
+**Critérios de aceitação:**
+- [ ] `/admin/eventos` inacessível (redirect ou mensagem neutra, não erro
+      técnico) para quem não está na allowlist
+- [ ] Evento criado aparece para outro tenant (não o admin) assim que a
+      janela abre — provado recarregando a página, sem WebSocket
+- [ ] Barra de progresso reflete `contagem/meta` do servidor, nunca
+      `useState` local
+- [ ] Toast/feedback ao bater a meta (reusa `RecompensaContext` existente)
+
+**Boas práticas:** reusar `ActionButton`/`HexTile`-style dos componentes já
+existentes em `components/ui/` — não criar estilo avulso (regra não
+negociável do `AGENTS.md`).
 
 ---
 
