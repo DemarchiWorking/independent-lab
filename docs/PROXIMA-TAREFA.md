@@ -1,14 +1,14 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
-> Atualizado: 2026-07-28, commit `8700f22`. Se `git log -1` mostrar outro
-> `HEAD`, confira `git status` antes de confiar neste arquivo — pode haver
-> sessão concorrente em andamento (aconteceu duas vezes nesta pasta; ver
-> [[concurrent-session-protocol]] na memória).
+> Atualizado: 2026-07-28 (logo após fechar `GH-ARV-02`). Sempre confira
+> `git log -1` antes de confiar neste arquivo — sessões concorrentes já
+> mexeram nesta pasta mais de uma vez sem atualizar este doc (ver nota em
+> `ESTADO-DO-PROJETO.md` §3.1).
 
 ## Estado
 
 MVP para pitch Sebrae. Commitado e com `npm run typecheck && npm test &&
-npm run build` verdes:
+npm run build` verdes (190 testes):
 
 - Motor de história (`features/historia/`), guardas anti-farm de
   marketplace/parcerias (GH-FDN-01/02), disponibilidade de funcionário-IA
@@ -20,13 +20,26 @@ npm run build` verdes:
   `recompensar()`/`desbloquearNo()`. Validado end-to-end via rota
   temporária: admin cria evento → jogador aceita jobs → progresso
   incrementa → recompensa aplicada uma única vez ao bater a meta.
+- `GH-ARV-02` — gating de 3 estados na árvore (disponível/comprável/
+  inalcançável). Reaproveitou `atributosFaltantes` de `GH-ATR-03` — a
+  checagem virou função pura `noInalcancavel()` em `parcerias/guarda.ts`
+  (testada), consumida tanto no grid (`HexTile` ganhou badge dimmed + ícone
+  "close", nunca só cor) quanto no painel de detalhe. "Bloqueado" continua
+  estático no catálogo (só `infra`) — não existe dependência pai→filho
+  entre nós hoje, então generalizar isso ficou fora de escopo (YAGNI).
 
-## Próxima tarefa: `GH-ARV-02` ou `GH-EQP-02`
+## Próxima tarefa: `GH-EQP-02`
 
-Os dois únicos P0 restantes da Trilha A, ambos desbloqueados agora que
-`GH-ATR-03` está commitado. Cards completos em `docs/BACKLOG-PRODUTO.md`.
-Não há critério óbvio de qual ir primeiro — checar esforço/dependência de
-cada um no backlog antes de escolher.
+Único P0 restante da Trilha A depois de `GH-ARV-02`. Fluxo em 2 etapas:
+"aceitar job" abre um modal de seleção de executor (Funcionário de IA ou
+humano) com soma dinâmica de atributos vs. requisito, réplica da tela
+`Selecionar funcionário` do Startup Panic. Card completo em
+`docs/BACKLOG-PRODUTO.md` — depende de `GH-EQP-01` (disponibilidade de
+recurso, já pronto) e `GH-ATR-03` (requisitos, já pronto). Esforço maior que
+`GH-ARV-02`: precisa de modal novo, checagem client-side de soma dinâmica
+E revalidação server-side antes de persistir (nunca confiar no total
+calculado no client — mesmo princípio de toda regra de negócio deste
+projeto).
 
 ## Follow-up de baixo esforço (não bloqueia nada)
 

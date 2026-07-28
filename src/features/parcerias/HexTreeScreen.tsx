@@ -6,10 +6,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { listContainer, springSnappy } from "@/lib/motion";
 import { HexTile } from "@/components/ui/HexTile";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { Icon } from "@/components/ui/Icon";
 import { RequisitoAtributos } from "@/components/ui/RequisitoAtributos";
 import { atributosFaltantes, type Atributos } from "@/lib/atributos";
 import { desbloquearNo } from "./actions";
 import { hexNodes } from "./data";
+import { noInalcancavel } from "./guarda";
 
 const legend = [
   { c: "bg-cat-social", label: "Social/Web" },
@@ -41,6 +43,10 @@ export function HexTreeScreen({
   const selected = hexNodes.find((n) => n.id === selectedId) ?? hexNodes[0];
   const jaDesbloqueado = nosDesbloqueados.includes(selected.id);
   const caro = moedaVirtual < selected.custo;
+  // `semRequisito` (botão/painel) e `noInalcancavel` (grid, GH-ARV-02) usam a
+  // MESMA comparação — só a segunda também exclui `locked`/já desbloqueado,
+  // que aqui já não fazem sentido pedir de novo (o botão trata esses casos
+  // com precedência própria, ver abaixo).
   const faltantes = atributos ? atributosFaltantes(atributos, selected.requisitos) : [];
   const semRequisito = faltantes.length > 0;
 
@@ -62,18 +68,22 @@ export function HexTreeScreen({
           animate="enter"
           className="flex flex-wrap gap-3"
         >
-          {hexNodes.map((node) => (
-            <HexTile
-              key={node.id}
-              label={node.label}
-              icon={node.icon}
-              category={node.category}
-              score={node.score}
-              locked={node.locked}
-              selected={node.id === selectedId}
-              onClick={() => setSelectedId(node.id)}
-            />
-          ))}
+          {hexNodes.map((node) => {
+            const desbloqueado = nosDesbloqueados.includes(node.id);
+            return (
+              <HexTile
+                key={node.id}
+                label={node.label}
+                icon={node.icon}
+                category={node.category}
+                score={node.score}
+                locked={node.locked}
+                inalcancavel={noInalcancavel(node, desbloqueado, atributos)}
+                selected={node.id === selectedId}
+                onClick={() => setSelectedId(node.id)}
+              />
+            );
+          })}
         </motion.div>
 
         <div className="mt-4 flex flex-wrap gap-3 text-[11px] text-muted">
@@ -83,6 +93,15 @@ export function HexTreeScreen({
               {l.label}
             </span>
           ))}
+          {/* GH-ARV-02: mesma linguagem visual do badge no HexTile e dos
+              ícones em RequisitoAtributos — "close" sempre significa
+              requisito não atendido, nunca só cor. */}
+          <span className="flex items-center gap-1.5">
+            <span className="grid h-2.5 w-2.5 place-items-center rounded-pill bg-coral-dark">
+              <Icon name="close" size={7} className="text-white" />
+            </span>
+            Inalcançável (requisito)
+          </span>
         </div>
       </div>
 

@@ -399,7 +399,7 @@ ouro do projeto).
 
 ---
 
-### GH-ARV-02 — Gating em 3 níveis (disponível / comprável / bloqueado)
+### GH-ARV-02 — Gating em 3 níveis (disponível / comprável / bloqueado) ✅
 
 | Campo | Valor |
 |---|---|
@@ -414,8 +414,18 @@ terceiro estado observado no Startup Panic: nó visível mas **inalcançável**
 não ter desbloqueado o pai".
 
 **Critérios de aceitação:**
-- [ ] 3 estados visualmente distintos: disponível, comprável, inalcançável
-- [ ] Nó inalcançável mostra o motivo (qual atributo falta e quanto)
+- [x] 3 estados visualmente distintos: disponível, comprável, inalcançável
+      (`HexTile.tsx` — hexágono dimmed + badge coral com ícone "close",
+      nunca só cor; legenda do grid ganhou a entrada correspondente).
+      "Bloqueado" continua sendo condição estrutural estática do catálogo
+      (hoje só `infra`) — não havia dependência pai→filho entre nós para
+      generalizar, então não foi criada (YAGNI; documentado como decisão em
+      `docs/PROXIMA-TAREFA.md` antes deste card)
+- [x] Nó inalcançável mostra o motivo (qual atributo falta e quanto) — já
+      resolvido pelo `RequisitoAtributos.tsx` de `GH-ATR-03` no painel de
+      detalhe; este card só precisou refletir o mesmo cálculo no grid
+      (função pura `noInalcancavel()` em `features/parcerias/guarda.ts`,
+      testada isoladamente)
 
 **Regras de segurança:** nenhuma nova (reusa validação de `GH-ATR-03`).
 
