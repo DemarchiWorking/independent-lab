@@ -9,6 +9,7 @@ import type {
   Alocacao,
   BairroResumo,
   CapituloEntregue,
+  ConviteResgatado,
   EscopoMapa,
   EventoGlobal,
   FuncionarioContratado,
@@ -507,6 +508,64 @@ export class SupabaseRepository implements GameRepository {
     return this.paraLicao(
       data as { id: number; tenant_id: number; licao_id: string; concluida_em: string },
     );
+  }
+
+  async listarConvitesResgatados(tenantIdConvidante: string): Promise<ConviteResgatado[]> {
+    const { data, error } = await this.db
+      .from("convites_resgatados")
+      .select("*")
+      .eq("tenant_id_convidante", Number(tenantIdConvidante))
+      .order("resgatado_em", { ascending: false });
+    if (error) throw new Error(`listarConvitesResgatados: ${error.message}`);
+    return ((data ?? []) as Array<{
+      id: number;
+      tenant_id_convidante: number;
+      tenant_id_convidado: number;
+      resgatado_em: string;
+    }>).map((l) => ({
+      id: String(l.id),
+      tenantIdConvidante: String(l.tenant_id_convidante),
+      tenantIdConvidado: String(l.tenant_id_convidado),
+      resgatadoEm: l.resgatado_em,
+    }));
+  }
+
+  /** Atômica via RPC `resgatar_convite` (`0021_convites.sql`) — aplica a
+   *  recompensa em ambos os negócios e registra o resgate na mesma
+   *  transação. */
+  async resgatarConvite(
+    tenantIdConvidante: string,
+    tenantIdConvidado: string,
+    xpConvidante: number,
+    moedaConvidante: number,
+    xpConvidado: number,
+    moedaConvidado: number,
+  ): Promise<ConviteResgatado> {
+    const { data, error } = await this.db
+      .rpc("resgatar_convite", {
+        p_tenant_id_convidante: Number(tenantIdConvidante),
+        p_tenant_id_convidado: Number(tenantIdConvidado),
+        p_xp_convidante: xpConvidante,
+        p_moeda_convidante: moedaConvidante,
+        p_xp_convidado: xpConvidado,
+        p_moeda_convidado: moedaConvidado,
+      })
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "resgatar_convite: sem retorno");
+    }
+    const l = data as {
+      id: number;
+      tenant_id_convidante: number;
+      tenant_id_convidado: number;
+      resgatado_em: string;
+    };
+    return {
+      id: String(l.id),
+      tenantIdConvidante: String(l.tenant_id_convidante),
+      tenantIdConvidado: String(l.tenant_id_convidado),
+      resgatadoEm: l.resgatado_em,
+    };
   }
 
   async listarSolicitacoesContato(tenantId: string): Promise<SolicitacaoContato[]> {

@@ -1,78 +1,64 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
-> Atualizado: 2026-07-28, após o lote 2 (`GH-MAPA-01`, `GH-OPS-04`,
-> `GH-GROW-01`, `GH-EDU-01`, correção de constraint de `segmento`, e
-> deferimento documentado de `GH-GROW-05`). Sempre confira `git log -1`
-> antes de confiar neste arquivo. **Leia também
-> [`GAPS-DE-INTEGRACAO.md`](GAPS-DE-INTEGRACAO.md)** — registro vivo de
-> coisas que existem mas não estão costuradas a nada, ou que duas partes do
-> sistema não combinam; várias entradas lá afetam decisões de onde mexer.
+> Atualizado: 2026-07-28, após o lote 3 (`GH-GROW-02`, `GH-GROW-03`, e
+> fechamento de 2 gaps do lote 2 — Oferta sem produtor, contato sem inbox).
+> Sempre confira `git log -1` antes de confiar neste arquivo. **Leia também
+> [`GAPS-DE-INTEGRACAO.md`](GAPS-DE-INTEGRACAO.md)** — registro vivo,
+> atualizado a cada lote.
 
 ## Estado
 
-MVP para pitch Sebrae. Lote 2 fechou com `npm run typecheck && npm test &&
-npm run build` verdes.
+MVP para pitch Sebrae. Lote 3 fechou com `npm run typecheck && npm test &&
+npm run build` verdes (223 testes).
 
-**Achado e corrigido nesta sessão (bug real, não feature):** a constraint
-`segmento` do Supabase ainda aceitava só os valores antigos
-(`imobiliaria`/`construtora`/`loteadora`) — o tipo `Segmento` em TypeScript
-já tinha migrado para o ICP real (`engenharia`/`contabilidade`/`saude`/
-`tecnologia`/`alimentacao`/...) num commit anterior, mas nenhuma migration
-acompanhou. Cadastro real em modo `GAMEHUB_DB=supabase` quebraria para 5 dos
-8 segmentos. Corrigido em `0016_segmento_icp.sql`.
+- **Fechados 2 gaps do lote anterior:** `features/ofertas/` (dono publica
+  ofertas na própria vitrine — primeiro produtor de `Oferta`, que já tinha
+  persistência pronta sem UI) e seção "Mensagens recebidas" em `/painel`
+  (lê `listarSolicitacoesContato`, que também já existia sem tela).
+- **`GH-GROW-02` — feito.** Convite de vizinho com recompensa mútua: token
+  HMAC assinado (`features/growth/convite.ts`), resgatado dentro de
+  `cadastrar()` (nunca ao clicar/gerar o link), teto de 5 convites
+  recompensados por convidante a cada 30 dias (acima disso só o convidante
+  para de ganhar — o convidado sempre ganha), RPC atômica
+  `resgatar_convite` (migration `0021_convites.sql`). Link gerado e
+  copiado manualmente pelo dono em `/painel` (`ConvitePainel.tsx`) — app
+  nunca envia e-mail sozinho.
+- **`GH-GROW-03` — feito.** 6 conquistas (`features/conquistas/catalogo.ts`)
+  — **sem tabela própria**, tudo derivado do estado já existente (degrau,
+  equipe, parcerias, nós da árvore, nível de sede). Imagem OG dinâmica ao
+  compartilhar (`src/app/api/og/conquista/route.tsx`, `next/og`), pública
+  de propósito (é assim que redes sociais buscam o preview), mesma
+  whitelist de campos da vitrine pública.
 
-- **`GH-MAPA-01` — parcial (documentado).** `lerMapaResumo()`/
-  `lerBairroResumo()` (contagem por cidade/bairro, RPCs `mapa_resumo`/
-  `bairro_resumo`) e `lerMapaView(escopo?)` opcional — mas `escopo` está
-  **inerte** hoje (nenhum chamador usa; ver `GAPS-DE-INTEGRACAO.md`). Falta
-  o benchmark com dados semeados (sem script de seed ainda).
-- **`GH-OPS-04` + `GH-GROW-01` — feitos juntos** (o backlog já pedia isso
-  acoplado). Consentimento explícito + opt-out de perfil público no
-  `Wizard` de cadastro (`Negocio.perfilPublico`/`consentimentoEm`/
-  `consentimentoVersao`, migration `0018_consentimento_lgpd.sql`),
-  `/privacidade` (primeira página de conteúdo estático do app), perfil
-  público `/n/[slug]` (primeiro uso de `sitemap.ts`/`robots.ts`), slug
-  derivado (não persistido — `features/growth/slug.ts`), formulário de
-  contato intermediado com rate-limit em memória
-  (`features/growth/actions.ts`).
-- **`GH-GROW-05` — deliberadamente NÃO implementado.** É o card de maior
-  sensibilidade do backlog (cruza dados privados de onboarding entre
-  tenants pela primeira vez no sistema). Pesquisa completa já feita e
-  registrada no próprio card do `BACKLOG-PRODUTO.md` — abrir aquele card
-  antes de implementar, não começar do zero.
-- **`GH-EDU-01` — feito.** 5 lições (1 por degrau,
-  `features/licoes/catalogo.ts`), `LicaoCard` no Hub, XP ao concluir
-  (RPC `concluir_licao`, migration `0020_licoes.sql`), mesma família
-  idempotente de `desbloquearNo`/`formarParceria`.
-
-Estado do lote anterior (ainda válido): `GH-EQP-02` (fluxo em 2 etapas no
-marketplace), `GH-FDN-03` (parceria do mapa persistida + farm hole
-fechado), correção de checkboxes de `GH-WORLD-01`/`02`, formalização de
-`GH-SIM-01` e 3 stubs (Épico 12) no backlog.
+Estado dos lotes anteriores (ainda válido): `GH-EQP-02`, `GH-FDN-03`,
+`GH-MAPA-01` (parcial), `GH-OPS-04`+`GH-GROW-01` (LGPD + vitrine pública),
+`GH-EDU-01` (lições), correção de checkboxes `GH-WORLD-01`/`02`,
+formalização de `GH-SIM-01`+3 stubs (Épico 12), correção da constraint de
+`segmento` no Supabase. `GH-GROW-05` segue **deliberadamente não
+implementado** (ver o próprio card no backlog).
 
 ## Próxima tarefa recomendada
 
-Nenhum card em andamento. Antes de escolher o próximo, **leia
-`GAPS-DE-INTEGRACAO.md`** — pode valer mais fechar um gap pequeno lá
-(inbox de contato, tela de criar Oferta) do que abrir um card novo do
-backlog formal. Se for pelo backlog, ordem sugerida (pulando Épico 9 —
-deploy, precisa de VPS real):
+Nenhum card em andamento. Ordem sugerida (pulando Épico 9 — deploy, precisa
+de VPS real):
 
-1. **`GH-GROW-02`** (convite de vizinho com recompensa mútua) — depende de
-   `GH-FDN-03`, já pronto.
-2. **Fechar um gap pequeno de `GAPS-DE-INTEGRACAO.md`** — ex.: tela em
-   `/painel` para o dono criar uma `Oferta` (destrava o "serviços
-   oferecidos" da página pública, que hoje sempre mostra vazio) ou uma
-   aba de "mensagens recebidas" (lê `listarSolicitacoesContato`, já
-   implementado, só falta UI).
-3. **`GH-GROW-03`** (conquistas compartilháveis) — depende de `GH-ATR-01`,
-   já pronto.
+1. **`GH-MAPA-02`** (navegação por zoom em 3 camadas) — depende de
+   `GH-MAPA-01` (parcial, mas o suficiente: as consultas agregadas já
+   existem). É o consumidor natural do `escopo` inerte em `lerMapaView()`.
+2. **`GH-GROW-04`** (ranking/destaque do bairro) — depende de `GH-MAPA-04`,
+   que por sua vez depende de `GH-ATR-01` (pronto) — mas `GH-MAPA-04`
+   (benchmark regional) ainda não foi feito; abrir esse primeiro se for
+   por aqui.
+3. **Revisar `docs/GAPS-DE-INTEGRACAO.md`** — o item 🔴 (RLS de `negocios`
+   expõe a linha inteira a `anon`) é o mais importante do documento, mas
+   **exige teste em Postgres real antes de mexer** (não dá pra validar só
+   com `pg-query-emscripten` — é semântica de RLS em runtime, não sintaxe).
+   Não tentar corrigir numa sessão sem acesso a um Postgres real para
+   verificar o resultado.
 
 Ao puxar o próximo card: ler os arquivos reais antes de assumir o que
-existe (o backlog já teve drift da realidade nesta sessão — `GH-WORLD-01`/
-`02` e a constraint de `segmento`), implementar em passos pequenos com
-`npm run typecheck` a cada um, e só então rodar `npm test && npm run build`
-completo antes de commitar.
+existe, implementar em passos pequenos com `npm run typecheck` a cada um,
+e só então rodar `npm test && npm run build` completo antes de commitar.
 
 ## Antes de considerar pronto
 
@@ -91,10 +77,10 @@ conhecidas" no `AGENTS.md`). **Apague a rota antes de commitar.**
 Migrations novas: validar com `pg-query-emscripten` (instalar num
 scratchpad — não há Docker/Postgres local, ver `AGENTS.md`).
 
-**Novo env var (`GH-GROW-01`):** `NEXT_PUBLIC_SITE_URL` — usado por
-`sitemap.ts`/`robots.ts`. Sem ele, cai em `localhost:8081` (sitemap inválido
-em produção). Precisa ser setado no `.env` da VPS antes do primeiro deploy
-real.
+**Env vars novas desta sessão:**
+- `NEXT_PUBLIC_SITE_URL` (`GH-GROW-01`) — usado por `sitemap.ts`/`robots.ts`.
+- Nenhuma nova no lote 3 (convite/conquistas reusam `GAMEHUB_SECRET` já
+  existente).
 
 ## Docs de referência (nessa ordem, só se precisar de mais contexto)
 

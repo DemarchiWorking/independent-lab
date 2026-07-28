@@ -6,6 +6,10 @@ import { sair } from "@/features/auth/actions";
 import { DEGRAUS } from "@/features/onboarding/scoring";
 import { Icon } from "@/components/ui/Icon";
 import { AtributosBar } from "@/components/ui/AtributosBar";
+import { OfertasPainel } from "@/features/ofertas/OfertasPainel";
+import { ConvitePainel } from "@/features/growth/ConvitePainel";
+import { ConquistasPainel } from "@/features/conquistas/ConquistasPainel";
+import type { ContextoConquistas } from "@/features/conquistas/catalogo";
 
 export const metadata = { title: "Painel · labdatadev gamehub" };
 
@@ -14,13 +18,28 @@ export default async function PainelPage() {
   if (!sessao) redirect("/entrar");
 
   const repo = getRepository();
-  const [negocio, onboarding, vizinhos] = await Promise.all([
-    repo.lerNegocio(sessao.tenantId),
-    repo.lerOnboarding(sessao.tenantId),
-    repo.listarVizinhos(sessao.tenantId),
-  ]);
+  const [negocio, onboarding, vizinhos, ofertas, mensagens, funcionarios, parcerias, nos, sede] =
+    await Promise.all([
+      repo.lerNegocio(sessao.tenantId),
+      repo.lerOnboarding(sessao.tenantId),
+      repo.listarVizinhos(sessao.tenantId),
+      repo.listarOfertas(sessao.tenantId),
+      repo.listarSolicitacoesContato(sessao.tenantId),
+      repo.listarFuncionarios(sessao.tenantId),
+      repo.listarParceriasFormadas(sessao.tenantId),
+      repo.listarNosDesbloqueados(sessao.tenantId),
+      repo.lerSede(sessao.tenantId),
+    ]);
 
   if (!negocio) redirect("/cadastro");
+
+  const contextoConquistas: ContextoConquistas = {
+    negocio,
+    totalFuncionarios: funcionarios.length,
+    totalParcerias: parcerias.length,
+    totalNosDesbloqueados: nos.length,
+    nivelSede: sede.nivel,
+  };
 
   const atual = DEGRAUS[negocio.degrauAtual];
   const alvo = DEGRAUS[negocio.degrauAlvo];
@@ -119,6 +138,35 @@ export default async function PainelPage() {
         <AtributosBar atributos={negocio.atributos} tom="dark" />
       </section>
 
+      <div className="mb-4 grid gap-3 md:grid-cols-2">
+        <OfertasPainel ofertas={ofertas} />
+
+        <section className="rounded-md bg-card p-5">
+          <h2 className="mb-1 text-base font-extrabold text-white">
+            Mensagens recebidas
+          </h2>
+          <p className="mb-3 text-xs text-muted">
+            Enviadas por visitantes da sua página pública — responda pelo
+            contato que a pessoa deixou.
+          </p>
+          {mensagens.length > 0 ? (
+            <ul className="max-h-72 space-y-2 overflow-auto">
+              {mensagens.map((m) => (
+                <li key={m.id} className="rounded-md bg-card2 p-3 text-sm text-white">
+                  <div className="flex items-center justify-between gap-2">
+                    <b>{m.nomeRemetente}</b>
+                    <span className="text-xs text-teal">{m.contatoRemetente}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">{m.mensagem}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted">Nenhuma mensagem recebida ainda.</p>
+          )}
+        </section>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-2">
         <section className="rounded-md bg-card p-5">
           <h2 className="mb-2 text-base font-extrabold text-white">
@@ -164,6 +212,11 @@ export default async function PainelPage() {
             </p>
           )}
         </section>
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <ConvitePainel />
+        <ConquistasPainel ctx={contextoConquistas} tenantId={negocio.id} />
       </div>
 
       <div className="mt-5">

@@ -11,11 +11,25 @@ import { perguntas } from "./perguntas";
 
 const TOTAL = perguntas.length + 1; // 10 perguntas + tela de conta
 
+interface ContextoConvite {
+  token: string;
+  convidanteNome: string;
+  cidadeNome: string;
+  bairroNome: string;
+}
+
 /** Cadastro em passos: 10 perguntas + conta. Uma pergunta por tela, com
- *  transição animada — parece jogo, não formulário. */
-export function Wizard() {
+ *  transição animada — parece jogo, não formulário.
+ *
+ *  `convite` (GH-GROW-02, opcional): pré-preenche cidade/bairro com o do
+ *  convidante (o jogador ainda pode trocar) e leva o token como campo
+ *  oculto — o resgate de verdade acontece em `cadastrar()`, que re-verifica
+ *  a assinatura; isto aqui é só UX. */
+export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
   const [passo, setPasso] = useState(0);
-  const [valores, setValores] = useState<Record<string, string | string[]>>({});
+  const [valores, setValores] = useState<Record<string, string | string[]>>(
+    convite ? { cidade: convite.cidadeNome, bairro: convite.bairroNome } : {},
+  );
   const [consentimento, setConsentimento] = useState(false);
   const [perfilPublico, setPerfilPublico] = useState(true);
   const [estado, formAction, pendente] = useActionState<EstadoForm, FormData>(
@@ -50,6 +64,7 @@ export function Wizard() {
 
   return (
     <form action={formAction} className="w-full max-w-lg">
+      {convite ? <input type="hidden" name="convite" value={convite.token} /> : null}
       {/* respostas viajam como campos ocultos até o submit final */}
       {Object.entries(valores).map(([campo, valor]) =>
         Array.isArray(valor) ? (

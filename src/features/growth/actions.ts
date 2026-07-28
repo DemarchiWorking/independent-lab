@@ -2,10 +2,45 @@
 
 import { headers } from "next/headers";
 import { getRepository } from "@/lib/db";
+import { lerSessao } from "@/lib/auth/sessao";
+import { gerarTokenConvite } from "./convite";
 
 export interface ResultadoContato {
   ok: boolean;
   erro?: string;
+}
+
+export interface ResultadoLinkConvite {
+  ok: boolean;
+  url?: string;
+  erro?: string;
+}
+
+/**
+ * Gera o link de convite do negócio logado (GH-GROW-02) — o dono copia e
+ * compartilha por conta própria (WhatsApp, o que for). O app NUNCA envia
+ * e-mail em nome dele — regra de segurança explícita do card.
+ */
+export async function gerarLinkConvite(): Promise<ResultadoLinkConvite> {
+  const sessao = await lerSessao();
+  if (!sessao) return { ok: false, erro: "Sessão expirada. Entre novamente." };
+
+  const repo = getRepository();
+  const negocio = await repo.lerNegocio(sessao.tenantId);
+  if (!negocio) return { ok: false, erro: "Negócio não encontrado." };
+
+  const mapa = await repo.lerMapa();
+  const cidade = mapa.cidades.find((c) => c.slug === negocio.endereco.cidadeSlug);
+  const bairro = cidade?.bairros.find((b) => b.slug === negocio.endereco.bairroSlug);
+
+  const token = gerarTokenConvite({
+    tenantId: negocio.id,
+    cidadeNome: cidade?.nome ?? negocio.endereco.cidadeSlug,
+    bairroNome: bairro?.nome ?? negocio.endereco.bairroSlug,
+    criadoEm: new Date().toISOString(),
+  });
+
+  return { ok: true, url: `/cadastro?convite=${token}` };
 }
 
 const JANELA_MS = 10 * 60_000; // 10 minutos

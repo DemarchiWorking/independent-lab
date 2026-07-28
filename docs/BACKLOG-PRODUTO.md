@@ -927,13 +927,11 @@ score de fit, respostas do onboarding.
 página pública, e poder desativar. Documentar isso no fluxo de onboarding.
 **Feito junto com `GH-OPS-04`** (mesmo checkbox de consentimento no Wizard).
 
-**Gaps conhecidos, deixados de propósito fora deste card** (ver
-`docs/ESTADO-DO-PROJETO.md` para o registro completo):
-- `Oferta` (serviços oferecidos) tem persistência e leitura prontas há
-  tempo, mas **nenhuma UI para o dono criar uma oferta** — a página pública
-  já renderiza a lista (vazia hoje) corretamente; falta o produtor.
-- Mensagens de contato recebidas são persistidas (`solicitacoes_contato`)
-  mas **não há tela para o dono ler** — falta uma aba/seção no painel.
+**Gaps que existiam neste card e já foram fechados** (mesma sessão,
+lote seguinte): UI para o dono publicar `Oferta` e inbox de mensagens de
+contato — ambos agora em `/painel` (`features/ofertas/`).
+
+**Gap real que segue em aberto:**
 - `sitemap.ts`/`robots.ts` usam `NEXT_PUBLIC_SITE_URL` (novo env var) — sem
   ele, cai em `localhost:8081`, o que produz um sitemap inválido em
   produção. Precisa ser setado no `.env` da VPS antes do primeiro deploy
@@ -941,7 +939,7 @@ página pública, e poder desativar. Documentar isso no fluxo de onboarding.
 
 ---
 
-### GH-GROW-02 — Convite de vizinho com recompensa mútua
+### GH-GROW-02 — Convite de vizinho com recompensa mútua ✅
 
 | Campo | Valor |
 |---|---|
@@ -955,27 +953,50 @@ recompensa quando o convidado completa o cadastro — alinha o incentivo com
 o crescimento do ecossistema.
 
 **Critérios de aceitação:**
-- [ ] Link de convite único por tenant (rastreável)
-- [ ] Recompensa só é paga quando o convidado **completa** o onboarding
-      (não ao clicar — evita farm)
-- [ ] Recompensa é em moeda virtual/XP, nunca em dinheiro real
-- [ ] Limite anti-abuso: teto de convites recompensados por período
-- [ ] O convite mostra o quarteirão real onde o vizinho vai entrar (contexto
-      concreto: "junte-se ao Centro de Mendes")
+- [x] Link de convite único por tenant — token HMAC assinado
+      (`features/growth/convite.ts`, mesma técnica de `lib/auth/sessao.ts`,
+      duplicada de propósito por não ser exportada de lá), `/cadastro?convite=<token>`
+- [x] Recompensa só é paga quando o convidado completa o cadastro — resgate
+      acontece dentro de `cadastrar()` (`resgatarConviteSeExistir`), nunca
+      ao gerar/clicar o link
+- [x] Recompensa em moeda virtual/XP (`XP_CONVITE`=150, `MOEDA_CONVITE`=120,
+      mesma ordem de `parceria_formada`) — RPC `resgatar_convite`
+      (migration `0021_convites.sql`), atômica para os dois negócios
+- [x] Teto anti-abuso: `LIMITE_CONVITES_POR_JANELA`=5 a cada 30 dias por
+      convidante — acima disso o CONVIDANTE para de ganhar, o convidado
+      **sempre** ganha (nunca penaliza quem está entrando)
+- [x] Contexto concreto — `/cadastro` mostra "Convite de X — junte-se ao
+      Bairro, Cidade" e pré-preenche essas respostas no Wizard (o jogador
+      pode trocar)
 
 **Regras de segurança:**
-- Token de convite assinado, com expiração
-- Guarda server-side contra auto-convite (mesmo e-mail/tenant)
-- Detecção de padrão de abuso (muitos cadastros do mesmo IP em sequência) —
-  no mínimo logar para revisão manual, mesmo que não bloqueie automaticamente
-- **Nunca** enviar e-mail em nome do usuário sem ele acionar explicitamente
+- [x] Token assinado (HMAC) com expiração de 30 dias, verificado com
+      `timingSafeEqual` (mesmo padrão de `lib/auth/sessao.ts`)
+- [x] Auto-convite: estruturalmente impossível pela regra já existente de
+      e-mail único por conta (`auth.emailExiste`) — a mesma pessoa não
+      recria a própria conta com o mesmo e-mail; abuso via e-mails
+      diferentes da mesma pessoa não é detectável só com dado de cadastro,
+      por isso o teto por período + log de IP cobrem esse caso
+- [x] Log de IP quando o teto é atingido (`console.warn`, revisão manual
+      via `pm2 logs`) — não bloqueia automaticamente, conforme o card pedia
+- [x] Nenhum e-mail é enviado pelo app — o dono copia o link manualmente
+      (`ConvitePainel.tsx`, botão "Copiar")
 
 **Dados trafegados:** token de convite (opaco), `tenantId` do convidante.
-O convite **não** carrega dados do convidado antes dele se cadastrar.
+O convite não carrega dados do convidado antes dele se cadastrar.
+
+**Simplificação consciente:** "o quarteirão real onde o vizinho vai entrar"
+é mostrado como contexto (bairro/cidade do convidante), mas a alocação do
+lote em si continua seguindo a regra já existente (primeiro lote livre do
+bairro) — não força o convidado para o MESMO quarteirão do convidante char
+por char. Forçar isso exigiria mudar `criar_negocio_com_lote`/`alocarLote`
+para aceitar um quarteirão-alvo, o que é mudança de arquitetura maior que
+não foi necessária para a mecânica funcionar (na prática, na maioria das
+vezes vai cair no mesmo quarteirão mesmo, por ser o primeiro com vaga).
 
 ---
 
-### GH-GROW-03 — Conquistas compartilháveis (share card)
+### GH-GROW-03 — Conquistas compartilháveis (share card) ✅
 
 | Campo | Valor |
 |---|---|
@@ -989,17 +1010,27 @@ Panic) **+** geração de imagem compartilhável ao desbloquear uma — "Minha
 empresa chegou ao nível 5 no Vale do Café". O empresário compartilha porque
 o orgulho é dele; a marca labdatadev vai junto na imagem.
 
-**Critérios de aceitação:**
-- [ ] Conquistas com nome, condição, recompensa e progresso percentual
-      visível, agrupadas em "em andamento"/"concluídas"
-- [ ] Ao concluir, oferece imagem gerada (OG image dinâmica) para compartilhar
-- [ ] Compartilhar é **sempre ação manual do usuário** — o app nunca posta
-      sozinho em rede social alguma
-- [ ] A imagem contém a marca do ecossistema de forma discreta e elegante
+**Decisão de arquitetura:** conquistas **não têm tabela própria** —
+"desbloqueada" é sempre derivado do estado já existente (degrau, equipe,
+parcerias, nós da árvore, nível de sede), mesmo princípio de `DEGRAUS`.
+Evita persistência nova para um dado 100% calculável.
 
-**Regras de segurança:** a imagem gerada só pode conter dados de fachada
-pública (mesma whitelist de `GH-GROW-01`) — jamais faturamento, budget ou
-dados de outro negócio.
+**Critérios de aceitação:**
+- [x] 6 conquistas com nome, descrição e progresso percentual
+      (`features/conquistas/catalogo.ts`), agrupadas em "concluídas"/"em
+      andamento" (`ConquistasPainel.tsx`, seção nova em `/painel`)
+- [x] Imagem OG dinâmica ao desbloquear — `src/app/api/og/conquista/route.tsx`
+      (`next/og` `ImageResponse`), botão "Compartilhar" por conquista
+      concluída
+- [x] Compartilhar é sempre ação manual — só existe um link/botão que o
+      dono abre; nada é postado automaticamente
+- [x] Marca do ecossistema discreta na imagem ("labdatadev · gamehub" no rodapé)
+
+**Regras de segurança:** whitelist idêntica a `GH-GROW-01` — a imagem só
+mostra nome do negócio + texto da conquista, nunca XP/moeda/atributos
+brutos. Rota pública de propósito (sem sessão) — é assim que redes sociais
+buscam a imagem ao gerar preview do link; documentado no cabeçalho do
+`route.tsx` para não parecer credencial exposta numa auditoria futura.
 
 **Dados trafegados:** dados de fachada renderizados em imagem.
 

@@ -14,6 +14,7 @@ import type {
   BairroResumo,
   CapituloEntregue,
   Cidade,
+  ConviteResgatado,
   Endereco,
   EscopoMapa,
   EventoGlobal,
@@ -378,6 +379,61 @@ export class FileRepository implements GameRepository {
     await escreverJson(path.join(tenantDir(tenantId), "negocio.json"), negocio);
     await escreverJson(arquivo, atuais);
     return nova;
+  }
+
+  async listarConvitesResgatados(tenantIdConvidante: string): Promise<ConviteResgatado[]> {
+    return lerJson<ConviteResgatado[]>(
+      path.join(tenantDir(tenantIdConvidante), "convites-enviados.json"),
+      [],
+    );
+  }
+
+  async resgatarConvite(
+    tenantIdConvidante: string,
+    tenantIdConvidado: string,
+    xpConvidante: number,
+    moedaConvidante: number,
+    xpConvidado: number,
+    moedaConvidado: number,
+  ): Promise<ConviteResgatado> {
+    // registro mora do lado do CONVIDANTE (é quem consulta o teto por
+    // período); o convidado não precisa listar os próprios resgates.
+    const arquivo = path.join(tenantDir(tenantIdConvidante), "convites-enviados.json");
+    const atuais = await lerJson<ConviteResgatado[]>(arquivo, []);
+    if (atuais.some((c) => c.tenantIdConvidado === tenantIdConvidado)) {
+      throw new Error("convite_ja_resgatado");
+    }
+
+    if (xpConvidante !== 0 || moedaConvidante !== 0) {
+      const convidante = await this.lerNegocio(tenantIdConvidante);
+      if (convidante) {
+        convidante.xp += xpConvidante;
+        convidante.moedaVirtual += moedaConvidante;
+        convidante.nivel = Math.min(NIVEL_MAX, nivelPorXp(convidante.xp));
+        await escreverJson(
+          path.join(tenantDir(tenantIdConvidante), "negocio.json"),
+          convidante,
+        );
+      }
+    }
+
+    const convidado = await this.lerNegocio(tenantIdConvidado);
+    if (convidado) {
+      convidado.xp += xpConvidado;
+      convidado.moedaVirtual += moedaConvidado;
+      convidado.nivel = Math.min(NIVEL_MAX, nivelPorXp(convidado.xp));
+      await escreverJson(path.join(tenantDir(tenantIdConvidado), "negocio.json"), convidado);
+    }
+
+    const resgate: ConviteResgatado = {
+      id: randomBytes(8).toString("hex"),
+      tenantIdConvidante,
+      tenantIdConvidado,
+      resgatadoEm: new Date().toISOString(),
+    };
+    atuais.push(resgate);
+    await escreverJson(arquivo, atuais);
+    return resgate;
   }
 
   async listarSolicitacoesContato(tenantId: string): Promise<SolicitacaoContato[]> {

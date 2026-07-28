@@ -47,21 +47,6 @@ passaria a consultar a VIEW, nunca a tabela.
 
 ## 🟡 Médio — funcional, mas com uma ponta solta
 
-### `Oferta` — persistência pronta há tempo, ainda sem produtor
-
-`GameRepository.listarOfertas`/`criarOferta` existem desde antes desta
-sessão, nos dois adapters, mas **nenhuma tela deixa o dono criar uma
-oferta**. A página pública (`GH-GROW-01`, `/n/[slug]`) já é uma consumidora
-real — mostra a lista (vazia até alguém publicar algo). Falta: uma tela em
-`/painel` ou `/hub` onde o dono escreve título/descrição/preço.
-
-### Contato do perfil público não tem inbox
-
-`GH-GROW-01` persiste `solicitacoes_contato` (rate-limited, intermediado —
-nunca expõe e-mail/telefone do dono) mas **não existe UI para o dono ler as
-mensagens recebidas**. `repo.listarSolicitacoesContato(tenantId)` já existe
-e funciona; falta só uma seção no painel.
-
 ### `souAdmin()` sem auditoria, e `GH-GROW-05` é candidato natural pra resolver isso
 
 `src/lib/admin.ts` é allowlist por env var **ou substring `"demarchi"`** no
@@ -101,3 +86,8 @@ correspondente — listados aqui só para achar tudo num lugar só:
   `loteadora`) depois do pivot de ICP (commit `1ddc7e2`); cadastro real em
   modo `supabase` quebraria para 5 dos 8 segmentos. Corrigido em
   `0016_segmento_icp.sql`.
+- **`Oferta` sem produtor** — `features/ofertas/OfertasPainel.tsx` +
+  `actions.ts` (`publicarOferta`), seção nova em `/painel`. Primeiro
+  produtor de `Oferta` no app; a vitrine pública (`/n/[slug]`) já lê.
+- **Contato do perfil público sem inbox** — seção "Mensagens recebidas" em
+  `/painel`, lê `listarSolicitacoesContato` (já existia).

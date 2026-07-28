@@ -3,6 +3,7 @@ import type {
   Alocacao,
   BairroResumo,
   CapituloEntregue,
+  ConviteResgatado,
   Endereco,
   EscopoMapa,
   EventoGlobal,
@@ -237,6 +238,26 @@ export interface GameRepository {
     xp: number,
     atributos?: Partial<Record<AtributoChave, number>>,
   ): Promise<LicaoConcluida>;
+
+  /** ---- Convite de vizinho (GH-GROW-02) ---- */
+  /** Só do próprio convidante — usado pra aplicar o teto de convites
+   *  recompensados por período (a janela de tempo é decidida pelo chamador). */
+  listarConvitesResgatados(tenantIdConvidante: string): Promise<ConviteResgatado[]>;
+  /**
+   * Atômica: aplica a recompensa mútua (XP/moeda) a AMBOS os negócios e
+   * registra o resgate na MESMA operação. `xpConvidante`/`moedaConvidante`
+   * podem ser 0 (chamador decide isso ANTES de chamar, ao aplicar o teto
+   * anti-abuso — o convidado nunca deixa de ganhar por causa do teto do
+   * convidante).
+   */
+  resgatarConvite(
+    tenantIdConvidante: string,
+    tenantIdConvidado: string,
+    xpConvidante: number,
+    moedaConvidante: number,
+    xpConvidado: number,
+    moedaConvidado: number,
+  ): Promise<ConviteResgatado>;
 
   /** ---- Contato via perfil público (GH-GROW-01) ---- */
   listarSolicitacoesContato(tenantId: string): Promise<SolicitacaoContato[]>;

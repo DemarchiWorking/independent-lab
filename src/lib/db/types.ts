@@ -286,6 +286,20 @@ export interface SolicitacaoContato {
   criadaEm: string;
 }
 
+/**
+ * Convite de vizinho resgatado (GH-GROW-02) — registra que `tenantIdConvidado`
+ * completou o cadastro a partir do link de `tenantIdConvidante`, para (a)
+ * nunca recompensar duas vezes o mesmo cadastro e (b) aplicar o teto
+ * anti-abuso de convites recompensados por período (contagem por
+ * `tenantIdConvidante` numa janela de tempo, feita pelo chamador).
+ */
+export interface ConviteResgatado {
+  id: string;
+  tenantIdConvidante: string;
+  tenantIdConvidado: string;
+  resgatadoEm: string;
+}
+
 /** Sessão autenticada. */
 export interface Sessao {
   usuarioId: string;

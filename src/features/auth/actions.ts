@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getRepository } from "@/lib/db";
 import { getAuthProvider } from "@/lib/auth";
 import { criarSessao, encerrarSessao } from "@/lib/auth/sessao";
@@ -8,6 +9,13 @@ import { slugify } from "@/lib/db/file-adapter";
 import { calcular } from "@/features/onboarding/scoring";
 import { itemMobilia } from "@/features/sede/catalogo";
 import { POLITICA_PRIVACIDADE_VERSAO } from "./politica";
+import {
+  JANELA_CONVITES_MS,
+  LIMITE_CONVITES_POR_JANELA,
+  MOEDA_CONVITE,
+  XP_CONVITE,
+  lerTokenConvite,
+} from "@/features/growth/convite";
 import type { GameRepository } from "@/lib/db";
 import type { Respostas, Segmento } from "@/lib/db/types";
 
@@ -43,6 +51,52 @@ async function darMesaDeBoasVindas(
     await repo.comprarMobilia(tenantId, item.id, 0, 0, item.bonus);
   } catch {
     // sede sem mesa é degradação aceitável; conta criada é o que importa
+  }
+}
+
+/**
+ * Resgata um convite de vizinho (GH-GROW-02), se `fd` trouxer um token
+ * válido — nunca derruba o cadastro se algo der errado (mesmo princípio de
+ * `darMesaDeBoasVindas`: a conta criada é o que importa; o bônus de convite
+ * é extra). Reverifica a assinatura aqui (autoritativo) — o que a página de
+ * cadastro mostrou antes é só UX, nunca confiado para creditar recompensa.
+ */
+async function resgatarConviteSeExistir(
+  repo: GameRepository,
+  tenantIdConvidado: string,
+  token: string | null,
+): Promise<void> {
+  if (!token) return;
+  const dados = lerTokenConvite(token);
+  if (!dados) return; // assinatura inválida ou expirado — silencioso, não é erro do usuário
+  if (dados.tenantId === tenantIdConvidado) return; // impossível na prática, defensivo
+
+  try {
+    const convidante = await repo.lerNegocio(dados.tenantId);
+    if (!convidante) return;
+
+    const resgatesRecentes = (
+      await repo.listarConvitesResgatados(dados.tenantId)
+    ).filter((r) => Date.now() - new Date(r.resgatadoEm).getTime() < JANELA_CONVITES_MS);
+    const dentroDoTeto = resgatesRecentes.length < LIMITE_CONVITES_POR_JANELA;
+
+    await repo.resgatarConvite(
+      dados.tenantId,
+      tenantIdConvidado,
+      dentroDoTeto ? XP_CONVITE : 0,
+      dentroDoTeto ? MOEDA_CONVITE : 0,
+      XP_CONVITE,
+      MOEDA_CONVITE,
+    );
+
+    if (!dentroDoTeto) {
+      const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim();
+      console.warn(
+        `[convite] teto de ${LIMITE_CONVITES_POR_JANELA}/30d atingido — convidante=${dados.tenantId} ip=${ip}`,
+      );
+    }
+  } catch {
+    // "convite_ja_resgatado" ou falha de I/O — conta criada é o que importa
   }
 }
 
@@ -137,6 +191,7 @@ export async function cadastrar(
   });
 
   await darMesaDeBoasVindas(repo, negocio.id);
+  await resgatarConviteSeExistir(repo, negocio.id, texto(fd, "convite") || null);
 
   const identidade = await auth.registrar(nome, email, senha);
   await repo.vincularMembro({
