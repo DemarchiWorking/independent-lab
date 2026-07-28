@@ -11,6 +11,8 @@ import { Icon } from "@/components/ui/Icon";
 import { HubScreen } from "@/features/hub/HubScreen";
 import { MarketplaceScreen } from "@/features/marketplace/MarketplaceScreen";
 import { HexTreeScreen } from "@/features/parcerias/HexTreeScreen";
+import { EventosScreen } from "@/features/eventos-globais/EventosScreen";
+import type { EventoComProgresso } from "@/features/eventos-globais/actions";
 import { ModuleScreen, modules, type ModuleKey } from "@/features/roadmap/modules";
 import { MapaScreen } from "@/features/mapa/MapaScreen";
 import { EquipeIaScreen } from "@/features/equipe-ia/EquipeIaScreen";
@@ -32,7 +34,8 @@ type CoreView =
   | "mapa"
   | "equipe-ia"
   | "marketplace"
-  | "parcerias";
+  | "parcerias"
+  | "eventos";
 export type View = CoreView | ModuleKey;
 
 /** Chaves do menu lateral: as views do shell + entradas que só navegam para
@@ -73,6 +76,7 @@ function stageTitle(v: View): string {
   if (v === "equipe-ia") return "Equipe de IA";
   if (v === "marketplace") return "Marketplace de TI";
   if (v === "parcerias") return "Árvore de parceiros";
+  if (v === "eventos") return "Eventos";
   if (isModule(v)) return modules[v].label;
   return "";
 }
@@ -99,6 +103,8 @@ interface GameShellProps {
   trabalhosAceitos?: string[];
   /** noIds da árvore de parcerias já desbloqueados (GH-FDN-02). */
   nosDesbloqueados?: string[];
+  /** Eventos globais visíveis ao jogador, já com o progresso dele (Épico 11). */
+  eventos?: EventoComProgresso[];
 }
 
 /** Moldura do jogo: cena isométrica + HUD fixos; o "palco" central troca de tela
@@ -118,6 +124,7 @@ export function GameShell({
   atributos,
   trabalhosAceitos = [],
   nosDesbloqueados = [],
+  eventos = [],
 }: GameShellProps) {
   const [view, setView] = useState<View>(initialView);
   const [drawer, setDrawer] = useState(false);
@@ -157,6 +164,7 @@ export function GameShell({
     },
     { key: "sede", label: "Sede (resumo)", icon: "cube", disponivel: temSede },
     { key: "parcerias", label: "Parcerias", icon: "network" },
+    { key: "eventos", label: "Eventos", icon: "calendar" },
     { key: "mapa", label: "Mapa da região", icon: "globe", disponivel: temMapa },
     { key: "concorrentes", label: "Mercado", icon: "chart" },
     { key: "emprestimo", label: "Finanças", icon: "coin" },
@@ -232,6 +240,8 @@ export function GameShell({
                         moedaVirtual={moedaVirtual ?? 0}
                         atributos={atributos}
                       />
+                    ) : view === "eventos" ? (
+                      <EventosScreen eventos={eventos} />
                     ) : isModule(view) ? (
                       <ModuleScreen moduleKey={view} />
                     ) : null}

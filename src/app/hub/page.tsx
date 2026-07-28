@@ -7,6 +7,7 @@ import { missaoAtual } from "@/features/gamificacao/missoes";
 import { GameShell } from "@/features/shell/GameShell";
 import { capituloAtual } from "@/features/historia/actions";
 import { CapituloGate } from "@/features/historia/CapituloGate";
+import { listarEventosAtivos } from "@/features/eventos-globais/actions";
 import type { HudData } from "@/components/ui/HudBar";
 
 export const metadata = { title: "Hub · labdatadev gamehub" };
@@ -37,6 +38,7 @@ export default async function HubPage() {
   // primeiro após entrar — é onde o capítulo do dia 0 precisa aparecer, não
   // só em quem clica em World por conta própria.
   const capitulo = await capituloAtual();
+  const eventos = await listarEventosAtivos();
 
   const hud: HudData = {
     coins: negocio.moedaVirtual.toLocaleString("pt-BR"),
@@ -74,6 +76,7 @@ export default async function HubPage() {
         atributos={negocio.atributos}
         trabalhosAceitos={trabalhos.map((t) => t.jobId)}
         nosDesbloqueados={nos.map((n) => n.noId)}
+        eventos={eventos}
       />
     </>
   );
