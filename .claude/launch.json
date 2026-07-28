@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 8081
+    },
+    {
+      "name": "gamehub-worktree",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "-p", "8099"],
+      "port": 8099
     }
   ]
 }

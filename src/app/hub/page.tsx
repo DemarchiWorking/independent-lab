@@ -17,7 +17,7 @@ export default async function HubPage() {
   if (!sessao) redirect("/entrar");
 
   const repo = getRepository();
-  const [negocio, onboarding, vizinhos, mapa, funcionarios, sede, mobilia, trabalhos, nos, parcerias, licoes] =
+  const [negocio, onboarding, vizinhos, mapa, funcionarios, sede, mobilia, trabalhos, nos, parcerias, licoes, mensagens] =
     await Promise.all([
       repo.lerNegocio(sessao.tenantId),
       repo.lerOnboarding(sessao.tenantId),
@@ -30,8 +30,14 @@ export default async function HubPage() {
       repo.listarNosDesbloqueados(sessao.tenantId),
       repo.listarParceriasFormadas(sessao.tenantId),
       repo.listarLicoesConcluidas(sessao.tenantId),
+      repo.listarSolicitacoesContato(sessao.tenantId),
     ]);
   if (!negocio) redirect("/cadastro");
+
+  const [benchmark, destaqueBairro] = await Promise.all([
+    repo.lerBenchmarkBairro(negocio.endereco.cidadeSlug, negocio.endereco.bairroSlug),
+    repo.lerDestaqueBairro(negocio.endereco.cidadeSlug, negocio.endereco.bairroSlug, 30),
+  ]);
 
   const prog = progresso(negocio.xp);
   const missao = missaoAtual(negocio, onboarding);
@@ -82,6 +88,10 @@ export default async function HubPage() {
         parceriasFormadas={parcerias.map((p) => p.vizinhoTenantId)}
         eventos={eventos}
         licoesConcluidas={licoes}
+        benchmark={benchmark}
+        destaqueBairro={destaqueBairro}
+        vizinhos={vizinhos}
+        mensagens={mensagens}
       />
     </>
   );

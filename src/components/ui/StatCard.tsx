@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
-import { springSnappy } from "@/lib/motion";
+import { pressable, springSnappy } from "@/lib/motion";
 import { Icon, type IconName } from "./Icon";
 
 interface StatCardProps {
@@ -14,6 +14,12 @@ interface StatCardProps {
   iconColor?: string;
   /** barra de progresso 0–100 (ex.: ciclo de 90 dias) */
   progress?: number;
+  /** quando presente, o cartão vira botão e leva para a tela relacionada
+   *  (moeda → Finanças, rede → Mercado, ciclo → Eventos). Sem isso, segue
+   *  sendo um indicador estático — o modo demo não navega. */
+  onClick?: () => void;
+  /** texto do `title`/`aria-label` quando clicável */
+  acaoLabel?: string;
 }
 
 /** Cartão de HUD (Dinheiro/Usuários/Data...). Branco, sombra dura, animado. */
@@ -24,13 +30,22 @@ export function StatCard({
   tint = "bg-[#e7edfb]",
   iconColor = "text-[#2a4a8f]",
   progress,
+  onClick,
+  acaoLabel,
 }: StatCardProps) {
+  const Componente = onClick ? motion.button : motion.div;
+
   return (
-    <motion.div
+    <Componente
+      {...(onClick ? { ...pressable, type: "button" as const, onClick } : {})}
       initial={{ y: -12, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={springSnappy}
-      className="flex items-center gap-2 rounded-md bg-panel px-2.5 py-1.5 text-ink shadow-hard"
+      {...(onClick ? { title: acaoLabel ?? label, "aria-label": acaoLabel ?? label } : {})}
+      className={cn(
+        "flex items-center gap-2 rounded-md bg-panel px-2.5 py-1.5 text-left text-ink shadow-hard",
+        onClick && "cursor-pointer hover:bg-white",
+      )}
     >
       <span
         className={cn(
@@ -57,6 +72,6 @@ export function StatCard({
           </div>
         ) : null}
       </div>
-    </motion.div>
+    </Componente>
   );
 }

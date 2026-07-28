@@ -17,17 +17,25 @@ import { ModuleScreen, modules, type ModuleKey } from "@/features/roadmap/module
 import { MapaScreen } from "@/features/mapa/MapaScreen";
 import { EquipeIaScreen } from "@/features/equipe-ia/EquipeIaScreen";
 import { SedeScreen } from "@/features/sede/SedeScreen";
+import { MercadoScreen } from "@/features/mercado/MercadoScreen";
+import { FinancasScreen } from "@/features/financas/FinancasScreen";
+import { CelularPanel } from "./CelularPanel";
+import { InventarioPanel } from "./InventarioPanel";
 import { LateralMenu, type LateralItem } from "@/components/ui/LateralMenu";
 import { RecompensaProvider } from "@/features/gamificacao/RecompensaContext";
 import type { Missao } from "@/features/gamificacao/missoes";
 import type {
   Atributos,
+  BenchmarkBairro,
+  DestaqueBairro,
   Endereco,
   FuncionarioContratado,
   ItemMobiliaColocado,
   LicaoConcluida,
   MapaView,
+  Negocio,
   Sede,
+  SolicitacaoContato,
 } from "@/lib/db/types";
 
 type CoreView =
@@ -37,7 +45,9 @@ type CoreView =
   | "equipe-ia"
   | "marketplace"
   | "parcerias"
-  | "eventos";
+  | "eventos"
+  | "mercado"
+  | "financas";
 export type View = CoreView | ModuleKey;
 
 /** Chaves do menu lateral: as views do shell + entradas que só navegam para
@@ -79,6 +89,8 @@ function stageTitle(v: View): string {
   if (v === "marketplace") return "Marketplace de TI";
   if (v === "parcerias") return "Árvore de parceiros";
   if (v === "eventos") return "Eventos";
+  if (v === "mercado") return "Mercado da região";
+  if (v === "financas") return "Finanças";
   if (isModule(v)) return modules[v].label;
   return "";
 }
@@ -118,6 +130,13 @@ interface GameShellProps {
   /** Lições concluídas (GH-EDU-01) — decide se a lição do degrau atual já
    *  foi lida, mostrada no Hub. */
   licoesConcluidas?: LicaoConcluida[];
+  /** Mercado (GH-MAPA-04 + GH-GROW-04): média do bairro, destaque e
+   *  vizinhos. Presente = habilita a aba "Mercado". */
+  benchmark?: BenchmarkBairro;
+  destaqueBairro?: DestaqueBairro | null;
+  vizinhos?: Negocio[];
+  /** Mensagens recebidas pela vitrine pública — alimentam o celular. */
+  mensagens?: SolicitacaoContato[];
 }
 
 /** Moldura do jogo: cena isométrica + HUD fixos; o "palco" central troca de tela
@@ -141,9 +160,15 @@ export function GameShell({
   parceriasFormadas = [],
   eventos = [],
   licoesConcluidas = [],
+  benchmark,
+  destaqueBairro = null,
+  vizinhos = [],
+  mensagens = [],
 }: GameShellProps) {
   const [view, setView] = useState<View>(initialView);
   const [drawer, setDrawer] = useState(false);
+  const [celular, setCelular] = useState(false);
+  const [inventario, setInventario] = useState(false);
 
   const demo = hud === undefined;
   const dadosHud = hud ?? HUD_DEMO;
@@ -154,6 +179,7 @@ export function GameShell({
     mobilia !== undefined &&
     moedaVirtual !== undefined &&
     atributos !== undefined;
+  const temMercado = Boolean(benchmark && atributos && endereco);
   const navItems = [
     NAV_BASE[0],
     ...(temSede ? [NAV_SEDE] : []),
@@ -182,8 +208,8 @@ export function GameShell({
     { key: "parcerias", label: "Parcerias", icon: "network" },
     { key: "eventos", label: "Eventos", icon: "calendar" },
     { key: "mapa", label: "Mapa da região", icon: "globe", disponivel: temMapa },
-    { key: "concorrentes", label: "Mercado", icon: "chart" },
-    { key: "emprestimo", label: "Finanças", icon: "coin" },
+    { key: "mercado", label: "Mercado", icon: "chart", disponivel: temMercado },
+    { key: "financas", label: "Finanças", icon: "coin", disponivel: temSede },
   ];
 
   const core: CoreView = isModule(view) ? "hub" : view;
@@ -201,7 +227,20 @@ export function GameShell({
       <div className="relative aspect-[20/11] min-h-[440px] w-full overflow-hidden rounded-[14px] border-[3px] border-[#05304a] shadow-[0_0_0_4px_#041018,0_18px_50px_rgba(0,0,0,.55)]">
        <RecompensaProvider demo={demo}>
         <IsoRoom />
-        <HudBar data={dadosHud} />
+        <HudBar
+          data={dadosHud}
+          acoes={
+            demo
+              ? {}
+              : {
+                  aoClicarMoeda: () => go("financas"),
+                  aoClicarRede: () => go("mercado"),
+                  aoClicarCiclo: () => go("eventos"),
+                  aoClicarObjetivo: () => go("hub"),
+                  aoClicarSaldo: () => go("financas"),
+                }
+          }
+        />
 
         <div className="absolute inset-x-0 bottom-0 top-0 z-10 pb-20 pl-14 pr-4 pt-24">
           <AnimatePresence mode="wait">
@@ -266,6 +305,21 @@ export function GameShell({
                         moedaVirtual={moedaVirtual ?? 0}
                         atributos={atributos}
                       />
+                    ) : view === "mercado" && benchmark && atributos && endereco ? (
+                      <MercadoScreen
+                        atributos={atributos}
+                        benchmark={benchmark}
+                        destaque={destaqueBairro}
+                        vizinhos={vizinhos}
+                        bairro={endereco.bairroSlug}
+                      />
+                    ) : view === "financas" && sede && moedaVirtual !== undefined && mobilia ? (
+                      <FinancasScreen
+                        moedaVirtual={moedaVirtual}
+                        nivelSedeAtual={sede.nivel}
+                        mobilia={mobilia}
+                        funcionarios={funcionarios}
+                      />
                     ) : view === "eventos" ? (
                       <EventosScreen eventos={eventos} />
                     ) : isModule(view) ? (
@@ -299,6 +353,55 @@ export function GameShell({
             <span key={i} className="h-2 w-2 rounded-[2px] bg-ink/70" />
           ))}
         </motion.button>
+
+        {/* Ações do jogador — canto inferior direito, espelhando o
+            app-drawer da esquerda. Só no modo autenticado: no demo não há
+            inventário nem mensagens de verdade para mostrar. */}
+        {!demo ? (
+          <div className="absolute bottom-3 right-3 z-20 flex flex-col gap-2">
+            <motion.button
+              type="button"
+              {...pressable}
+              onClick={() => setCelular(true)}
+              aria-label="Abrir celular"
+              title="Celular"
+              className="relative grid h-11 w-11 place-items-center rounded-md bg-panel/90 text-ink shadow-hard"
+            >
+              <Icon name="monitor" size={19} />
+              {mensagens.length > 0 ? (
+                <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-pill bg-coral px-1 font-pixel text-[7px] text-white">
+                  {mensagens.length}
+                </span>
+              ) : null}
+            </motion.button>
+            <motion.button
+              type="button"
+              {...pressable}
+              onClick={() => setInventario(true)}
+              aria-label="Abrir inventário"
+              title="Inventário"
+              className="grid h-11 w-11 place-items-center rounded-md bg-panel/90 text-ink shadow-hard"
+            >
+              <Icon name="cube" size={19} />
+            </motion.button>
+          </div>
+        ) : null}
+
+        <CelularPanel
+          open={celular}
+          onClose={() => setCelular(false)}
+          mensagens={mensagens}
+          eventos={eventos}
+          missao={missao}
+        />
+
+        <InventarioPanel
+          open={inventario}
+          onClose={() => setInventario(false)}
+          mobilia={mobilia ?? []}
+          funcionarios={funcionarios}
+          nosDesbloqueados={nosDesbloqueados}
+        />
 
         <Nav items={navItems} current={core} onChange={go} />
 

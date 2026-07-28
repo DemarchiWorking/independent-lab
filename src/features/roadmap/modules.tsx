@@ -6,12 +6,10 @@ import type { IconName } from "@/components/ui/Icon";
 /** Registro dos contextos mapeados dos prints (Startup Panic) ainda em stub.
  *  Cada entrada é a "tela" de um contexto — dados prontos p/ virar implementação.
  *  Ver docs/design/MAPA-DE-TELAS.md. */
-export type ModuleKey =
-  | "eventos"
-  | "contratar"
-  | "concorrentes"
-  | "emprestimo"
-  | "motivacao";
+/** `concorrentes` (Mercado) e `emprestimo` (Finanças) saíram daqui: viraram
+ *  telas reais (`features/mercado/`, `features/financas/`), não são mais
+ *  stub de "em breve". */
+export type ModuleKey = "eventos" | "contratar" | "motivacao";
 
 export interface ModuleDef {
   key: ModuleKey;
@@ -57,42 +55,6 @@ export const modules: Record<ModuleKey, ModuleDef> = {
       "Custo/tempo de contratação por fonte",
       "Alocação de funcionário em jobs do marketplace",
       "Disponibilidade e carga de trabalho",
-    ],
-  },
-  concorrentes: {
-    key: "concorrentes",
-    label: "Mercado",
-    icon: "chart",
-    intro: "Benchmark regional: você vs concorrentes, por atributo.",
-    referencia: [
-      "Título: “Participação de mercado” — “Lista de empresas”",
-      "Demarchi Labs 3% vs Allberg Industries 96%",
-      "“Demarchi Labs — Pontuação geral: 7.1” (4 barras 1.5/150)",
-      "Tabela Recurso — T/U/A/Pontuação: Página inicial 5.9 · Registro 6.8 · Anúncios em texto 8",
-    ],
-    melhorias: [
-      "Radar chart por atributo (Tec/Usa/Est)",
-      "Dados reais de mercado regional",
-      "Metas por atributo e alertas de avanço do rival",
-      "Marca do player = “Demarchi Labs”",
-    ],
-  },
-  emprestimo: {
-    key: "emprestimo",
-    label: "Finanças",
-    icon: "coin",
-    intro: "Gestão financeira (simulação educativa — sem operação real).",
-    referencia: [
-      "Título: “Empréstimo bancário”",
-      "FdP — “Financeira do Povo. Um dos bancos mais ricos da cidade.”",
-      "Empréstimo $20K · Juros mensais $200 · Pagamento $21K",
-      "Botão: “Pagar empréstimo” · carrossel de bancos (‹ ›)",
-    ],
-    melhorias: [
-      "Simulador de fluxo de caixa e runway",
-      "Painel de recebíveis dos deals reais (somente leitura)",
-      "Alertas de saldo",
-      "Claude nunca executa transação financeira real",
     ],
   },
   motivacao: {
