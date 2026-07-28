@@ -1301,6 +1301,55 @@ real isso não acontece.
 
 ---
 
+### GH-EVT-05 — Roles reais via Supabase Auth (dívida técnica documentada)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P3 |
+| Esforço | M |
+| Depende de | `GH-EVT-03` |
+
+**Descrição:** `souAdmin()` (`src/lib/admin.ts`) hoje é uma allowlist por
+env var (`GAMEHUB_ADMIN_EMAILS`) **mais** um atalho pessoal do fundador
+(qualquer e-mail contendo `"demarchi"`, por substring). Funciona para "só o
+fundador administra", mas não escala e o atalho por substring é frouxo por
+design (aceita `algo.demarchi@qualquer.com`). Este card É o plano de saída,
+documentado agora para não reabrir a investigação depois — **não
+implementar ainda**, só quando o gatilho abaixo disparar.
+
+**Gatilho para puxar este card:** mais de ~2-3 admins reais, OU a primeira
+ação administrativa que precise de RLS no Postgres (não só RPC atrás de
+`souAdmin()` na Server Action).
+
+**Plano (Supabase RBAC, caminho oficialmente documentado pela Supabase):**
+1. Guardar o papel em `auth.users.app_metadata` (nunca `user_metadata` —
+   esse o próprio usuário edita; `app_metadata` só via Admin API/
+   service_role): `supabaseAdmin().auth.admin.updateUserById(userId, { app_metadata: { role: "admin" } })`.
+2. `SupabaseAuthProvider.autenticar()`/`registrar()`
+   (`src/lib/auth/supabase-provider.ts`) passam a devolver `role` dentro de
+   `Identidade` (`src/lib/auth/provider.ts`); `criarSessao()`
+   (`src/lib/auth/sessao.ts`) grava `role` no cookie assinado — `Sessao`
+   ganha o campo.
+3. `souAdmin()` morre — vira `sessao.role === "admin"`, lido direto do
+   cookie, sem round-trip a mais nem env var.
+4. Opcional, só se/quando existir RLS que precise saber o papel DENTRO do
+   Postgres (ex.: admin inserir em `eventos_globais` sem passar pela RPC
+   `criar_evento_global`): um Auth Hook `custom_access_token_hook` injeta
+   `app_metadata.role` no JWT na emissão do token, e a policy checa
+   `(select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'` — evita
+   consultar uma tabela de roles a cada policy.
+5. `local-provider.ts` (modo `GAMEHUB_DB=file`, sem Supabase) precisa do
+   mesmo campo `role` no registro de `Usuario` para o dev local não
+   divergir do comportamento de produção.
+
+**Regras de segurança:** a garantia real de hoje (mesmo antes deste card)
+já não é `souAdmin()` — é que toda escrita em `eventos_globais` só
+acontece via RPC com `service_role`, nunca policy de insert direta (ver
+`0013_eventos_globais.sql`). `souAdmin()`/`role` é só a UX de esconder o
+menu de quem não é admin.
+
+---
+
 ## Resumo executivo — ordem sugerida de execução
 
 **Sprint 1 (destrava a demo):** `GH-FDN-01` → `GH-FDN-02` → `GH-FDN-03` →
