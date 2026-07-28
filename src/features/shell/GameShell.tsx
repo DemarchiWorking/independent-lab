@@ -252,6 +252,7 @@ export function GameShell({
                       <EquipeIaScreen
                         contratados={funcionariosContratados}
                         degrauAtual={degrauAtual}
+                        funcionarios={funcionarios}
                       />
                     ) : view === "marketplace" ? (
                       <MarketplaceScreen

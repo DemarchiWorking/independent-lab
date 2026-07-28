@@ -389,6 +389,59 @@ do negócio, sem a equipe, quebrando o propósito do card).
 
 ---
 
+### GH-EQP-04 — Habilidades, níveis e entregáveis dos Funcionários de IA ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | G |
+| Depende de | `GH-ATR-01`, `GH-EQP-01` |
+
+**Descrição:** os Funcionários de IA passam a **produzir material real e
+baixável**, personalizado pelas respostas do onboarding — é o que
+transforma "linha numa lista de contratados" em produto com valor
+percebido. Cada agente ganha habilidades destravadas por nível.
+
+**Arquitetura (3 camadas separadas de propósito):**
+1. **Geração pura** (`features/equipe-ia/entregaveis/`): perfil →
+   estrutura de dados. Sem I/O, sem relógio — 18 testes.
+   `vocabulario.ts` é a fonte ÚNICA do conhecimento de nicho (licitação,
+   ART, merenda escolar…), consumida pelos 3 geradores: melhorar o texto
+   de um segmento melhora os três entregáveis de uma vez.
+2. **Renderização** (`render.ts`): estrutura → HTML autocontido e
+   imprimível, cor/fonte de `design-system/tokens.ts`. Escapa conteúdo do
+   usuário (`escaparHtml`) — nome de negócio vai para dentro do arquivo.
+3. **Transporte** (`/api/entregavel/[tipo]`): download.
+
+**Entregáveis por cargo:**
+| Cargo | Entregável | Formato |
+|---|---|---|
+| Documentador | Business Model Canvas (9 blocos) | HTML imprimível |
+| Social Media | Post pronto | PNG 1080×1080 (`next/og`) |
+| Comercial | Script comercial + estratégia de cadência | HTML imprimível |
+
+**Níveis (1–3):** `CUSTO_EVOLUCAO_FUNCIONARIO` (1200🪙 → 3000🪙),
+migration `0024_funcionario_nivel.sql` com RPC atômica. Nível controla
+**profundidade**, não conteúdo diferente: nv2 acrescenta próximos passos
+no canvas / gargalo no post / cadência no script; nv3 acrescenta leitura
+de risco / argumento de autoridade / objeção de timing. Evoluir também dá
++2 no eixo que o cargo já fortalece.
+
+**🔒 Regra de multi-tenancy da rota de download:** o tenant vem SEMPRE de
+`lerSessao()`, **nunca** de query param — diferente de
+`/api/og/conquista` (público, só fachada). O canvas carrega dado de
+onboarding (faixa de investimento, gargalo declarado), o mais sensível do
+sistema. Uma rota só para os 3 tipos = um único ponto de autenticação
+para auditar. Servidor também recusa se o cargo não estiver contratado.
+
+**Nota de qualidade encontrada na verificação:** gerando contra o dado
+semeado real, o post saía "Precisa resolver isso em **mendes**?" — o
+fallback sem onboarding usava o slug cru. Corrigido (`humanizarSlug`),
+com teste. Detalhe pequeno, mas era justamente no arquivo que o
+empresário publica.
+
+---
+
 ## Épico 4 — Árvore de Maturidade Evoluída (P1)
 
 ### GH-ARV-01 — Custo variável de desbloqueio por nó ✅
@@ -721,6 +774,39 @@ a exigência de opt-in `sede.publicada` desta versão anterior do card — ver
 produto do MVP (não mais "só quando publicada"). Nunca expõe dado
 financeiro/onboarding do visitado (moeda virtual, XP, respostas de
 onboarding continuam privados).
+
+---
+
+### GH-WORLD-07 — Upgrade de equipamento com bônus escalonado ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | M |
+| Depende de | `GH-WORLD-02`, `GH-ATR-02` |
+
+**Descrição:** cada móvel/equipamento comprado pode ser evoluído até o
+nível 3, e cada nível **reaplica o bônus de atributo do item** — melhora
+de status direta para o escritório. Dá profundidade à Sede sem precisar
+de catálogo novo: os 7 itens existentes ganham 3 níveis cada.
+
+**Modelo (puro, em `features/sede/upgrade.ts`, 7 testes):**
+- Bônus total no nível N = `base × N` — simples de explicar na tela.
+- Custo do upgrade para o nível N = `preço base × N`. Escala junto com o
+  benefício, garantindo que evoluir **nunca** seja mais barato que
+  comprar um item novo (testado) — a escolha entre os dois é o
+  interessante do jogo.
+- Teto: nível 3.
+
+**Atomicidade:** migration `0025_mobilia_nivel.sql`, RPC `evoluir_mobilia`
+faz débito + bônus de atributo na MESMA transação (aqui o bônus É parte
+da compra, diferente de `evoluirFuncionario`, onde o ganho é recompensa
+de gamificação aplicada à parte). Valida posse (`tenant_id`) e salto de
+exatamente +1 — dois cliques rápidos não compram dois níveis com a mesma
+moeda.
+
+**UI:** botão "Melhorar equipamentos" na Sede → modal listando os itens
+com nível atual, bônus acumulado e custo do próximo nível.
 
 ---
 

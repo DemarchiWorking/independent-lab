@@ -604,6 +604,7 @@ export class FileRepository implements GameRepository {
       tenantId,
       cargoId,
       contratadoEm: new Date().toISOString(),
+      nivel: 1,
     };
     atuais.push(novo);
     await escreverJson(arquivo, atuais);
@@ -611,8 +612,35 @@ export class FileRepository implements GameRepository {
     return { ...novo, disponibilidade: { estado: "livre" } };
   }
 
+  async evoluirFuncionario(
+    tenantId: string,
+    funcionarioId: string,
+    novoNivel: number,
+    custoMoeda: number,
+  ): Promise<FuncionarioContratado> {
+    const arquivo = path.join(tenantDir(tenantId), "funcionarios.json");
+    const atuais = await lerJson<FuncionarioArmazenado[]>(arquivo, []);
+    const alvo = atuais.find((f) => f.id === funcionarioId);
+    if (!alvo) throw new Error("funcionario_nao_encontrado");
+    if (novoNivel !== (alvo.nivel ?? 1) + 1) throw new Error("nivel_invalido");
+
+    const negocio = await this.lerNegocio(tenantId);
+    if (!negocio) throw new Error(`Negócio ${tenantId} não encontrado`);
+    if (negocio.moedaVirtual < custoMoeda) throw new Error("saldo_insuficiente");
+
+    negocio.moedaVirtual -= custoMoeda;
+    alvo.nivel = novoNivel;
+
+    await escreverJson(path.join(tenantDir(tenantId), "negocio.json"), negocio);
+    await escreverJson(arquivo, atuais);
+    const [enriquecido] = await this.enriquecerDisponibilidade(tenantId, [alvo]);
+    return enriquecido;
+  }
+
   /** Enriquece o registro armazenado com `disponibilidade`, derivada das
-   *  alocações ATIVAS — nunca persistida junto do funcionário (GH-EQP-01). */
+   *  alocações ATIVAS — nunca persistida junto do funcionário (GH-EQP-01).
+   *  `nivel` cai em 1 quando ausente: registros gravados antes de
+   *  `0024_funcionario_nivel` não têm o campo. */
   private async enriquecerDisponibilidade(
     tenantId: string,
     funcionarios: FuncionarioArmazenado[],
@@ -620,6 +648,7 @@ export class FileRepository implements GameRepository {
     const ativas = await this.listarAlocacoesAtivas(tenantId);
     return funcionarios.map((f) => ({
       ...f,
+      nivel: f.nivel ?? 1,
       disponibilidade: disponibilidadeDe(ativas, f.id),
     }));
   }
@@ -889,10 +918,13 @@ export class FileRepository implements GameRepository {
   }
 
   async listarMobiliaColocada(tenantId: string): Promise<ItemMobiliaColocado[]> {
-    return lerJson<ItemMobiliaColocado[]>(
+    const itens = await lerJson<ItemMobiliaColocado[]>(
       path.join(tenantDir(tenantId), "mobilia.json"),
       [],
     );
+    // `nivel` cai em 1 quando ausente: itens gravados antes de
+    // `0025_mobilia_nivel` não têm o campo no JSON.
+    return itens.map((i) => ({ ...i, nivel: i.nivel ?? 1 }));
   }
 
   async comprarMobilia(
@@ -923,12 +955,41 @@ export class FileRepository implements GameRepository {
       itemId,
       slot,
       colocadoEm: new Date().toISOString(),
+      nivel: 1,
     };
     atuais.push(item);
 
     await escreverJson(path.join(tenantDir(tenantId), "negocio.json"), negocio);
     await escreverJson(arquivo, atuais);
     return { item, negocio };
+  }
+
+  async evoluirMobilia(
+    tenantId: string,
+    itemColocadoId: string,
+    novoNivel: number,
+    custoMoeda: number,
+    bonusAtributos?: Partial<Record<AtributoChave, number>>,
+  ): Promise<ItemMobiliaColocado> {
+    const arquivo = path.join(tenantDir(tenantId), "mobilia.json");
+    const atuais = await lerJson<ItemMobiliaColocado[]>(arquivo, []);
+    const item = atuais.find((m) => m.id === itemColocadoId);
+    if (!item) throw new Error("item_nao_encontrado");
+    if (novoNivel !== (item.nivel ?? 1) + 1) throw new Error("nivel_invalido");
+
+    const negocio = await this.lerNegocio(tenantId);
+    if (!negocio) throw new Error(`Negócio ${tenantId} não encontrado`);
+    if (negocio.moedaVirtual < custoMoeda) throw new Error("saldo_insuficiente");
+
+    negocio.moedaVirtual -= custoMoeda;
+    if (bonusAtributos) {
+      negocio.atributos = aplicarGanhos(negocio.atributos, bonusAtributos);
+    }
+    item.nivel = novoNivel;
+
+    await escreverJson(path.join(tenantDir(tenantId), "negocio.json"), negocio);
+    await escreverJson(arquivo, atuais);
+    return item;
   }
 
   async moverMobilia(

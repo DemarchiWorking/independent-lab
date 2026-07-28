@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { listContainer, listItem, springSnappy } from "@/lib/motion";
@@ -8,6 +9,20 @@ import { ActionButton } from "@/components/ui/ActionButton";
 import { Icon } from "@/components/ui/Icon";
 import { useRecompensa } from "@/features/gamificacao/RecompensaContext";
 import { CARGOS_IA } from "./catalogo";
+import {
+  custoEvolucao,
+  entregavelDoCargo,
+  habilidadesDoCargo,
+  NIVEL_MAX_FUNCIONARIO,
+} from "./habilidades";
+import { evoluirFuncionario } from "./actions";
+import type { FuncionarioContratado } from "@/lib/db/types";
+
+const ROTULO_ENTREGAVEL: Record<string, string> = {
+  canvas: "Baixar Modelo de Negócio",
+  post: "Baixar post pronto",
+  script: "Baixar script comercial",
+};
 
 interface EquipeIaScreenProps {
   /** cargoIds já contratados — vem do servidor (não é estado local: precisa
@@ -15,17 +30,42 @@ interface EquipeIaScreenProps {
    *  em features/gamificacao/actions.ts). */
   contratados: string[];
   degrauAtual: number;
+  /** registros completos (id/nivel) dos contratados — necessário para
+   *  evoluir e para saber o nível que gera o entregável (GH-EQP-04). */
+  funcionarios?: FuncionarioContratado[];
 }
 
 /** Vitrine dos 4 Funcionários de IA — o produto central do gamehub.
  *  Lista + detalhe animado, mesmo padrão do marketplace/árvore de parcerias. */
-export function EquipeIaScreen({ contratados, degrauAtual }: EquipeIaScreenProps) {
+export function EquipeIaScreen({
+  contratados,
+  degrauAtual,
+  funcionarios = [],
+}: EquipeIaScreenProps) {
   const [selectedId, setSelectedId] = useState(CARGOS_IA[0].id);
   const selected = CARGOS_IA.find((c) => c.id === selectedId) ?? CARGOS_IA[0];
   const { disparar, pendente } = useRecompensa();
+  const [erroEvolucao, setErroEvolucao] = useState<string | null>(null);
+  const [evoluindo, iniciarEvolucao] = useTransition();
+  const router = useRouter();
 
   const jaContratado = contratados.includes(selected.id);
   const bloqueadoPorDegrau = degrauAtual < selected.degrauMinimo;
+  const funcionario = funcionarios.find((f) => f.cargoId === selected.id);
+  const nivel = funcionario?.nivel ?? 1;
+  const habilidades = habilidadesDoCargo(selected.id, nivel);
+  const entregavel = entregavelDoCargo(selected.id);
+  const custoProximo = custoEvolucao(nivel + 1);
+
+  const evoluir = () => {
+    if (!funcionario) return;
+    setErroEvolucao(null);
+    iniciarEvolucao(async () => {
+      const r = await evoluirFuncionario(funcionario.id);
+      if (r.ok) router.refresh();
+      else setErroEvolucao(r.erro ?? "Não foi possível evoluir.");
+    });
+  };
 
   return (
     <div className="grid h-full grid-cols-1 gap-3 md:grid-cols-[1fr_1.2fr]">
@@ -113,7 +153,75 @@ export function EquipeIaScreen({ contratados, degrauAtual }: EquipeIaScreenProps
             {selected.descricao}
           </p>
 
-          <div className="mt-auto pt-3">
+          {/* Habilidades — destravadas por nível (GH-EQP-04). Mostradas
+              mesmo antes de contratar: é parte do que o jogador está
+              comprando, então precisa ser visível na decisão. */}
+          <div className="mt-3 border-t border-[#e6ebf3] pt-3">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="font-pixel text-[8px] uppercase tracking-wide text-[#5b6b86]">
+                Habilidades
+              </span>
+              {jaContratado ? (
+                <span className="rounded-sm bg-teal/15 px-1.5 py-0.5 font-pixel text-[7px] uppercase text-teal">
+                  Nível {nivel}/{NIVEL_MAX_FUNCIONARIO}
+                </span>
+              ) : null}
+            </div>
+            <ul className="space-y-1">
+              {habilidades.map((h) => {
+                const ativa = jaContratado && h.destravada;
+                return (
+                  <li
+                    key={h.id}
+                    className={cn(
+                      "flex items-start gap-1.5 text-[11px]",
+                      ativa ? "text-[#33415c]" : "text-[#94a3b8]",
+                    )}
+                  >
+                    <Icon name={ativa ? "check" : "lock"} size={11} className="mt-0.5 shrink-0" />
+                    <span>
+                      <b>{h.nome}</b>
+                      {!ativa ? (
+                        <span className="ml-1 opacity-70">(nível {h.nivelMinimo})</span>
+                      ) : null}
+                      <br />
+                      <span className="opacity-80">{h.descricao}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          {erroEvolucao ? (
+            <p className="mt-2 text-[11px] font-bold text-coral-dark">{erroEvolucao}</p>
+          ) : null}
+
+          <div className="mt-auto space-y-2 pt-3">
+            {/* Entregável: só existe depois de contratar (o servidor
+                repete essa checagem — ver /api/entregavel/[tipo]). */}
+            {jaContratado && entregavel ? (
+              <a
+                href={`/api/entregavel/${entregavel}`}
+                className="flex w-full items-center justify-center gap-2 rounded-md bg-teal px-4 py-3 font-ui text-sm font-extrabold text-ink"
+              >
+                <Icon name="file" size={16} />
+                {ROTULO_ENTREGAVEL[entregavel] ?? "Baixar entregável"}
+              </a>
+            ) : null}
+
+            {jaContratado && custoProximo !== undefined ? (
+              <ActionButton
+                variant="ghost"
+                icon="arrow"
+                cost={`🪙 ${custoProximo}`}
+                disabled={evoluindo}
+                onClick={evoluir}
+              >
+                {evoluindo ? "Evoluindo…" : `Evoluir para nível ${nivel + 1}`}
+              </ActionButton>
+            ) : null}
+
             {jaContratado ? (
               <ActionButton variant="ghost" icon="check" disabled>
                 Já faz parte da sua equipe

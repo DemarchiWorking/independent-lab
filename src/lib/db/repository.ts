@@ -114,6 +114,21 @@ export interface GameRepository {
     tenantId: string,
     cargoId: string,
   ): Promise<FuncionarioContratado>;
+  /**
+   * Sobe o nível de UM funcionário (GH-EQP-04), atômico: valida que o
+   * funcionário é do tenant, que o salto é de exatamente +1, debita a
+   * moeda e grava o nível novo na mesma transação. Lança
+   * `funcionario_nao_encontrado`, `nivel_invalido` ou `saldo_insuficiente`.
+   * O ganho de atributo da evolução é aplicado pela Server Action via
+   * `aplicarProgresso` (fora desta transação, de propósito: é recompensa
+   * de gamificação, não parte da integridade da compra).
+   */
+  evoluirFuncionario(
+    tenantId: string,
+    funcionarioId: string,
+    novoNivel: number,
+    custoMoeda: number,
+  ): Promise<FuncionarioContratado>;
 
   /** ---- Alocação de equipe (GH-EQP-01) ---- */
   /** Só as alocações ainda ativas (`expiraEm` no futuro) — as expiradas
@@ -241,6 +256,21 @@ export interface GameRepository {
     tenantId: string,
     itemColocadoId: string,
     novoSlot: number,
+  ): Promise<ItemMobiliaColocado>;
+  /**
+   * Sobe o nível de um móvel/equipamento (GH-WORLD-07), atômico: valida
+   * posse e salto de +1, debita a moeda e aplica de novo o bônus de
+   * atributo do item — tudo na mesma transação (o bônus É parte da compra
+   * aqui, diferente de `evoluirFuncionario`, onde a recompensa é
+   * gamificação separada). Lança `item_nao_encontrado`, `nivel_invalido`
+   * ou `saldo_insuficiente`.
+   */
+  evoluirMobilia(
+    tenantId: string,
+    itemColocadoId: string,
+    novoNivel: number,
+    custoMoeda: number,
+    bonusAtributos?: Partial<Record<AtributoChave, number>>,
   ): Promise<ItemMobiliaColocado>;
 
   /** ---- Lições (GH-EDU-01) ---- */

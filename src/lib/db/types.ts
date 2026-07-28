@@ -174,6 +174,10 @@ export interface FuncionarioContratado {
   cargoId: string;
   contratadoEm: string;
   disponibilidade: Disponibilidade;
+  /** 1–3 (GH-EQP-04) — controla a profundidade dos entregáveis que este
+   *  agente produz e quais habilidades estão destravadas. Ver
+   *  `features/equipe-ia/habilidades.ts`. */
+  nivel: number;
 }
 
 /**
@@ -428,6 +432,9 @@ export interface ItemMobiliaColocado {
   itemId: string;
   slot: number;
   colocadoEm: string;
+  /** 1–3 (GH-WORLD-07) — cada nível aplica de novo o bônus de atributo do
+   *  item (bônus total = base × nível). Ver `features/sede/upgrade.ts`. */
+  nivel: number;
 }
 
 /**

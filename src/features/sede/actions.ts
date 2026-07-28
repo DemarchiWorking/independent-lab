@@ -5,6 +5,11 @@ import { lerSessao } from "@/lib/auth/sessao";
 import { getRepository } from "@/lib/db";
 import { itemMobilia } from "./catalogo";
 import { nivelSede, proximoNivelSede, XP_EVOLUCAO_SEDE } from "./niveis";
+import {
+  bonusDoUpgrade,
+  custoUpgradeMobilia,
+  podeEvoluirMobilia,
+} from "./upgrade";
 
 export interface ResultadoSede {
   ok: boolean;
@@ -90,6 +95,59 @@ export async function comprarMobilia(
   return { ok: true };
 }
 
+/**
+ * Sobe o nível de um equipamento já comprado (GH-WORLD-07) — cada nível
+ * aplica de novo o bônus de atributo do item, melhorando o status do
+ * escritório. Guarda dupla: checagem amigável aqui, garantia real na RPC
+ * `evoluir_mobilia` (débito + bônus na mesma transação).
+ */
+export async function evoluirEquipamento(
+  itemColocadoId: string,
+): Promise<ResultadoSede> {
+  const sessao = await lerSessao();
+  if (!sessao) return { ok: false, erro: "Sessão expirada. Entre novamente." };
+
+  const repo = getRepository();
+  const [negocio, mobiliaAtual] = await Promise.all([
+    repo.lerNegocio(sessao.tenantId),
+    repo.listarMobiliaColocada(sessao.tenantId),
+  ]);
+  if (!negocio) return { ok: false, erro: "Negócio não encontrado." };
+
+  // buscar na lista do PRÓPRIO tenant já garante posse (a RPC checa de novo)
+  const colocado = mobiliaAtual.find((m) => m.id === itemColocadoId);
+  if (!colocado) return { ok: false, erro: "Equipamento não encontrado." };
+
+  const item = itemMobilia(colocado.itemId);
+  if (!item) return { ok: false, erro: "Item inválido." };
+
+  if (!podeEvoluirMobilia(colocado.nivel)) {
+    return { ok: false, erro: "Este equipamento já está no nível máximo." };
+  }
+
+  const novoNivel = colocado.nivel + 1;
+  const custo = custoUpgradeMobilia(item, novoNivel);
+  if (negocio.moedaVirtual < custo) {
+    return { ok: false, erro: "Saldo de moeda insuficiente." };
+  }
+
+  try {
+    await repo.evoluirMobilia(
+      sessao.tenantId,
+      itemColocadoId,
+      novoNivel,
+      custo,
+      bonusDoUpgrade(item),
+    );
+  } catch (e) {
+    return { ok: false, erro: traduzirErro(e) };
+  }
+
+  revalidatePath("/hub");
+  revalidatePath("/world");
+  return { ok: true };
+}
+
 /** Reposiciona um móvel já comprado para outro slot livre da sala. */
 export async function moverMobilia(
   itemColocadoId: string,
@@ -133,5 +191,9 @@ function traduzirErro(e: unknown): string {
   if (msg.includes("nivel_desatualizado")) {
     return "Sua sede já mudou de nível — atualize a página.";
   }
+  if (msg.includes("nivel_invalido")) {
+    return "O nível deste equipamento mudou — atualize a página.";
+  }
+  if (msg.includes("item_nao_encontrado")) return "Equipamento não encontrado.";
   return "Não foi possível concluir. Tente novamente.";
 }

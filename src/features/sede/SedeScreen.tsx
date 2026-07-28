@@ -14,7 +14,18 @@ import { AtributosBar } from "@/components/ui/AtributosBar";
 import { ATRIBUTO_LABEL, ATRIBUTO_TEXT_CLASS } from "@/lib/atributos";
 import { CATALOGO_MOBILIA, itemMobilia, type ItemMobilia } from "./catalogo";
 import { nivelSede, proximoNivelSede } from "./niveis";
-import { comprarMobilia, evoluirSede, moverMobilia } from "./actions";
+import {
+  comprarMobilia,
+  evoluirEquipamento,
+  evoluirSede,
+  moverMobilia,
+} from "./actions";
+import {
+  bonusTotalNoNivel,
+  custoUpgradeMobilia,
+  NIVEL_MAX_MOBILIA,
+  podeEvoluirMobilia,
+} from "./upgrade";
 import type { Atributos, ItemMobiliaColocado, Sede } from "@/lib/db/types";
 
 interface SedeScreenProps {
@@ -39,6 +50,7 @@ export function SedeScreen({ sede, mobilia, moedaVirtual, atributos }: SedeScree
   const [modo, setModo] = useState<Modo>({ tipo: "livre" });
   const [lojaAberta, setLojaAberta] = useState(false);
   const [upgradeAberto, setUpgradeAberto] = useState(false);
+  const [equipamentosAberto, setEquipamentosAberto] = useState(false);
   const [slotAlvo, setSlotAlvo] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -215,6 +227,15 @@ export function SedeScreen({ sede, mobilia, moedaVirtual, atributos }: SedeScree
             >
               Loja de equipamentos
             </ActionButton>
+            {mobilia.length > 0 ? (
+              <ActionButton
+                icon="bolt"
+                variant="ghost"
+                onClick={() => setEquipamentosAberto(true)}
+              >
+                Melhorar equipamentos
+              </ActionButton>
+            ) : null}
             {proximo ? (
               <ActionButton icon="arrow" onClick={() => setUpgradeAberto(true)}>
                 Melhorar sede
@@ -227,6 +248,78 @@ export function SedeScreen({ sede, mobilia, moedaVirtual, atributos }: SedeScree
           </div>
         </aside>
       </div>
+
+      {/* MELHORAR EQUIPAMENTOS — upgrade de nível dos móveis já comprados
+          (GH-WORLD-07). Cada nível reaplica o bônus de atributo do item. */}
+      <RibbonPanel
+        title="Melhorar equipamentos"
+        open={equipamentosAberto}
+        onClose={() => setEquipamentosAberto(false)}
+      >
+        <p className="mb-2 text-[11px] text-[#5b6b86]">
+          Cada nível reaplica o bônus do equipamento nos atributos do seu
+          escritório. Máximo: nível {NIVEL_MAX_MOBILIA}.
+        </p>
+        <div className="max-h-[300px] space-y-2 overflow-auto">
+          {mobilia.map((colocado) => {
+            const item = itemMobilia(colocado.itemId);
+            if (!item) return null;
+            const noMaximo = !podeEvoluirMobilia(colocado.nivel);
+            const custo = custoUpgradeMobilia(item, colocado.nivel + 1);
+            const caro = moedaVirtual < custo;
+            const totalAtual = bonusTotalNoNivel(item, colocado.nivel);
+
+            return (
+              <div
+                key={colocado.id}
+                className="flex items-center gap-2.5 rounded-md bg-[#f1f4f9] p-2.5"
+              >
+                <span
+                  className={cn(
+                    "grid h-9 w-9 shrink-0 place-items-center rounded-sm text-ink",
+                    item.cor,
+                  )}
+                >
+                  <Icon name={item.icon} size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <b className="block truncate text-xs text-ink">
+                    {item.nome}{" "}
+                    <span className="text-teal">Nv {colocado.nivel}</span>
+                  </b>
+                  <small className="text-[10px] text-[#5b6b86]">
+                    {Object.entries(totalAtual)
+                      .map(
+                        ([chave, valor]) =>
+                          `+${valor} ${ATRIBUTO_LABEL[chave as keyof typeof ATRIBUTO_LABEL]}`,
+                      )
+                      .join(" · ") || "sem bônus"}
+                  </small>
+                </div>
+                {noMaximo ? (
+                  <span className="shrink-0 rounded-sm bg-teal/20 px-1.5 py-0.5 font-pixel text-[7px] uppercase text-teal">
+                    Máximo
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={pendente || caro}
+                    onClick={() => executar(() => evoluirEquipamento(colocado.id))}
+                    className={cn(
+                      "shrink-0 rounded-md px-2.5 py-1.5 text-[11px] font-extrabold",
+                      caro
+                        ? "cursor-not-allowed bg-[#e6eaf1] text-[#94a3b8]"
+                        : "bg-orange text-ink",
+                    )}
+                  >
+                    🪙 {custo}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </RibbonPanel>
 
       {/* LOJA DE EQUIPAMENTOS */}
       <RibbonPanel

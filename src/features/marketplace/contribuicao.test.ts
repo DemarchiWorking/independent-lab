@@ -10,6 +10,7 @@ function funcionario(cargoId: string, id = cargoId): FuncionarioContratado {
     cargoId,
     contratadoEm: "2026-01-01T00:00:00.000Z",
     disponibilidade: { estado: "livre" },
+    nivel: 1,
   };
 }
 

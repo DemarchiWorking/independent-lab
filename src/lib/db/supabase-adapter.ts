@@ -758,13 +758,40 @@ export class SupabaseRepository implements GameRepository {
     tenant_id: number;
     cargo_id: string;
     contratado_em: string;
+    nivel?: number;
   }): Omit<FuncionarioContratado, "disponibilidade"> {
     return {
       id: String(l.id),
       tenantId: String(l.tenant_id),
       cargoId: l.cargo_id,
       contratadoEm: l.contratado_em,
+      nivel: l.nivel ?? 1,
     };
+  }
+
+  /** Atômica via RPC `evoluir_funcionario` (`0024_funcionario_nivel.sql`). */
+  async evoluirFuncionario(
+    tenantId: string,
+    funcionarioId: string,
+    novoNivel: number,
+    custoMoeda: number,
+  ): Promise<FuncionarioContratado> {
+    const { data, error } = await this.db
+      .rpc("evoluir_funcionario", {
+        p_tenant_id: Number(tenantId),
+        p_funcionario_id: Number(funcionarioId),
+        p_novo_nivel: novoNivel,
+        p_custo: custoMoeda,
+      })
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "evoluir_funcionario: sem retorno");
+    }
+    const bruto = this.paraFuncionario(
+      data as Parameters<typeof this.paraFuncionario>[0],
+    );
+    const [enriquecido] = await this.enriquecerDisponibilidade(tenantId, [bruto]);
+    return enriquecido;
   }
 
   /** Enriquece com `disponibilidade`, derivada das alocações ATIVAS — nunca
@@ -1108,6 +1135,7 @@ export class SupabaseRepository implements GameRepository {
     item_id: string;
     slot: number;
     colocado_em: string;
+    nivel?: number;
   }): ItemMobiliaColocado {
     return {
       id: String(l.id),
@@ -1115,7 +1143,35 @@ export class SupabaseRepository implements GameRepository {
       itemId: l.item_id,
       slot: l.slot,
       colocadoEm: l.colocado_em,
+      nivel: l.nivel ?? 1,
     };
+  }
+
+  /** Atômica via RPC `evoluir_mobilia` (`0025_mobilia_nivel.sql`) — débito
+   *  e bônus de atributo na mesma transação. */
+  async evoluirMobilia(
+    tenantId: string,
+    itemColocadoId: string,
+    novoNivel: number,
+    custoMoeda: number,
+    bonusAtributos?: Partial<Record<AtributoChave, number>>,
+  ): Promise<ItemMobiliaColocado> {
+    const b = bonusAtributos ?? {};
+    const { data, error } = await this.db
+      .rpc("evoluir_mobilia", {
+        p_tenant_id: Number(tenantId),
+        p_item_colocado_id: Number(itemColocadoId),
+        p_novo_nivel: novoNivel,
+        p_custo: custoMoeda,
+        p_tecnologia: b.tecnologia ?? 0,
+        p_processo: b.processo ?? 0,
+        p_presenca: b.presenca ?? 0,
+      })
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "evoluir_mobilia: sem retorno");
+    }
+    return this.paraItemColocado(data as Parameters<typeof this.paraItemColocado>[0]);
   }
 
   async lerSede(tenantId: string): Promise<Sede> {
