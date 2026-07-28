@@ -73,6 +73,26 @@ mantida em sincronia com os checkboxes reais de `BACKLOG-PRODUTO.md`:
 | 🔴 de `GAPS-DE-INTEGRACAO.md` (RLS de `negocios`) | Adiado — precisa de Postgres real pra validar runtime |
 | `GH-PITCH-01` | Parcial — validado nos dados, **nunca num navegador real** |
 
+## ✅ Entregue fora do Épico 13 (a pedido do usuário, 2026-07-28)
+
+**`GH-EQP-04` — Entregáveis dos Funcionários de IA.** Os agentes agora
+PRODUZEM material baixável personalizado pelo onboarding:
+Documentador → Business Model Canvas (HTML imprimível); Social Media →
+post pronto (PNG 1080×1080 com cor/fonte da marca); Comercial → script
+comercial + cadência (HTML). Níveis 1–3 controlam a profundidade do
+material (migration `0024`). Habilidades destravadas por nível na UI.
+
+**`GH-WORLD-07` — Upgrade de equipamento.** Móveis evoluem até o nível 3;
+cada nível reaplica o bônus de atributo (total = base × nível), com custo
+que garante por construção que evoluir nunca seja mais barato que comprar
+novo (migration `0025`).
+
+🔒 **Detalhe de segurança que vale lembrar ao mexer aqui:**
+`/api/entregavel/[tipo]` deriva o tenant **da sessão, nunca de query
+param** — o canvas carrega dado de onboarding (faixa de investimento,
+gargalo), o mais sensível do sistema. É o oposto de `/api/og/conquista`,
+que é público de propósito porque só mostra fachada.
+
 ## 🎯 Próxima prioridade — Épico 13: Multiplayer Real
 
 **A próxima ação é a Fase 0, e ela precisa do usuário** (Supabase local,
