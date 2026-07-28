@@ -48,12 +48,13 @@ tratado como prioridade máxima assim que isso ficou claro. **Está feito:**
 ## Estado cumulativo (todos os lotes desta sessão)
 
 `npm run typecheck && npm test && npm run build` verdes (229 testes).
-Completos: Épicos 1–4, Épico 5 (exceto `GH-SIM-01`), Épico 7 (exceto
-`GH-GROW-04`, que só falta puxar — a dependência `GH-MAPA-04` já foi
-feita — e `GH-GROW-05`, adiado), Épico 8 parcial (`GH-EDU-01`), Épico 10
-(Pitch Readiness), Épico 11 (exceto `GH-EVT-05`). `GH-MAPA-04` (benchmark
-regional) feito e verificado contra o dado semeado de `GH-PITCH-01` (média
-de `tecnologia` bateu exata: 10,1666... = 61/6). Bug real corrigido:
+Completos: Épicos 1–4, Épico 5 (exceto `GH-SIM-01`), **Épico 7 inteiro
+exceto `GH-GROW-05`** (deliberadamente adiado — ver o próprio card), Épico
+8 parcial (`GH-EDU-01`), Épico 10 (Pitch Readiness), Épico 11 (exceto
+`GH-EVT-05`). `GH-MAPA-04` (benchmark) e `GH-GROW-04` (destaque do bairro)
+verificados contra o dado semeado de `GH-PITCH-01` — números bateram
+exatos em ambos (média de tecnologia 61/6; Radiz venceu o destaque com
+5 eventos = 3 contratações + 1 parceria + 1 lição). Bug real corrigido:
 constraint `segmento` do Supabase desalinhada do tipo TS.
 
 **⚠️ Não é "backlog inteiro terminado"** — lista completa do que falta,
@@ -63,8 +64,7 @@ mantida em sincronia com os checkboxes reais de `BACKLOG-PRODUTO.md`:
 |---|---|
 | `GH-SIM-01` — motor de simulação (ECS/tick) | Maior card do backlog, adiado de propósito |
 | `GH-MAPA-02` — zoom do mapa em 3 camadas | Não feito |
-| `GH-MAPA-03` — identidade visual do pin | Não feito — pequeno, autocontido, bom próximo passo |
-| `GH-GROW-04` — ranking/destaque do bairro | `GH-MAPA-04` (dependência) já feito — pode ser puxado agora |
+| `GH-MAPA-03` — identidade visual do pin | Não feito — depende de `GH-MAPA-02` (`Depende de` no próprio card), respeitado, não pulado |
 | `GH-GROW-05` — painel de oportunidades (admin) | Adiado de propósito — dado sensível cross-tenant |
 | `GH-EDU-02` — diagnóstico guiado em PDF | Não feito — precisa decidir lib de PDF, nenhuma existe hoje |
 | `GH-OPS-01/02/03` — deploy real, CI/CD, RLS em runtime | **Precisa do usuário** — VPS/GitHub/Supabase reais |
