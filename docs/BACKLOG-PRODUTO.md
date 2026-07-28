@@ -46,6 +46,7 @@ RLS forçada), isso está explícito para o Claude Code reusar, não reinventar.
 | 10 | [Pitch Readiness](#épico-10--pitch-readiness-sebrae-p0) | Checklist final antes da apresentação |
 | 11 | [Eventos Globais — Gamificação em Tempo Real](#épico-11--eventos-globais--gamificação-em-tempo-real-p1) | Campanhas com prazo que todos os jogadores veem ao mesmo tempo — dá "pulso" de comunidade ao ecossistema |
 | 12 | [Módulos Futuros do App-Drawer](#épico-12--módulos-futuros-do-app-drawer-sem-levantamento-ainda) | Placeholders sem levantamento (equipe humana, finanças, rh-motivação) — formalizados nesta sessão, não executáveis ainda |
+| 13 | [Multiplayer Real](#épico-13--multiplayer-real-presença-ao-vivo-via-supabase) | Presença ao vivo via Supabase Realtime — plano BMAD completo em `architecture/BMAD-MULTIPLAYER-VPS.md`; ordem dos 2 primeiros cards é dependência de segurança real, não só prioridade |
 
 ---
 
@@ -1718,6 +1719,130 @@ nunca cobrança de verdade.
 sobreposição conceitual com a camada de "humor/necessidades" que
 `world/EVOLUCAO-MOTOR-2026.md` §7.2 já desenha para `GH-SIM-01` (G1) — ao
 levantar este card, ler aquela seção primeiro para não duplicar mecânica.
+
+---
+
+## Épico 13 — Multiplayer Real (Presença ao vivo via Supabase)
+
+> Plano estratégico completo (Business/Model/Architecture/Development) em
+> [`architecture/BMAD-MULTIPLAYER-VPS.md`](architecture/BMAD-MULTIPLAYER-VPS.md)
+> — cards aqui são o resumo executável, aquele documento é a fonte de
+> verdade da decisão. **Ordem dos 2 primeiros cards não é flexível** — é
+> dependência real de segurança, não só prioridade de negócio.
+
+### GH-MULTI-00 — Hardening de RLS de `negocios` (pré-requisito de segurança)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | **P0 — bloqueia `GH-MULTI-02`** |
+| Esforço | P |
+| Depende de | — (mas exige Postgres real para validar, não só escrever) |
+
+**Descrição:** `negocios_leitura` (`0001_init.sql`) é
+`for select to anon, authenticated using (true)` — sem seleção de coluna.
+Isso é seguro **hoje** porque nada no app chama `supabaseAnon()` do
+browser. `GH-MULTI-02` é o primeiro código que faria isso — no instante
+em que a anon key roda no cliente, ela é extraível por qualquer visitante,
+e essa policy passa a expor `xp`/`moeda_virtual`/os 5 atributos de
+qualquer negócio a quem tiver a key. Ver achado completo em
+`GAPS-DE-INTEGRACAO.md` (🔴) e desenho da correção em
+`architecture/BMAD-MULTIPLAYER-VPS.md` §4.1.
+
+**Critérios de aceitação:**
+- [ ] View `public.negocios_publico` só com colunas de fachada
+      (`id, nome, segmento, quarteirao_id, lote, nivel, degrau_atual,
+      perfil_publico, criado_em`), leitura pública
+- [ ] Policy `negocios_leitura` (atual) substituída por uma restrita a
+      `id = tenant_atual()` para `authenticated`
+- [ ] Toda leitura pública hoje feita direto em `negocios` (mapa,
+      `GH-GROW-01`) migrada para consultar a view, nunca a tabela
+- [ ] Validado contra Postgres real (`supabase start && supabase db
+      reset`) — provar que `anon` lê a view normalmente E não lê mais
+      `xp`/`moeda_virtual`/atributos da tabela
+
+**Regras de segurança:** 🔴 este card é o que torna seguro ligar o
+primeiro código Supabase no browser. Não pular, não adiar depois de
+`GH-MULTI-02` estar pronto — a ordem é a proteção.
+
+**Dados trafegados:** nenhum dado novo — só reorganiza quem lê o quê.
+
+---
+
+### GH-MULTI-01 — Provisionar VPS + Supabase reais
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P0 |
+| Esforço | — |
+| Depende de | `GH-MULTI-00` |
+
+**Descrição:** Este card **é** `GH-OPS-01` + `GH-OPS-03` do Épico 9 —
+referenciado aqui, não duplicado. Presença ao vivo não existe sem um
+projeto Supabase real (Realtime não roda em `GAMEHUB_DB=file`). Ver
+critérios completos nos cards originais.
+
+---
+
+### GH-MULTI-02 — Canal de presença real (Supabase Realtime Presence)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | P–M |
+| Depende de | `GH-MULTI-00`, `GH-MULTI-01` |
+
+**Descrição:** Implementa de verdade `features/world/presenca/canal.ts`
+(hoje só `declare function`, deliberadamente inerte) — substitui os
+stubs por uma implementação real de Supabase Realtime Presence. Plano
+bite-sized completo (arquivos exatos, código completo, passos de teste)
+em [`world/PLANO-PRESENCA-REALTIME.md`](world/PLANO-PRESENCA-REALTIME.md).
+
+**Critérios de aceitação:**
+- [ ] `assinarPresenca(salaTenantId, aoEntrar, aoSair)` conecta a um canal
+      `sede:<tenantId>`, dispara os callbacks corretamente, devolve função
+      de cancelamento
+- [ ] `publicarPresenca(salaTenantId, presente)` anuncia entrada/saída do
+      tenant logado
+- [ ] Payload de presença só carrega `{ tenantId, nome }` — nunca
+      atributos/XP/moeda (mesma whitelist de `GH-GROW-01`/`GH-GROW-03`)
+- [ ] Degrada graciosamente (no-op, nunca lança) quando
+      `NEXT_PUBLIC_SUPABASE_URL` não está configurado (`GAMEHUB_DB=file`)
+- [ ] Presença nunca é persistida — efêmera, mesma decisão já tomada para
+      conquistas (`GH-GROW-03`) e posição do avatar (`GH-WORLD-05`)
+
+**Regras de segurança:** canal escopado por tenant (`sede:<tenantId>`),
+nunca um canal global "todo mundo online" — evita vazar padrão de uso
+cruzando quem visita quem.
+
+**Dados trafegados:** `tenantId` + `nome` do visitante, efêmero, nunca
+persistido.
+
+---
+
+### GH-MULTI-03 — Integrar presença real no `VisitaScreen`
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | P |
+| Depende de | `GH-MULTI-02` |
+
+**Descrição:** `VisitaScreen.tsx` hoje mostra um avatar "visitante" só
+cosmético/local. Este card soma presença REAL por cima — outros
+visitantes de verdade aparecem como avatares adicionais, sem tocar em
+`render/`/`engine/` (que continuam puros, sem rede).
+
+**Critérios de aceitação:**
+- [ ] Visitantes reais aparecem no `estadoCena.avatares` além do dono/equipe
+- [ ] Ao sair da tela, presença é anunciada como encerrada (sem depender
+      só do timeout do canal)
+- [ ] Extensão futura para `WorldScreen.tsx` (o próprio dono vendo quem
+      visita) é possível reusando o mesmo hook, mas **fora de escopo
+      deste card** — visão, não compromisso.
+
+**Regras de segurança:** nenhuma nova — herda a whitelist de `GH-MULTI-02`.
+
+**Dados trafegados:** mesmos de `GH-MULTI-02`, só renderizados.
 
 ---
 

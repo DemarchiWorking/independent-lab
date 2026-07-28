@@ -1,11 +1,11 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
-> Atualizado: 2026-07-28, após fechar **Épico 10 — Pitch Readiness**
-> (`GH-PITCH-01`/`GH-PITCH-02`) e corrigir 3 casos de drift no backlog
-> (`GH-EQP-02`, `GH-FDN-03`, `GH-OPS-04` — implementados em lotes
-> anteriores, mas com o checkbox esquecido). Sempre confira `git log -1`
-> antes de confiar neste arquivo. Leia também
-> [`GAPS-DE-INTEGRACAO.md`](GAPS-DE-INTEGRACAO.md).
+> Atualizado: 2026-07-28. Sessão fechou Épico 10 (Pitch Readiness), Épico
+> 7 inteiro (Growth Engine, exceto `GH-GROW-05`), e um plano estratégico
+> BMAD completo para multiplayer (**Épico 13, novo**) — ver seção
+> "🎯 Próxima prioridade" abaixo, é o que o usuário pediu para seguir no
+> próximo prompt. Sempre confira `git log -1` antes de confiar neste
+> arquivo. Leia também [`GAPS-DE-INTEGRACAO.md`](GAPS-DE-INTEGRACAO.md).
 
 ## ⚠️ Lição de processo (repetida, vale reforçar)
 
@@ -73,20 +73,41 @@ mantida em sincronia com os checkboxes reais de `BACKLOG-PRODUTO.md`:
 | 🔴 de `GAPS-DE-INTEGRACAO.md` (RLS de `negocios`) | Adiado — precisa de Postgres real pra validar runtime |
 | `GH-PITCH-01` | Parcial — validado nos dados, **nunca num navegador real** |
 
-## Próxima prioridade
+## 🎯 Próxima prioridade — Épico 13: Multiplayer Real (decidido em 2026-07-28)
 
-### 1. Épico 9 (deploy real) — precisa do usuário, não é autônomo
+O usuário pediu explicitamente um plano BMAD (Business/Model/Architecture/
+Development) para multiplayer via Supabase Realtime + VPS, com foco em
+escalabilidade, simplicidade, poder de negócio e inovação. **Documentos
+já criados, prontos para o próximo prompt seguir nesta ordem exata:**
 
-`GH-OPS-01` exige VPS real (SSH), `GH-OPS-02` exige repositório remoto no
-GitHub + secrets, `GH-OPS-03` exige projeto Supabase real. **Perguntar ao
-usuário antes de tentar qualquer coisa aqui** — nenhuma sessão autônoma
-tem essas credenciais. O ferramental (`deploy/`) já está pronto.
+1. **Ler primeiro:** [`architecture/BMAD-MULTIPLAYER-VPS.md`](architecture/BMAD-MULTIPLAYER-VPS.md)
+   — a decisão estratégica completa (por quê, o que NÃO fazer, sequência).
+2. **`GH-MULTI-00`** (Épico 13, `BACKLOG-PRODUTO.md`) — hardening de RLS
+   de `negocios`. **Bloqueante, não pular.** Desenho do SQL já especificado
+   e com sintaxe validada (`pg-query-emscripten`), mas precisa de Postgres
+   real pra ser APLICADO e VERIFICADO — não aplicar às cegas.
+3. **`GH-MULTI-01`** — provisionar VPS + Supabase reais. É literalmente o
+   Épico 9 (`GH-OPS-01`/`GH-OPS-03`) — **precisa do usuário**, mesma
+   restrição de sempre (SSH, projeto Supabase, sem isso nada dos itens
+   abaixo roda de verdade).
+4. **`GH-MULTI-02`** — canal de presença real. Plano bite-sized COMPLETO
+   (código inteiro, testes, sem placeholder) em
+   [`world/PLANO-PRESENCA-REALTIME.md`](world/PLANO-PRESENCA-REALTIME.md)
+   — as Tasks 1–3 desse plano (helpers puros + diff de presença + canal
+   com mock) **já podem ser executadas sem esperar `GH-MULTI-00`/`01`**,
+   só a verificação final (rodar contra Supabase real) depende deles.
+5. **`GH-MULTI-03`** — integrar no `VisitaScreen.tsx` (sem plano
+   bite-sized ainda — escrever quando `GH-MULTI-02` estiver de fato
+   verificado contra Supabase real, não antes).
 
-### 2. Se o usuário quiser continuar por funcionalidade (não deploy)
+**Se o usuário preferir não seguir por multiplayer no próximo prompt**,
+ordem alternativa (sem dependência de infraestrutura nova):
+`GH-MAPA-02` (zoom do mapa) → `GH-MAPA-03` (visual do pin, depende do
+anterior) → `GH-EDU-02` (diagnóstico em PDF).
 
-`GH-MAPA-02` (zoom do mapa) → `GH-MAPA-04` (benchmark regional, destrava
-`GH-GROW-04`) → revisar o item 🔴 de `GAPS-DE-INTEGRACAO.md` (RLS de
-`negocios`, só com Postgres real disponível para validar em runtime).
+**Épico 9 (deploy real) continua precisando do usuário** — VPS/SSH,
+repositório remoto+secrets, projeto Supabase. Perguntar antes de tentar
+qualquer coisa aí, em qualquer ordem escolhida.
 
 ### 3. Antes do dia do pitch de verdade (mesmo sem código novo)
 
@@ -121,9 +142,12 @@ usado por `sitemap.ts`/`robots.ts`).
 
 1. `AGENTS.md` — regras não-negociáveis e mapa rápido do repo.
 2. Este arquivo.
-3. `docs/pitch/ROTEIRO-DEMO.md` + `docs/pitch/NARRATIVA-IMPACTO.md` — o
+3. `docs/architecture/BMAD-MULTIPLAYER-VPS.md` +
+   `docs/world/PLANO-PRESENCA-REALTIME.md` — o plano de multiplayer, se
+   for por aí no próximo prompt.
+4. `docs/pitch/ROTEIRO-DEMO.md` + `docs/pitch/NARRATIVA-IMPACTO.md` — o
    material do pitch em si.
-4. `docs/GAPS-DE-INTEGRACAO.md` — o que existe mas não está costurado.
-5. `docs/BACKLOG-PRODUTO.md` — todos os cards, prioridade e dependências.
-6. `docs/ESTADO-DO-PROJETO.md` §3.1 — relato detalhado de sessões
+5. `docs/GAPS-DE-INTEGRACAO.md` — o que existe mas não está costurado.
+6. `docs/BACKLOG-PRODUTO.md` — todos os cards, prioridade e dependências.
+7. `docs/ESTADO-DO-PROJETO.md` §3.1 — relato detalhado de sessões
    anteriores (só abrir se precisar entender uma decisão específica).
