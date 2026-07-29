@@ -94,6 +94,11 @@ export class CenaWorld {
   constructor(
     private readonly app: Application,
     private readonly aoClicarCelula: (celula: Celula) => void,
+    /** Avisa que um avatar TERMINOU de andar e parou nesta célula.
+     *  Só reporta posição — quem decide o que isso significa (está perto
+     *  de alguém? dá para interagir?) é `engine/proximidade.ts`. Regra
+     *  nunca mora no `render/`. */
+    private readonly aoParar?: (avatarId: string, celula: Celula) => void,
   ) {
     this.camadaDinamica.sortableChildren = true;
     this.raiz.addChild(this.camadaCenario, this.camadaDestaque, this.camadaDinamica);
@@ -288,7 +293,7 @@ export class CenaWorld {
     if (this.destruida) return;
     const dt = ticker.deltaMS / 1000;
 
-    for (const a of this.andarilhos.values()) {
+    for (const [id, a] of this.andarilhos) {
       if (a.caminho.length < 2 || a.passo >= a.caminho.length - 1) continue;
 
       a.progresso += dt * CELULAS_POR_SEGUNDO;
@@ -303,6 +308,7 @@ export class CenaWorld {
       if (chegou) {
         a.progresso = 0;
         a.caminho = [];
+        this.aoParar?.(id, a.atual);
       }
 
       const de = a.caminho[a.passo] ?? a.atual;

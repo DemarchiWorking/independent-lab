@@ -60,6 +60,7 @@ export default async function WorldPage() {
         moedaVirtual={negocio.moedaVirtual}
         atributos={negocio.atributos}
         funcionarios={funcionarios.map((f) => f.cargoId)}
+        nivelPorCargo={Object.fromEntries(funcionarios.map((f) => [f.cargoId, f.nivel]))}
         nomeNegocio={negocio.nome}
       />
     </main>

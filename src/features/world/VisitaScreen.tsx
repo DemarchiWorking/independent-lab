@@ -18,6 +18,8 @@ import type { Celula } from "./engine/iso";
 import type { EstadoCena } from "./render/cena";
 import { corDoAtributo, corDoItem } from "./render/cores";
 import type { WorldCanvasHandle } from "./render/WorldCanvas";
+import { InteracaoNpc } from "./InteracaoNpc";
+import { avataresProximos, type AvatarProximo } from "./engine/proximidade";
 import type { ItemMobiliaColocado, Negocio, Sede } from "@/lib/db/types";
 
 /**
@@ -63,6 +65,7 @@ export function VisitaScreen({
 }: VisitaScreenProps) {
   const canvasRef = useRef<WorldCanvasHandle | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [proximos, setProximos] = useState<AvatarProximo[]>([]);
 
   const nivel = nivelSede(sede.nivel);
   const geo = useMemo(() => geometriaSala(sede.nivel), [sede.nivel]);
@@ -176,13 +179,21 @@ export function VisitaScreen({
           <WorldCanvas
             ref={canvasRef}
             estado={estadoCena}
+            onAvatarParou={(celula) =>
+              setProximos(avataresProximos(celula, estadoCena.avatares, "visitante"))
+            }
             avatarDonoId="visitante"
             onCliqueCelula={aoClicarCelula}
           />
           <p className="mt-2 text-center text-[10px] text-muted">
-            Clique no chão para andar pela sala — visita é só de olhar, nada
-            aqui pode ser comprado ou movido.
+            Clique no chão para andar — chegue perto da equipe para ver o que
+            ela entrega. Visita é só de olhar, nada aqui pode ser alterado.
           </p>
+
+          {/* Proximidade na sede alheia: read-only, vira pitch (GH-WORLD-08) */}
+          <div className="mt-2">
+            <InteracaoNpc proximos={proximos} minhaSede={false} />
+          </div>
         </div>
 
         <aside className="flex flex-col gap-3 rounded-md bg-panel p-3 text-ink">

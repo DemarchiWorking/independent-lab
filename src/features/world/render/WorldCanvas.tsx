@@ -30,6 +30,8 @@ interface WorldCanvasProps {
   /** id do avatar controlado pelo jogador */
   avatarDonoId: string;
   onCliqueCelula: (celula: Celula) => void;
+  /** Avisa que o avatar do jogador parou numa célula (GH-WORLD-08). */
+  onAvatarParou?: (celula: Celula) => void;
   ref?: Ref<WorldCanvasHandle>;
 }
 
@@ -49,6 +51,7 @@ export function WorldCanvas({
   estado,
   avatarDonoId,
   onCliqueCelula,
+  onAvatarParou,
   ref,
 }: WorldCanvasProps) {
   const descricaoAcessivel = descrever(estado);
@@ -61,6 +64,10 @@ export function WorldCanvas({
   cliqueRef.current = onCliqueCelula;
   const estadoRef = useRef(estado);
   estadoRef.current = estado;
+  const pararRef = useRef(onAvatarParou);
+  pararRef.current = onAvatarParou;
+  const donoRef = useRef(avatarDonoId);
+  donoRef.current = avatarDonoId;
 
   useImperativeHandle(
     ref,
@@ -106,7 +113,14 @@ export function WorldCanvas({
       appLocal = app;
       hospedeiro.appendChild(app.canvas);
 
-      const cena = new Cena(app, (celula) => cliqueRef.current(celula));
+      const cena = new Cena(
+        app,
+        (celula) => cliqueRef.current(celula),
+        // só interessa a parada do avatar controlado pelo jogador
+        (avatarId, celula) => {
+          if (avatarId === donoRef.current) pararRef.current?.(celula);
+        },
+      );
       cena.sincronizar(estadoRef.current);
       cenaRef.current = cena;
       setPronto(true);

@@ -26,6 +26,8 @@ import type { Celula } from "./engine/iso";
 import type { EstadoCena } from "./render/cena";
 import { corDoAtributo, corDoItem } from "./render/cores";
 import type { WorldCanvasHandle } from "./render/WorldCanvas";
+import { InteracaoNpc } from "./InteracaoNpc";
+import { avataresProximos, type AvatarProximo } from "./engine/proximidade";
 import type { Atributos, ItemMobiliaColocado, Sede } from "@/lib/db/types";
 
 /**
@@ -62,6 +64,8 @@ interface WorldScreenProps {
   atributos: Atributos;
   /** cargoIds de Funcionários de IA contratados — viram avatares na sala */
   funcionarios: string[];
+  /** nível de cada cargo contratado (GH-EQP-04) — mostrado ao interagir. */
+  nivelPorCargo?: Record<string, number>;
   nomeNegocio: string;
 }
 
@@ -71,6 +75,7 @@ export function WorldScreen({
   moedaVirtual,
   atributos,
   funcionarios,
+  nivelPorCargo = {},
   nomeNegocio,
 }: WorldScreenProps) {
   const router = useRouter();
@@ -81,6 +86,7 @@ export function WorldScreen({
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const canvasRef = useRef<WorldCanvasHandle | null>(null);
+  const [proximos, setProximos] = useState<AvatarProximo[]>([]);
 
   const nivel = nivelSede(sede.nivel);
   const proximo = proximoNivelSede(sede.nivel);
@@ -298,12 +304,21 @@ export function WorldScreen({
           <WorldCanvas
             ref={canvasRef}
             estado={estadoCena}
+            onAvatarParou={(celula) =>
+              setProximos(avataresProximos(celula, estadoCena.avatares, "dono"))
+            }
             avatarDonoId="dono"
             onCliqueCelula={aoClicarCelula}
           />
           <p className="mt-2 text-center text-[10px] text-muted">
-            Clique no chão para andar · clique num móvel para reposicionar
+            Clique no chão para andar · chegue perto de alguém para interagir
           </p>
+
+          {/* Interação por proximidade (GH-WORLD-08) — some sozinho quando o
+              jogador anda para longe. */}
+          <div className="mt-2">
+            <InteracaoNpc proximos={proximos} minhaSede nivelPorCargo={nivelPorCargo} />
+          </div>
 
           {/* Âncora da primeira sessão: uma sala vazia sem direção é a pior
               tela do produto. Ver EVOLUCAO-MOTOR-2026.md §7.6. */}
