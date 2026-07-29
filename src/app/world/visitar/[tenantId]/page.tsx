@@ -25,11 +25,14 @@ export default async function VisitarSedePage({ params }: PageProps) {
   if (sessao.tenantId === tenantId) redirect("/world");
 
   const repo = getRepository();
-  const [negocioVisitado, sede, mobilia, funcionarios] = await Promise.all([
+  const [negocioVisitado, sede, mobilia, funcionarios, meuNegocio] = await Promise.all([
     repo.lerNegocio(tenantId),
     repo.lerSede(tenantId),
     repo.listarMobiliaColocada(tenantId),
     repo.listarFuncionarios(tenantId),
+    // quem SOU eu — a presença ao vivo (GH-MULTI-03) precisa se anunciar,
+    // e o dado dessa identidade morria aqui antes desta linha
+    repo.lerNegocio(sessao.tenantId),
   ]);
 
   if (!negocioVisitado) {
@@ -72,11 +75,20 @@ export default async function VisitarSedePage({ params }: PageProps) {
         </Link>
       </div>
 
+      {/* 🔒 O nome que vai para o canal de presença é o do NEGÓCIO, nunca
+          `sessao.nome` (que é o nome da pessoa). O canal Realtime é público
+          por padrão — ver a limitação registrada em
+          `docs/architecture/BMAD-MULTIPLAYER-VPS.md` — então só pode
+          trafegar fachada que já é pública no mapa e em `/n/[slug]`. */}
       <VisitaScreen
         negocioVisitado={negocioVisitado}
         sede={sede}
         mobilia={mobilia}
         funcionarios={funcionarios.map((f) => f.cargoId)}
+        visitante={{
+          tenantId: sessao.tenantId,
+          nome: meuNegocio?.nome ?? "Visitante",
+        }}
       />
     </main>
   );

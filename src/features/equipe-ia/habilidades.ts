@@ -9,7 +9,7 @@ import type { AtributoChave } from "@tokens";
  * `lib/db` nunca importa daqui, só guarda `cargoId`/`nivel`.
  */
 
-export type TipoEntregavel = "canvas" | "post" | "script";
+export type TipoEntregavel = "canvas" | "post" | "script" | "reel";
 
 export interface HabilidadeIA {
   id: string;
@@ -89,14 +89,31 @@ export const CATALOGO_HABILIDADES: readonly HabilidadeIA[] = [
     nivelMinimo: 3,
   },
 
-  // ---- Editor de vídeo (sem entregável baixável ainda) ----
+  // ---- Editor de vídeo ----
   {
     id: "video-roteiro",
     cargoId: "editor-video",
-    nome: "Roteiro de Reels",
+    nome: "Roteiro de Reels pronto para gravar",
     descricao:
-      "Estrutura gancho, desenvolvimento e CTA para vídeo curto. (Entregável baixável ainda não implementado.)",
+      "Cena a cena, com o que falar e o que aparecer na tela — gancho, dor, virada e CTA, no seu segmento e na sua cidade.",
     nivelMinimo: 1,
+    entregavel: "reel",
+  },
+  {
+    id: "video-ganchos",
+    cargoId: "editor-video",
+    nome: "Ganchos alternativos para testar",
+    descricao:
+      "Acrescenta uma cena de prova e três aberturas diferentes — o gancho é o único trecho que decide se a plataforma entrega o vídeo.",
+    nivelMinimo: 2,
+  },
+  {
+    id: "video-reaproveitamento",
+    cargoId: "editor-video",
+    nome: "Plano de reaproveitamento",
+    descricao:
+      "Onde o mesmo material rende de novo: Story, carrossel, e-mail e criativo de anúncio — sem regravar nada.",
+    nivelMinimo: 3,
   },
 
   // ---- Comercial ----

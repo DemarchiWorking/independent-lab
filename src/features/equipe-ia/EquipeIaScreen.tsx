@@ -22,6 +22,7 @@ const ROTULO_ENTREGAVEL: Record<string, string> = {
   canvas: "Baixar Modelo de Negócio",
   post: "Baixar post pronto",
   script: "Baixar script comercial",
+  reel: "Baixar roteiro de Reels",
 };
 
 interface EquipeIaScreenProps {

@@ -1,5 +1,5 @@
 import { color, font } from "@tokens";
-import type { CanvasNegocio, ScriptComercial } from "./tipos";
+import type { CanvasNegocio, RoteiroReel, ScriptComercial } from "./tipos";
 
 /**
  * Renderização dos entregáveis para HTML autocontido e imprimível.
@@ -63,8 +63,16 @@ function moldura(titulo: string, subtitulo: string, corpo: string): string {
   .objecao b { display: block; color: ${color.brand.coral}; font-size: 13px; }
   .destaque { background: ${color.brand.teal}1a; border: 2px solid ${color.brand.teal}; border-radius: 12px; padding: 14px; margin-top: 16px; }
   .destaque h2 { color: ${color.text.ink}; }
+  .cena { display: grid; grid-template-columns: 92px 1fr; gap: 12px; background: #fff; border: 2px solid #e6ebf3; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .cena .tempo { font-weight: 800; font-size: 13px; color: ${color.brand.teal}; }
+  .cena .papel { display: inline-block; margin-top: 4px; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; background: ${color.brand.orange}; color: ${color.text.ink}; border-radius: 999px; padding: 2px 8px; font-weight: 800; }
+  .cena .fala { margin: 0 0 8px; }
+  .cena .imagem { margin: 0; font-size: 12px; color: #5b6b86; }
+  .cena .imagem b { color: ${color.brand.coral}; }
+  .legenda { white-space: pre-wrap; font-size: 14px; }
+  .tags { margin-top: 8px; color: ${color.brand.teal}; font-weight: 700; font-size: 13px; }
   footer { margin-top: 28px; text-align: center; font-size: 11px; color: #94a3b8; }
-  @media print { body { padding: 0; background: #fff; } .bloco, .secao { break-inside: avoid; } }
+  @media print { body { padding: 0; background: #fff; } .bloco, .secao, .cena { break-inside: avoid; } }
   @media (max-width: 860px) { .grade { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -101,6 +109,51 @@ export function canvasParaHtml(canvas: CanvasNegocio): string {
       : "";
 
   return moldura(canvas.titulo, canvas.subtitulo, `<div class="grade">${blocos}</div>${passos}`);
+}
+
+export function reelParaHtml(reel: RoteiroReel): string {
+  const cenas = reel.cenas
+    .map(
+      (c) => `<div class="cena">
+      <div>
+        <div class="tempo">${escaparHtml(c.tempo)}</div>
+        <span class="papel">${escaparHtml(c.papel)}</span>
+      </div>
+      <div>
+        <p class="fala">${escaparHtml(c.fala)}</p>
+        <p class="imagem"><b>Na tela:</b> ${escaparHtml(c.imagem)}</p>
+      </div>
+    </div>`,
+    )
+    .join("");
+
+  const lista = (itens: string[]) =>
+    `<ul>${itens.map((i) => `<li>${escaparHtml(i)}</li>`).join("")}</ul>`;
+
+  const ganchos =
+    reel.ganchosAlternativos.length > 0
+      ? `<div class="secao"><h2>Ganchos alternativos (teste um por vídeo)</h2>${lista(reel.ganchosAlternativos)}</div>`
+      : "";
+
+  const reaproveitamento =
+    reel.reaproveitamento.length > 0
+      ? `<div class="destaque"><h2>Reaproveitamento — sem regravar</h2>${lista(reel.reaproveitamento)}</div>`
+      : "";
+
+  const corpo = `
+    <div class="secao">
+      <h2>Roteiro · ${reel.duracaoSegundos}s · ${reel.cenas.length} cenas</h2>
+      ${cenas}
+    </div>
+    ${ganchos}
+    <div class="secao">
+      <h2>Legenda para a publicação</h2>
+      <p class="legenda">${escaparHtml(reel.legenda)}</p>
+      <p class="tags">${escaparHtml(reel.hashtags.join("  "))}</p>
+    </div>
+    ${reaproveitamento}`;
+
+  return moldura(reel.titulo, reel.subtitulo, corpo);
 }
 
 export function scriptParaHtml(script: ScriptComercial, subtitulo: string): string {

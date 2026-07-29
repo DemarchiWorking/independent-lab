@@ -856,6 +856,91 @@ com bug. Cobertura feita por teste, não por pixel.
 
 ---
 
+### GH-EQP-05 — Entregável do Editor de Vídeo: roteiro de Reels ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | M |
+| Depende de | `GH-EQP-04` |
+
+**Por que existia o buraco:** o cargo `editor-video` era **contratável e
+não entregava nada** — a própria habilidade dizia "(Entregável baixável
+ainda não implementado.)". Um agente que se paga e não produz arquivo é a
+pior propaganda possível do produto de Funcionários de IA.
+
+**Decisão de escopo — roteiro, não MP4.** O que trava o dono de PME não é
+editar, é não saber o que dizer nos primeiros 3 segundos. Um roteiro cena
+a cena ele grava no celular hoje; um vídeo genérico gerado por máquina
+sairia sem o rosto dele, que é justamente o ativo de um negócio regional.
+Prometer "vídeo pronto" seria vender o que não se entrega.
+
+**Modelo (puro, `entregaveis/reel.ts`):** estrutura de 3 atos de vídeo
+curto — Gancho / desenvolvimento / CTA — com o gancho carregando a dor do
+nicho, porque é o único trecho que decide se a plataforma entrega o vídeo.
+Cada cena traz o que se FALA e o que se VÊ. Nível 1 = 4 cenas; nível 2
+acrescenta cena de Prova + 3 ganchos alternativos; nível 3 acrescenta cena
+de Objeção + plano de reaproveitamento (Story, carrossel, e-mail, criativo
+de anúncio).
+
+**Bug de conteúdo achado e corrigido durante a implementação:** o gancho
+conjugava a primeira palavra da dor do segmento. As dores do
+`vocabulario.ts` são um misto de infinitivo ("perder prazo de edital") e
+de sintagma nominal ("agenda cheia sem sobrar tempo") — a heurística
+acertava 4 dos 8 segmentos e produzia frase quebrada nos outros 4
+("…e ainda agenda cheia sem sobrar tempo"). Trocado por construção de
+cópula, que aceita as duas formas; a heurística foi apagada, não remendada.
+Teste de regressão cobre **os 8 segmentos**, não só o do fixture — era
+exatamente o viés que escondia o bug.
+
+**Transporte:** `/api/entregavel/reel`, na mesma rota já autenticada por
+sessão dos outros três (o tenant nunca vem de query param).
+
+---
+
+### GH-MULTI-03 — Presença ao vivo integrada ao World ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | M |
+| Depende de | `GH-MULTI-02` |
+
+**Descrição:** ao visitar a sede de um vizinho, quem mais estiver na mesma
+sala naquele momento aparece como avatar. Chegar perto abre o painel com o
+nome do negócio e o atalho para a sede dele — o jogo vira networking em
+vez de terminar em "olá".
+
+**Threading de identidade (o pré-requisito que estava mapeado):**
+`world/visitar/[tenantId]/page.tsx` chamava `lerSessao()` mas só passava
+os dados do VISITADO; a identidade de quem visita morria na página.
+
+🔒 **Decisão de privacidade:** o que vai para o canal é o nome do
+**NEGÓCIO**, nunca `sessao.nome` — que é o nome da PESSOA. O canal
+Realtime é público por padrão (limitação registrada em
+`architecture/BMAD-MULTIPLAYER-VPS.md`), então só pode trafegar fachada
+que já é pública no mapa e em `/n/[slug]`.
+
+**Posicionamento:** eu e os presentes saem de UMA chamada a
+`distribuirAvatares(geo, ocupadas, 1 + outros.length)`. Em duas chamadas
+separadas a função — que é determinística — devolveria a mesma célula para
+o primeiro de cada lista e os bonecos nasceriam empilhados.
+
+**Prefixo de id como discriminador:** `presenca:<tenantId>` ao lado do
+`ia:<cargo>` já existente. `EstadoCena` e `render/` não mudaram; um teste
+trava que os dois prefixos são mutuamente exclusivos — se um id caísse nos
+dois, o painel ofereceria o entregável de um agente ao clicar numa pessoa.
+
+**Degradação limpa:** `entrarNaSala` é no-op sem
+`NEXT_PUBLIC_SUPABASE_URL`, então em `GAMEHUB_DB=file` a tela funciona
+exatamente como antes — sem feature flag espalhada pela UI.
+
+⚠️ **Verificação viva ainda pendente:** duas abas, dois tenants, um vendo
+o avatar do outro. Depende da Fase 0 + `GH-MULTI-01` (Supabase real), que
+**precisam do usuário**. O caminho de código está fechado e no gate.
+
+---
+
 ### GH-SIM-01 — Motor de simulação: tick determinístico + ECS mínimo
 
 | Campo | Valor |

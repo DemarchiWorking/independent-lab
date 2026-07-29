@@ -44,6 +44,30 @@ export interface PostSocial {
   hashtags: string[];
 }
 
+export interface CenaReel {
+  /** janela de tempo da cena, no formato "0–3s" */
+  tempo: string;
+  /** função da cena no roteiro: Gancho, Dor, Prova, CTA… */
+  papel: string;
+  /** o que se FALA (ou o texto na tela, se for vídeo mudo) */
+  fala: string;
+  /** o que se VÊ — orientação de gravação, não efeito especial */
+  imagem: string;
+}
+
+export interface RoteiroReel {
+  titulo: string;
+  subtitulo: string;
+  duracaoSegundos: number;
+  cenas: CenaReel[];
+  legenda: string;
+  hashtags: string[];
+  /** ganchos alternativos para testar — só a partir do nível 2 */
+  ganchosAlternativos: string[];
+  /** onde mais o mesmo material rende — só a partir do nível 3 */
+  reaproveitamento: string[];
+}
+
 export interface ObjecaoComercial {
   objecao: string;
   resposta: string;

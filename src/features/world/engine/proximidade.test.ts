@@ -4,6 +4,7 @@ import {
   cargoDoAvatar,
   distanciaEmCelulas,
   RAIO_INTERACAO,
+  tenantDoAvatar,
   type AvatarNaSala,
 } from "./proximidade";
 import {
@@ -123,5 +124,31 @@ describe("proximidade — cargo do avatar", () => {
   it("devolve null para quem não é agente", () => {
     expect(cargoDoAvatar("dono")).toBeNull();
     expect(cargoDoAvatar("visitante")).toBeNull();
+  });
+});
+
+describe("proximidade — visitante ao vivo (GH-MULTI-03)", () => {
+  it("extrai o tenant do id de presença", () => {
+    expect(tenantDoAvatar("presenca:abc123")).toBe("abc123");
+  });
+
+  it("devolve null para quem não é presença ao vivo", () => {
+    expect(tenantDoAvatar("dono")).toBeNull();
+    expect(tenantDoAvatar("visitante")).toBeNull();
+    expect(tenantDoAvatar("ia:comercial")).toBeNull();
+  });
+
+  /**
+   * Os dois prefixos precisam ser mutuamente exclusivos: se um id caísse
+   * nos dois, o painel de interação ofereceria o entregável de um agente
+   * ao clicar numa PESSOA — ou o contrário. É a única coisa que separa
+   * "gente de verdade" de "NPC" no `EstadoCena`.
+   */
+  it("agente e pessoa real nunca se confundem", () => {
+    for (const id of ["ia:comercial", "presenca:t1", "dono", "visitante"]) {
+      const ehAgente = cargoDoAvatar(id) !== null;
+      const ehPessoa = tenantDoAvatar(id) !== null;
+      expect(ehAgente && ehPessoa).toBe(false);
+    }
   });
 });

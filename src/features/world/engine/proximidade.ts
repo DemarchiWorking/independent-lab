@@ -58,3 +58,15 @@ export function avataresProximos(
 export function cargoDoAvatar(avatarId: string): string | null {
   return avatarId.startsWith("ia:") ? avatarId.slice(3) : null;
 }
+
+/**
+ * O id de avatar de um visitante ao vivo carrega o tenant:
+ * `presenca:<tenantId>` (GH-MULTI-03). Devolve `null` para todo o resto.
+ *
+ * O prefixo é o que separa "pessoa de verdade que está aqui agora" de
+ * "agente de IA" sem precisar de um campo extra em `EstadoCena` — o mesmo
+ * truque de `ia:`, e o `render/` continua sem saber a diferença.
+ */
+export function tenantDoAvatar(avatarId: string): string | null {
+  return avatarId.startsWith("presenca:") ? avatarId.slice("presenca:".length) : null;
+}

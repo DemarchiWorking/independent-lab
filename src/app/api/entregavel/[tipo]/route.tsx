@@ -6,13 +6,18 @@ import { cargoDoEntregavel, type TipoEntregavel } from "@/features/equipe-ia/hab
 import { gerarCanvas } from "@/features/equipe-ia/entregaveis/canvas";
 import { gerarPost } from "@/features/equipe-ia/entregaveis/post";
 import { gerarScript } from "@/features/equipe-ia/entregaveis/script";
-import { canvasParaHtml, scriptParaHtml } from "@/features/equipe-ia/entregaveis/render";
+import { gerarReel } from "@/features/equipe-ia/entregaveis/reel";
+import {
+  canvasParaHtml,
+  reelParaHtml,
+  scriptParaHtml,
+} from "@/features/equipe-ia/entregaveis/render";
 import { perfilDoNegocio } from "@/features/equipe-ia/entregaveis/tipos";
 import { vocabulario } from "@/features/equipe-ia/entregaveis/vocabulario";
 
 export const runtime = "nodejs";
 
-const TIPOS: readonly TipoEntregavel[] = ["canvas", "post", "script"];
+const TIPOS: readonly TipoEntregavel[] = ["canvas", "post", "script", "reel"];
 
 /**
  * Download dos entregáveis dos Funcionários de IA (GH-EQP-04).
@@ -146,10 +151,12 @@ export async function GET(
   const html =
     tipoEntregavel === "canvas"
       ? canvasParaHtml(gerarCanvas(perfil))
-      : scriptParaHtml(
-          gerarScript(perfil),
-          `${vocabulario(perfil.segmento).oQueVende} · ${perfil.cidade}`,
-        );
+      : tipoEntregavel === "reel"
+        ? reelParaHtml(gerarReel(perfil))
+        : scriptParaHtml(
+            gerarScript(perfil),
+            `${vocabulario(perfil.segmento).oQueVende} · ${perfil.cidade}`,
+          );
 
   return new Response(html, {
     headers: {

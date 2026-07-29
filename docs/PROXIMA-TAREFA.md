@@ -130,6 +130,22 @@ código. A cobertura foi feita por teste em vez de por pixel:
 `proximidade.test.ts` trava, para os 4 níveis de sede, que o primeiro
 agente nasce dentro do raio de quem entra.
 
+**`GH-EQP-05` — Entregável do Editor de Vídeo (roteiro de Reels).** Fecha
+o último cargo órfão: `editor-video` era contratável e não produzia
+arquivo nenhum. Agora entrega roteiro cena a cena (o que falar + o que
+aparece na tela), com legenda, hashtags e — nos níveis 2 e 3 — ganchos
+alternativos e plano de reaproveitamento. **Roteiro, não MP4, de
+propósito:** ver o card no backlog.
+
+**`GH-MULTI-03` — Presença ao vivo no World.** Quem mais está visitando a
+mesma sede aparece como avatar; chegar perto abre o atalho para a sede
+dele. O caminho de código do multiplayer está FECHADO — falta só a
+verificação viva, que depende da Fase 0 (Supabase real, precisa de você).
+
+🔒 **Duas decisões de privacidade que não podem ser desfeitas sem pensar:**
+o canal de presença transmite o nome do **NEGÓCIO**, nunca `sessao.nome`
+(nome da pessoa), porque o canal Realtime é público por padrão; e
+
 🔒 **Detalhe de segurança que vale lembrar ao mexer aqui:**
 `/api/entregavel/[tipo]` deriva o tenant **da sessão, nunca de query
 param** — o canvas carrega dado de onboarding (faixa de investimento,

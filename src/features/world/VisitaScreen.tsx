@@ -20,6 +20,8 @@ import { corDoAtributo, corDoItem } from "./render/cores";
 import type { WorldCanvasHandle } from "./render/WorldCanvas";
 import { InteracaoNpc } from "./InteracaoNpc";
 import { avataresProximos, type AvatarProximo } from "./engine/proximidade";
+import { entrarNaSala } from "./presenca/canal";
+import type { VisitantePresente } from "./presenca/canalUtil";
 import type { ItemMobiliaColocado, Negocio, Sede } from "@/lib/db/types";
 
 /**
@@ -55,6 +57,9 @@ interface VisitaScreenProps {
   sede: Sede;
   mobilia: ItemMobiliaColocado[];
   funcionarios: string[];
+  /** identidade pública de quem está visitando — anunciada no canal de
+   *  presença (GH-MULTI-03). Só fachada: tenantId + nome do negócio. */
+  visitante: { tenantId: string; nome: string };
 }
 
 export function VisitaScreen({
@@ -62,10 +67,37 @@ export function VisitaScreen({
   sede,
   mobilia,
   funcionarios,
+  visitante,
 }: VisitaScreenProps) {
   const canvasRef = useRef<WorldCanvasHandle | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [proximos, setProximos] = useState<AvatarProximo[]>([]);
+  const [presentes, setPresentes] = useState<VisitantePresente[]>([]);
+
+  /**
+   * Presença ao vivo na sala (GH-MULTI-03). `entrarNaSala` é no-op
+   * silencioso sem `NEXT_PUBLIC_SUPABASE_URL`, então em `GAMEHUB_DB=file`
+   * esta tela funciona exatamente como antes — degradação limpa, não
+   * feature flag espalhada pela UI.
+   *
+   * Depende só de valores primitivos (`id`, `tenantId`, `nome`) e não do
+   * objeto `visitante`: uma prop recriada a cada render do servidor faria
+   * este efeito derrubar e reabrir o canal em loop, e cada reconexão
+   * aparece como entrar/sair para todo mundo que está na sala.
+   */
+  useEffect(() => {
+    return entrarNaSala(
+      negocioVisitado.id,
+      { tenantId: visitante.tenantId, nome: visitante.nome, entrouEm: new Date().toISOString() },
+      setPresentes,
+    );
+  }, [negocioVisitado.id, visitante.tenantId, visitante.nome]);
+
+  /** Quem mais está aqui agora — eu não conto (já sou o avatar "visitante"). */
+  const outrosPresentes = useMemo(
+    () => presentes.filter((p) => p.tenantId !== visitante.tenantId),
+    [presentes, visitante.tenantId],
+  );
 
   const nivel = nivelSede(sede.nivel);
   const geo = useMemo(() => geometriaSala(sede.nivel), [sede.nivel]);
@@ -97,7 +129,15 @@ export function VisitaScreen({
     for (const pos of posicoesIa) {
       ocupadasComEquipe.add(chaveCelula(pos.cx, pos.cy));
     }
-    const [posicaoVisitante] = distribuirAvatares(geo, ocupadasComEquipe, 1);
+    // eu + quem mais estiver na sala ao vivo, todos numa tacada só: pedir
+    // as posições em duas chamadas separadas devolveria a MESMA célula
+    // para o primeiro de cada lista (a função é determinística), e os
+    // bonecos nasceriam empilhados.
+    const [posicaoVisitante, ...posicoesPresentes] = distribuirAvatares(
+      geo,
+      ocupadasComEquipe,
+      1 + outrosPresentes.length,
+    );
 
     return {
       geo,
@@ -138,10 +178,22 @@ export function VisitaScreen({
           nome: "Você",
           dono: false,
         },
+        // gente de verdade, ao vivo, na mesma sala (GH-MULTI-03)
+        ...outrosPresentes.map((p, i) => {
+          const pos = posicoesPresentes[i] ?? posicaoVisitante ?? inicioDono;
+          return {
+            id: `presenca:${p.tenantId}`,
+            cx: pos.cx,
+            cy: pos.cy,
+            cor: corDoAtributo("processo"),
+            nome: p.nome,
+            dono: false,
+          };
+        }),
       ],
       destaques: [],
     };
-  }, [geo, moveisPosicionados, funcionarios, negocioVisitado.nome]);
+  }, [geo, moveisPosicionados, funcionarios, negocioVisitado.nome, outrosPresentes]);
 
   // Proximidade inicial: o jogador pode nascer já ao lado de um agente, e sem
   // isto o painel só apareceria depois do primeiro passo — justo na primeira

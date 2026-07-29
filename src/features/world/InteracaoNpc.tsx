@@ -9,12 +9,13 @@ import {
   habilidadesDoCargo,
   NIVEL_MAX_FUNCIONARIO,
 } from "@/features/equipe-ia/habilidades";
-import { cargoDoAvatar, type AvatarProximo } from "./engine/proximidade";
+import { cargoDoAvatar, tenantDoAvatar, type AvatarProximo } from "./engine/proximidade";
 
 const ROTULO_ENTREGAVEL: Record<string, string> = {
   canvas: "Pedir o Modelo de Negócio",
   post: "Pedir um post pronto",
   script: "Pedir o script comercial",
+  reel: "Pedir o roteiro de Reels",
 };
 
 interface InteracaoNpcProps {
@@ -40,6 +41,8 @@ export function InteracaoNpc({ proximos, minhaSede, nivelPorCargo = {} }: Intera
   const alvo = proximos[0] ?? null;
   const cargoId = alvo ? cargoDoAvatar(alvo.id) : null;
   const cargo = cargoId ? cargoPorId(cargoId) : undefined;
+  // gente de verdade na sala agora (GH-MULTI-03) — não é NPC nem agente
+  const tenantAoVivo = alvo ? tenantDoAvatar(alvo.id) : null;
 
   return (
     <AnimatePresence>
@@ -61,12 +64,16 @@ export function InteracaoNpc({ proximos, minhaSede, nivelPorCargo = {} }: Intera
               <small className="text-[10px] text-[#5b6b86]">
                 {cargo
                   ? `${cargo.entrega} · Nv ${nivelPorCargo[cargo.id] ?? 1}/${NIVEL_MAX_FUNCIONARIO}`
-                  : "Está bem ao seu lado"}
+                  : tenantAoVivo
+                    ? "Está online, nesta sala, agora"
+                    : "Está bem ao seu lado"}
               </small>
             </div>
           </div>
 
-          {cargo ? (
+          {tenantAoVivo ? (
+            <VisitanteAoVivo tenantId={tenantAoVivo} nome={alvo.nome} />
+          ) : cargo ? (
             minhaSede ? (
               <AcoesDoMeuAgente
                 cargoId={cargo.id}
@@ -88,6 +95,29 @@ export function InteracaoNpc({ proximos, minhaSede, nivelPorCargo = {} }: Intera
         </motion.div>
       ) : null}
     </AnimatePresence>
+  );
+}
+
+/**
+ * Encontro com outro empresário ao vivo — o momento em que o jogo vira
+ * networking de verdade. Chegar perto de alguém não pode terminar em
+ * "olá": leva para a sede dele, que é onde dá para ver o que ele entrega
+ * e abrir conversa de parceria.
+ */
+function VisitanteAoVivo({ tenantId, nome }: { tenantId: string; nome: string }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] leading-relaxed text-[#33415c]">
+        <b>{nome}</b> está visitando esta sede junto com você agora.
+      </p>
+      <a
+        href={`/world/visitar/${tenantId}`}
+        className="flex w-full items-center justify-center gap-2 rounded-md bg-teal px-3 py-2.5 text-xs font-extrabold text-ink"
+      >
+        <Icon name="home" size={14} />
+        Conhecer a sede de {nome}
+      </a>
+    </div>
   );
 }
 
