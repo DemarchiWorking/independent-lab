@@ -810,6 +810,52 @@ com nível atual, bônus acumulado e custo do próximo nível.
 
 ---
 
+### GH-WORLD-08 — Interação por proximidade com NPCs ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | S |
+| Depende de | `GH-WORLD-05`, `GH-EQP-04` |
+
+**Descrição:** chegar perto de um Funcionário de IA (na própria sede ou na
+de um vizinho) abre um painel de interação. É o que transforma os avatares
+de enfeite em mecânica — e o caminho mais curto entre "ver um agente
+andando" e "receber o entregável dele".
+
+**Regra (pura, `world/engine/proximidade.ts`, 16 testes):**
+- Distância de **Chebyshev**, não Manhattan: num grid isométrico a
+  diagonal é visivelmente "encostado"; com Manhattan daria 2 e o painel
+  não abriria.
+- Raio 1 (célula adjacente, incluindo diagonais).
+- Empate de distância desempatado por `id` — sem isso dois NPCs à mesma
+  distância trocariam de lugar a cada frame e os botões pulariam debaixo
+  do dedo do jogador.
+- O próprio jogador nunca entra na lista.
+
+**Integração sem sujar o `render/`:** `EstadoCena` ganhou um callback
+`aoParar(avatarId, celula)` que o `render/` dispara quando o avatar chega
+ao fim do caminho; quem decide o que isso significa é o `engine/`. O
+`WorldCanvas` filtra pelo avatar do dono antes de propagar.
+
+**Encontro na entrada:** o painel também aparece sem andar, se o jogador
+nasce ao lado de um agente. Travado por teste para os 4 níveis de sede
+(`distribuirAvatares` coloca o primeiro agente dentro do raio do centro).
+
+**Na sede de outro negócio** o painel vira pitch, não ação: mostra o que
+aquele cargo entrega e aponta para a aba Equipe de IA. Nenhum entregável
+de terceiro é acessível — a rota `/api/entregavel/[tipo]` continua
+derivando o tenant da sessão.
+
+⚠️ **Limite de validação conhecido:** o painel disparado por caminhada foi
+verificado ao vivo (técnica do `AGENTS.md`). O encontro na entrada **não**
+pôde ser observado em navegador: com o painel do browser não exibido, a
+aba fica `visibilityState: "hidden"` e o React **nunca hidrata** — nenhum
+`useEffect` roda e nenhum handler é anexado. Sintoma fácil de confundir
+com bug. Cobertura feita por teste, não por pixel.
+
+---
+
 ### GH-SIM-01 — Motor de simulação: tick determinístico + ECS mínimo
 
 | Campo | Valor |

@@ -6,6 +6,11 @@ import {
   RAIO_INTERACAO,
   type AvatarNaSala,
 } from "./proximidade";
+import {
+  celulaInicialAvatar,
+  distribuirAvatares,
+  geometriaSala,
+} from "./sala";
 
 const npcs: AvatarNaSala[] = [
   { id: "ia:comercial", nome: "Comercial IA", cx: 1, cy: 0 },
@@ -72,6 +77,41 @@ describe("proximidade — quem está perto", () => {
 
   it("raio padrão é a célula adjacente", () => {
     expect(RAIO_INTERACAO).toBe(1);
+  });
+});
+
+describe("proximidade — encontro na entrada da sala", () => {
+  /**
+   * Trava a promessa da mecânica: quem entra na própria sede com pelo menos um
+   * Funcionário de IA contratado já nasce ao alcance de alguém, então o painel
+   * de interação aparece sem exigir o primeiro passo. Se `distribuirAvatares`
+   * ou `celulaInicialAvatar` mudarem e afastarem o primeiro agente, este teste
+   * quebra — é a única checagem automática desse encontro, porque a renderação
+   * do painel depende do Pixi (não coberto por teste unitário).
+   */
+  function salaDeEntrada(nivel: number, quantosAgentes: number) {
+    const geo = geometriaSala(nivel);
+    const dono = celulaInicialAvatar(geo);
+    const ocupadas = new Set([`${dono.cx},${dono.cy}`]);
+    const posicoes = distribuirAvatares(geo, ocupadas, quantosAgentes);
+    const avatares: AvatarNaSala[] = [
+      { id: "dono", nome: "Você", ...dono },
+      ...posicoes.map((p, i) => ({ id: `ia:${i}`, nome: `IA ${i}`, ...p })),
+    ];
+    return { dono, avatares };
+  }
+
+  it.each([1, 2, 3, 4])(
+    "nível %i: o primeiro agente nasce ao alcance de quem entra",
+    (nivel) => {
+      const { dono, avatares } = salaDeEntrada(nivel, 1);
+      expect(avataresProximos(dono, avatares, "dono")).toHaveLength(1);
+    },
+  );
+
+  it("sem nenhum agente contratado não há com quem interagir", () => {
+    const { dono, avatares } = salaDeEntrada(2, 0);
+    expect(avataresProximos(dono, avatares, "dono")).toEqual([]);
   });
 });
 

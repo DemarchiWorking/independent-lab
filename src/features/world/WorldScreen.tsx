@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
@@ -171,6 +171,17 @@ export function WorldScreen({
       destaques: modo.tipo === "mover" ? destinosLivres.map((d) => d.celula) : [],
     };
   }, [geo, bloqueadas, moveisPosicionados, funcionarios, modo, destinosLivres]);
+
+  // Proximidade inicial: o jogador pode nascer já ao lado de um agente, e sem
+  // isto o painel só apareceria depois do primeiro passo — justo na primeira
+  // sessão, que é quando ele mais precisa ensinar a mecânica.
+  const proximidadeIniciada = useRef(false);
+  useEffect(() => {
+    if (proximidadeIniciada.current) return;
+    proximidadeIniciada.current = true;
+    const eu = estadoCena.avatares.find((a) => a.id === "dono");
+    if (eu) setProximos(avataresProximos(eu, estadoCena.avatares, "dono"));
+  }, [estadoCena.avatares]);
 
   const executar = useCallback(
     (fn: () => Promise<{ ok: boolean; erro?: string }>) => {

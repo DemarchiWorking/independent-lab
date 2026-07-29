@@ -1,6 +1,22 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
-> Atualizado: 2026-07-28. Sessão fechou Épico 10 (Pitch Readiness), Épico
+## 🚨 ANTES DE QUALQUER COISA: confira em que branch o servidor roda
+
+Tudo o que foi entregue em 2026-07-28/29 vive no branch
+`claude/module-refactor-framework-497918` (worktree em
+`.claude/worktrees/`), **não na `main`**. Se você (ou o usuário) rodar
+`npm run dev` no checkout principal, verá o app SEM Mercado, SEM Finanças,
+SEM celular/inventário e SEM interação com NPC — e vai parecer que "nada
+funciona". Não é bug: é branch errado.
+
+```bash
+git log --oneline -1 && git rev-list --count main..HEAD
+```
+
+O merge é **fast-forward** (`git merge-base --is-ancestor main <branch>`
+passa), então integrar é seguro — mas **só com o usuário confirmando**.
+
+> Atualizado: 2026-07-29. Sessão fechou Épico 10 (Pitch Readiness), Épico
 > 7 inteiro (Growth Engine, exceto `GH-GROW-05`), e um plano estratégico
 > BMAD completo para multiplayer (**Épico 13, novo**) — ver seção
 > "🎯 Próxima prioridade" abaixo, é o que o usuário pediu para seguir no
@@ -86,6 +102,33 @@ material (migration `0024`). Habilidades destravadas por nível na UI.
 cada nível reaplica o bônus de atributo (total = base × nível), com custo
 que garante por construção que evoluir nunca seja mais barato que comprar
 novo (migration `0025`).
+
+**Telas Mercado e Finanças + HUD navegável + celular e inventário.** Os
+três indicadores do topo (moeda/rede/ciclo), os botões inferiores e os do
+canto superior direito passaram a navegar de verdade. Mercado e Finanças
+são **projeções puras** do estado já persistido — nenhuma tabela nova.
+Regra crítica preservada em `features/financas/calculo.ts`: `saldoVirtual`
+(🪙) e `compromissoMensalReal` (R$) são campos separados que **nunca são
+somados** — a tela não pode sugerir que uma moeda vira a outra.
+
+**`GH-WORLD-08` — Interação por proximidade com NPCs.** Chegar perto de um
+Funcionário de IA (raio 1, distância de Chebyshev — diagonal conta como
+adjacente) abre o painel com cargo, nível, habilidades destravadas, a
+próxima bloqueada e o botão de baixar o entregável. Na sede de outro
+negócio o mesmo painel vira pitch ("este negócio usa um X — contrate o
+seu"). Regra pura em `world/engine/proximidade.ts` (16 testes), disparo
+via `cena.aoParar` no `render/` — nenhuma regra entrou no Pixi.
+
+⚠️ **Como isso foi validado (e o que o navegador não conseguiu provar):**
+o painel disparado por caminhada foi verificado ao vivo com a técnica do
+`AGENTS.md` (`cena.andarPara` + `cena['avancar']` na mão). Já o
+**encontro na entrada** (nascer ao lado de um agente) não pôde ser visto:
+com o painel do navegador não exibido, a aba fica `visibilityState:
+"hidden"`, o React **nunca hidrata** (nenhum `__reactProps$` nos
+elementos) e nenhum `useEffect` roda — sintoma que se confunde com bug de
+código. A cobertura foi feita por teste em vez de por pixel:
+`proximidade.test.ts` trava, para os 4 níveis de sede, que o primeiro
+agente nasce dentro do raio de quem entra.
 
 🔒 **Detalhe de segurança que vale lembrar ao mexer aqui:**
 `/api/entregavel/[tipo]` deriva o tenant **da sessão, nunca de query

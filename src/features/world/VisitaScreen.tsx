@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Icon } from "@/components/ui/Icon";
 import { itemMobilia } from "@/features/sede/catalogo";
@@ -142,6 +142,17 @@ export function VisitaScreen({
       destaques: [],
     };
   }, [geo, moveisPosicionados, funcionarios, negocioVisitado.nome]);
+
+  // Proximidade inicial: o jogador pode nascer já ao lado de um agente, e sem
+  // isto o painel só apareceria depois do primeiro passo — justo na primeira
+  // sessão, que é quando ele mais precisa ensinar a mecânica.
+  const proximidadeIniciada = useRef(false);
+  useEffect(() => {
+    if (proximidadeIniciada.current) return;
+    proximidadeIniciada.current = true;
+    const eu = estadoCena.avatares.find((a) => a.id === "visitante");
+    if (eu) setProximos(avataresProximos(eu, estadoCena.avatares, "visitante"));
+  }, [estadoCena.avatares]);
 
   const aoClicarCelula = (celula: Celula) => {
     setAviso(null);
