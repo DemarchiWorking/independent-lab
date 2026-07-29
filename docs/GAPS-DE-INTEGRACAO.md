@@ -11,6 +11,28 @@
 
 ## 🔴 Alto — vale atenção antes do primeiro cadastro real
 
+### ~~RLS de `negocios` expõe a linha inteira~~ → migration escrita (`GH-MULTI-00`)
+
+> **Status 2026-07-29:** `supabase/migrations/0026_negocios_rls_fachada.sql`
+> implementa a correção descrita abaixo (view `negocios_publico` + policy
+> restrita ao próprio tenant). Sintaxe validada com `pg-query-emscripten`,
+> junto com as 26 migrations em sequência. **Ainda não aplicada contra
+> Postgres real** — a verificação de semântica de runtime é a Fase 0 e
+> precisa de `supabase start` (Docker) na máquina do usuário.
+>
+> Passou a ser urgente porque `GH-MULTI-03` colocou `supabaseAnon()` no
+> browser: o risco deixou de ser latente no momento em que
+> `NEXT_PUBLIC_SUPABASE_URL` existir no ambiente.
+>
+> **Segundo vazamento achado ao escrever a migration, na mesma superfície:**
+> `public.vizinhos_do_tenant(bigint)` é `security invoker` e
+> `returns setof public.negocios`; o Postgres concede `execute` a `PUBLIC`
+> por padrão. Ou seja, além da leitura direta da tabela, existia um caminho
+> por RPC (`rpc/vizinhos_do_tenant`) que devolvia a linha completa de todos
+> os vizinhos de qualquer quarteirão. Sendo invoker, a função herda a RLS
+> nova e o caminho fecha junto — mas isso está documentado dentro da própria
+> migration para ninguém "consertar" o retorno vazio relaxando a policy.
+
 ### RLS de `negocios` expõe a linha inteira, não só a fachada pública
 
 `negocios_leitura` (`supabase/migrations/0001_init.sql`) é

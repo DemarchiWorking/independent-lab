@@ -856,6 +856,46 @@ com bug. Cobertura feita por teste, não por pixel.
 
 ---
 
+### GH-MULTI-00 — Endurecer a RLS de `negocios` (view de fachada) 🟡 migration escrita
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P0 |
+| Esforço | S |
+| Depende de | — (aplicar exige a Fase 0) |
+
+**Virou urgente** quando `GH-MULTI-03` colocou `supabaseAnon()` no browser
+pela primeira vez na história do projeto. A partir do momento em que
+`NEXT_PUBLIC_SUPABASE_URL` existir, a anon key é extraível do bundle e a
+API REST do Supabase fica alcançável por fora do app.
+
+**O que estava aberto:** `negocios_leitura` (0001_init.sql) é
+`for select to anon, authenticated using (true)`, sem recorte de coluna —
+`xp`, `moeda_virtual` e os 4 atributos moram na mesma tabela da vitrine.
+
+**Segundo vazamento, achado ao escrever a migration (não estava no spec):**
+`public.vizinhos_do_tenant(bigint)` é `security invoker` e
+`returns setof public.negocios`, e o Postgres concede `execute` a `PUBLIC`
+por padrão — `rpc/vizinhos_do_tenant` devolvia a linha completa de todos os
+vizinhos por um segundo caminho. Sendo invoker, herda a RLS nova e fecha
+junto; documentado dentro da migration para ninguém relaxar a policy
+tentando "consertar" o retorno vazio.
+
+**Armadilha registrada na própria migration:** a view NÃO pode ser marcada
+`security_invoker = true`. Parece endurecimento e é o oposto — a view
+passaria a avaliar a RLS da tabela sob o papel de quem consulta, `anon`
+receberia zero linhas e a vitrine pública sumiria **em silêncio**.
+
+**Zero mudança de código de aplicação:** todas as leituras do app são
+service_role, que ignora RLS por definição.
+
+- [x] Migration `0026_negocios_rls_fachada.sql` escrita
+- [x] Sintaxe validada (`pg-query-emscripten`, as 26 migrations em sequência)
+- [ ] ⛔ Aplicada e verificada contra Postgres real — **precisa do usuário**
+      (Fase 0: `supabase start`, exige Docker)
+
+---
+
 ### GH-EQP-05 — Entregável do Editor de Vídeo: roteiro de Reels ✅
 
 | Campo | Valor |
