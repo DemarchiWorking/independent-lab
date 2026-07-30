@@ -77,6 +77,8 @@ export default async function VisitarSedePage({ params }: PageProps) {
         sede={sede}
         mobilia={mobilia}
         funcionarios={funcionarios.map((f) => f.cargoId)}
+        meuTenantId={sessao.tenantId}
+        meuNome={sessao.nome}
       />
     </main>
   );

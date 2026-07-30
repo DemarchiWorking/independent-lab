@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
@@ -15,6 +16,15 @@ import { CATALOGO_MOBILIA, itemMobilia, type ItemMobilia } from "@/features/sede
 import { nivelSede, proximoNivelSede } from "@/features/sede/niveis";
 import { comprarMobilia, evoluirSede, moverMobilia } from "@/features/sede/actions";
 import { cargoPorId } from "@/features/equipe-ia/catalogo";
+import { senioridadeDe } from "@/features/equipe-ia/senioridade";
+import { PainelInteracao } from "./interacao/PainelInteracao";
+import { ListaNaSala, type PessoaNaSala } from "./interacao/ListaNaSala";
+import {
+  AVATAR_DONO,
+  avatarIdDeIa,
+  iaDeAvatarId,
+  type Interlocutor,
+} from "./interacao/tipos";
 import { bloqueiosDeMobilia, chaveCelula } from "./engine/caminho";
 import {
   celulaInicialAvatar,
@@ -26,7 +36,12 @@ import type { Celula } from "./engine/iso";
 import type { EstadoCena } from "./render/cena";
 import { corDoAtributo, corDoItem } from "./render/cores";
 import type { WorldCanvasHandle } from "./render/WorldCanvas";
-import type { Atributos, ItemMobiliaColocado, Sede } from "@/lib/db/types";
+import type {
+  Atributos,
+  FuncionarioContratado,
+  ItemMobiliaColocado,
+  Sede,
+} from "@/lib/db/types";
 
 /**
  * O World — o motor de gamificação de verdade.
@@ -60,9 +75,16 @@ interface WorldScreenProps {
   mobilia: ItemMobiliaColocado[];
   moedaVirtual: number;
   atributos: Atributos;
-  /** cargoIds de Funcionários de IA contratados — viram avatares na sala */
-  funcionarios: string[];
+  /**
+   * Funcionários de IA contratados — viram avatares na sala e interlocutores.
+   * O registro inteiro (não só `cargoId`): `contratadoEm` alimenta a
+   * senioridade da ficha e `disponibilidade` alimenta a resposta "estou livre?"
+   * (GH-EQP-01), sem nenhuma leitura extra no servidor.
+   */
+  funcionarios: FuncionarioContratado[];
   nomeNegocio: string;
+  /** relógio do SERVIDOR — nunca `new Date()` no cliente (ver senioridade.ts) */
+  agoraIso: string;
 }
 
 export function WorldScreen({
@@ -72,6 +94,7 @@ export function WorldScreen({
   atributos,
   funcionarios,
   nomeNegocio,
+  agoraIso,
 }: WorldScreenProps) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
@@ -80,6 +103,7 @@ export function WorldScreen({
   const [upgradeAberto, setUpgradeAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [conversandoCom, setConversandoCom] = useState<string | null>(null);
   const canvasRef = useRef<WorldCanvasHandle | null>(null);
 
   const nivel = nivelSede(sede.nivel);
@@ -142,29 +166,93 @@ export function WorldScreen({
       })),
       avatares: [
         {
-          id: "dono",
+          id: AVATAR_DONO,
           cx: inicioDono.cx,
           cy: inicioDono.cy,
           cor: corDoAtributo("presenca"),
           nome: "Você",
           dono: true,
+          // não se conversa consigo mesmo
+          interagivel: false,
         },
-        ...funcionarios.map((cargoId, i) => {
-          const cargo = cargoPorId(cargoId);
+        ...funcionarios.map((f, i) => {
+          const cargo = cargoPorId(f.cargoId);
           const pos = posicoesIa[i] ?? inicioDono;
           return {
-            id: `ia:${cargoId}`,
+            // `f.id` (não o cargoId): é a chave estável do registro, então a
+            // cena reconcilia o mesmo boneco mesmo se um dia der para contratar
+            // dois do mesmo cargo
+            id: avatarIdDeIa(f.id),
             cx: pos.cx,
             cy: pos.cy,
             cor: corDoAtributo(cargo?.eixoFortalecido ?? "tecnologia"),
-            nome: cargo?.nome.replace(/\s*IA$/, " IA") ?? cargoId,
+            nome: cargo?.nome.replace(/\s*IA$/, " IA") ?? f.cargoId,
             dono: false,
+            interagivel: true,
           };
         }),
       ],
       destaques: modo.tipo === "mover" ? destinosLivres.map((d) => d.celula) : [],
     };
   }, [geo, bloqueadas, moveisPosicionados, funcionarios, modo, destinosLivres]);
+
+  /** Quem está na sala, para a lista acessível do painel lateral. */
+  const pessoasNaSala: PessoaNaSala[] = useMemo(
+    () => [
+      {
+        avatarId: AVATAR_DONO,
+        nome: "Você",
+        papel: nomeNegocio,
+        icon: "home",
+        conversavel: false,
+      },
+      ...funcionarios.map((f) => {
+        const cargo = cargoPorId(f.cargoId);
+        // senioridade já na lista: o jogador enxerga a evolução da equipe sem
+        // precisar abrir a ficha de cada um
+        const { titulo } = senioridadeDe(f.contratadoEm, agoraIso);
+        return {
+          avatarId: avatarIdDeIa(f.id),
+          nome: cargo?.nome ?? f.cargoId,
+          papel: `${titulo} · ${
+            f.disponibilidade.estado === "alocado" ? "ocupado" : "livre"
+          }`,
+          icon: cargo?.icon ?? "users",
+          eixo: cargo?.eixoFortalecido,
+          conversavel: true,
+        };
+      }),
+    ],
+    [funcionarios, nomeNegocio, agoraIso],
+  );
+
+  /**
+   * Resolve o avatar clicado no interlocutor da conversa.
+   *
+   * Derivado (`useMemo`) em vez de guardado em estado: assim a ficha aberta
+   * acompanha um `router.refresh()` — se o Funcionário for alocado num serviço
+   * enquanto o painel está aberto, a resposta "estou livre?" já sai atualizada,
+   * sem precisar fechar e reabrir.
+   */
+  const interlocutor: Interlocutor | null = useMemo(() => {
+    const avatarId = conversandoCom;
+    if (!avatarId) return null;
+
+    const funcionarioId = iaDeAvatarId(avatarId);
+    if (!funcionarioId) return null;
+
+    const f = funcionarios.find((x) => x.id === funcionarioId);
+    const cargo = f ? cargoPorId(f.cargoId) : undefined;
+    if (!f || !cargo) return null;
+
+    return {
+      tipo: "ia-propria",
+      avatarId,
+      cargo,
+      senioridade: senioridadeDe(f.contratadoEm, agoraIso),
+      disponibilidade: f.disponibilidade,
+    };
+  }, [conversandoCom, funcionarios, agoraIso]);
 
   const executar = useCallback(
     (fn: () => Promise<{ ok: boolean; erro?: string }>) => {
@@ -298,11 +386,13 @@ export function WorldScreen({
           <WorldCanvas
             ref={canvasRef}
             estado={estadoCena}
-            avatarDonoId="dono"
+            avatarDonoId={AVATAR_DONO}
             onCliqueCelula={aoClicarCelula}
+            onInteragirAvatar={setConversandoCom}
           />
           <p className="mt-2 text-center text-[10px] text-muted">
-            Clique no chão para andar · clique num móvel para reposicionar
+            Clique no chão para andar · num móvel para reposicionar · no balão de
+            quem está por perto para conversar
           </p>
 
           {/* Âncora da primeira sessão: uma sala vazia sem direção é a pior
@@ -338,6 +428,23 @@ export function WorldScreen({
             <AtributosBar atributos={atributos} tom="light" />
           </div>
 
+          <div className="border-t border-[#e6ebf3] pt-2">
+            <ListaNaSala
+              pessoas={pessoasNaSala}
+              onConversar={setConversandoCom}
+              dicaVazia={
+                <Link
+                  href="/hub?ver=equipe-ia"
+                  className="mt-1.5 flex items-center gap-1.5 rounded-sm bg-teal/15 px-2 py-1.5 text-[10px] font-bold leading-snug text-[#0f766e] transition-colors hover:bg-teal/25"
+                >
+                  <Icon name="users" size={13} className="shrink-0" />
+                  Sua sala está só com você. Contrate um Funcionário de IA e ele
+                  aparece aqui para conversar.
+                </Link>
+              }
+            />
+          </div>
+
           <div className="mt-auto flex flex-col gap-2 pt-2">
             <ActionButton
               icon="grid"
@@ -363,6 +470,12 @@ export function WorldScreen({
           </div>
         </aside>
       </div>
+
+      {/* CONVERSA COM UM FUNCIONÁRIO DE IA */}
+      <PainelInteracao
+        interlocutor={interlocutor}
+        onFechar={() => setConversandoCom(null)}
+      />
 
       {/* LOJA */}
       <RibbonPanel

@@ -62,6 +62,10 @@ export const CENARIO = {
   avatarDono: hexNumero(color.brand.orange),
   pele: hexNumero("#E8B08A"),
   texto: hexNumero("#FFFFFF"),
+  /** balão de conversa sobre a cabeça do NPC (GH-WORLD-07) */
+  balao: hexNumero(color.bg.panel),
+  balaoBorda: hexNumero(color.bg.line),
+  balaoPonto: hexNumero(color.text.ink),
 } as const;
 
 /** Cor do avatar de cada Funcionário de IA, pelo eixo que ele fortalece. */

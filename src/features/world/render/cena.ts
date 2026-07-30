@@ -7,10 +7,12 @@ import {
   type Celula,
 } from "../engine/iso";
 import { acharCaminho, bloqueiosDeMobilia } from "../engine/caminho";
+import { estaProximo } from "../engine/proximidade";
 import type { GeometriaSala } from "../engine/sala";
 import {
   ALTURA_PAREDE,
   desenharAvatar,
+  desenharBalao,
   desenharMarcadorTile,
   desenharMovel,
   desenharParedes,
@@ -47,6 +49,8 @@ export interface AvatarNaCena {
   cor: number;
   nome: string;
   dono: boolean;
+  /** dá para conversar com ele? (GH-WORLD-07 — falso para o próprio jogador) */
+  interagivel: boolean;
 }
 
 export interface EstadoCena {
@@ -64,10 +68,53 @@ interface Andarilho {
   passo: number;
   progresso: number;
   vista: Container;
+  /**
+   * Posição FRACIONÁRIA no grid — igual a `atual` quando parado, e interpolada
+   * no meio de um passo. É o que a proximidade lê: arredondar aqui faria o
+   * balão piscar durante a caminhada.
+   */
+  cxF: number;
+  cyF: number;
+  interagivel: boolean;
+  /**
+   * Referência direta ao balão, resolvida UMA vez na criação.
+   * `getChildByLabel` é busca linear nos filhos; chamá-la por avatar a cada
+   * frame seria trabalho recorrente à toa — o mesmo motivo pelo qual a
+   * mobília é reconciliada por id em vez de redesenhada.
+   */
+  balao: Container;
 }
 
 /** Velocidade do avatar em células por segundo. */
 const CELULAS_POR_SEGUNDO = 2.6;
+
+/** Pulso do balão: amplitude e velocidade do "zoom in / zoom out". */
+const BALAO_AMPLITUDE = 0.1;
+const BALAO_VELOCIDADE = 3.2;
+/** Duração de um ciclo completo do pulso, em segundos. */
+const BALAO_PERIODO = (2 * Math.PI) / BALAO_VELOCIDADE;
+
+export interface OpcoesCena {
+  aoClicarCelula: (celula: Celula) => void;
+  /** clique num NPC/jogador com balão aceso (GH-WORLD-07) */
+  aoInteragir?: (avatarId: string) => void;
+  /** id do avatar que o jogador controla — a origem da proximidade */
+  avatarControladoId: string;
+}
+
+/**
+ * O jogador pediu menos movimento? Então o balão aparece parado.
+ *
+ * Espelha o `prefers-reduced-motion` que `globals.css` já respeita no DOM — o
+ * canvas não herda media query nenhuma, então a checagem é explícita aqui.
+ */
+function movimentoReduzido(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
 
 /**
  * Faz o canvas caber na largura do container preservando a proporção.
@@ -90,10 +137,13 @@ export class CenaWorld {
   private andarilhos = new Map<string, Andarilho>();
   private vistasMovel = new Map<string, Container>();
   private destruida = false;
+  /** tempo acumulado em segundos — só alimenta o pulso do balão */
+  private tempo = 0;
+  private readonly semMovimento = movimentoReduzido();
 
   constructor(
     private readonly app: Application,
-    private readonly aoClicarCelula: (celula: Celula) => void,
+    private readonly opcoes: OpcoesCena,
   ) {
     this.camadaDinamica.sortableChildren = true;
     this.raiz.addChild(this.camadaCenario, this.camadaDestaque, this.camadaDinamica);
@@ -104,7 +154,7 @@ export class CenaWorld {
     this.app.stage.on("pointertap", (e) => {
       if (this.destruida) return;
       const local = this.raiz.toLocal(e.global);
-      this.aoClicarCelula(celulaNoPonto(local.x, local.y));
+      this.opcoes.aoClicarCelula(celulaNoPonto(local.x, local.y));
     });
 
     this.app.ticker.add(this.avancar);
@@ -264,13 +314,49 @@ export class CenaWorld {
     }
 
     for (const a of avatares) {
-      if (this.andarilhos.has(a.id)) continue;
+      const existente = this.andarilhos.get(a.id);
+
+      // Já está na cena: MUTA (nunca recria — o boneco perderia a posição no
+      // meio de um passo). Antes daqui havia um `continue` que ignorava toda
+      // mudança em avatar existente; com `interagivel` isso viraria bug —
+      // contratar um Funcionário de IA não acenderia o balão dele até um
+      // remonte de cena.
+      if (existente) {
+        existente.interagivel = a.interagivel;
+        if (!a.interagivel) this.apagarBalao(existente);
+        continue;
+      }
 
       const vista = desenharAvatar({ cor: a.cor, nome: a.nome, dono: a.dono });
       const p = gridParaTela(a.cx, a.cy);
       vista.position.set(p.x, p.y);
       vista.zIndex = (a.cx + a.cy) * 100 + 50;
       vista.label = `avatar:${a.id}`;
+
+      // Clique por ENTIDADE (o único do projeto — todo o resto resolve por
+      // célula). `stopPropagation` é obrigatório: o evento borbulha até o
+      // `stage`, que tem o handler de "andar até a célula"; sem isso o boneco
+      // sairia andando por baixo do painel que acabou de abrir.
+      vista.on("pointertap", (e) => {
+        if (this.destruida) return;
+        const alvo = this.andarilhos.get(a.id);
+        // só conversa quem está interagível E com o balão aceso: sem a segunda
+        // condição daria para clicar num NPC do outro lado da sala
+        if (!alvo?.interagivel || !alvo.balao.visible) return;
+        e.stopPropagation();
+        this.opcoes.aoInteragir?.(a.id);
+      });
+
+      // O balão é criado JUNTO com o avatar e só alternado por
+      // `visible`/`scale` depois — mesmo idioma do "realce" da mobília.
+      // Instanciá-lo no momento em que o jogador chega perto alocaria
+      // `Graphics` dentro do ticker, exatamente o que a reconciliação por id
+      // existe para evitar. Fica por último para desenhar sobre a etiqueta.
+      const balao = desenharBalao();
+      balao.label = "balao"; // só para inspeção manual da cena; nada depende
+      balao.visible = false;
+      vista.addChild(balao);
+
       this.camadaDinamica.addChild(vista);
 
       this.andarilhos.set(a.id, {
@@ -279,11 +365,71 @@ export class CenaWorld {
         passo: 0,
         progresso: 0,
         vista,
+        cxF: a.cx,
+        cyF: a.cy,
+        interagivel: a.interagivel,
+        balao,
       });
     }
   }
 
-  /** Loop de animação: interpola a posição de quem está caminhando. */
+  /** Apaga o balão e devolve o avatar ao estado não-clicável. */
+  private apagarBalao(a: Andarilho): void {
+    a.balao.visible = false;
+    a.vista.eventMode = "none";
+    a.vista.cursor = "default";
+  }
+
+  /**
+   * Acende/apaga o balão de cada NPC conforme a distância até o avatar
+   * controlado, e pulsa quem está aceso.
+   *
+   * A REGRA (quem está perto) mora em `engine/proximidade.ts` — aqui só se
+   * desenha o resultado. É a mesma fronteira do resto do arquivo: o `render/`
+   * não decide nada.
+   */
+  private atualizarBaloes(dt: number): void {
+    const jogador = this.andarilhos.get(this.opcoes.avatarControladoId);
+
+    // O acumulador é enrolado no período do seno em vez de crescer para sempre:
+    // numa aba aberta o dia inteiro, um float grande faz `Math.sin` perder
+    // precisão e o pulso começa a tremer. `% PERIODO` mantém a fase idêntica.
+    this.tempo = (this.tempo + dt) % BALAO_PERIODO;
+
+    const escala = this.semMovimento
+      ? 1
+      : 1 + BALAO_AMPLITUDE * Math.sin(this.tempo * BALAO_VELOCIDADE);
+
+    for (const [id, a] of this.andarilhos) {
+      if (!a.interagivel || id === this.opcoes.avatarControladoId) {
+        this.apagarBalao(a);
+        continue;
+      }
+
+      const perto =
+        jogador !== undefined &&
+        estaProximo({ cx: jogador.cxF, cy: jogador.cyF }, { cx: a.cxF, cy: a.cyF });
+
+      if (!perto) {
+        this.apagarBalao(a);
+        continue;
+      }
+
+      a.balao.visible = true;
+      a.balao.scale.set(escala);
+      a.vista.eventMode = "static";
+      a.vista.cursor = "pointer";
+    }
+  }
+
+  /**
+   * Loop de animação: interpola a posição de quem está caminhando e depois
+   * resolve os balões.
+   *
+   * Duas passadas de propósito: a primeira sai cedo (`continue`) para quem está
+   * parado, que é a maioria dos frames. Pendurar o balão nela deixaria os NPCs
+   * — que nunca caminham — de fora justamente do efeito que é deles.
+   */
   private readonly avancar = (ticker: Ticker): void => {
     if (this.destruida) return;
     const dt = ticker.deltaMS / 1000;
@@ -321,6 +467,10 @@ export class CenaWorld {
       const cxF = de.cx + (para.cx - de.cx) * t;
       const cyF = de.cy + (para.cy - de.cy) * t;
       a.vista.zIndex = (cxF + cyF) * 100 + 50;
+      a.cxF = cxF;
+      a.cyF = cyF;
     }
+
+    this.atualizarBaloes(dt);
   };
 }

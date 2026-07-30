@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 import type { AtributoChave } from "@tokens";
 import { supabaseAdmin } from "@/lib/supabase/client";
 import { TETO_ATRIBUTO } from "@/lib/atributos";
@@ -8,6 +9,7 @@ import type { DeltaProgresso, GameRepository, NovoNegocio } from "./repository";
 import type {
   Alocacao,
   CapituloEntregue,
+  DocumentoEmitido,
   EventoGlobal,
   FuncionarioContratado,
   ItemMobiliaColocado,
@@ -52,6 +54,7 @@ interface LinhaNegocio {
   presenca: number;
   aquisicao: number;
   capacidade: number;
+  consentimento_lgpd_em: string | null;
 }
 
 interface LinhaLocal {
@@ -63,6 +66,22 @@ interface LinhaLocal {
 export class SupabaseRepository implements GameRepository {
   private get db(): SupabaseClient {
     return supabaseAdmin();
+  }
+
+  /**
+   * `head: true` faz o PostgREST responder só o cabeçalho `Content-Range`
+   * (a contagem), sem baixar uma linha sequer — é o round trip mais barato
+   * possível contra uma tabela real e indexada. Nunca reuse `lerMapaView()`
+   * ou qualquer leitura de negócio aqui: healthcheck roda a cada poucos
+   * segundos (Docker/PM2/Nginx), e essas leituras varrem o mundo inteiro
+   * (GH-OPS M-8).
+   */
+  async pingDb(): Promise<boolean> {
+    const { error } = await this.db
+      .from("cidades")
+      .select("slug", { head: true, count: "exact" })
+      .limit(1);
+    return !error;
   }
 
   /** Resolve cidade/bairro/quarteirão de um negócio (1 query com joins). */
@@ -112,6 +131,7 @@ export class SupabaseRepository implements GameRepository {
         aquisicao: { valor: linha.aquisicao, teto: TETO_ATRIBUTO },
         capacidade: { valor: linha.capacidade, teto: TETO_ATRIBUTO },
       },
+      consentimentoLgpdEm: linha.consentimento_lgpd_em,
     };
   }
 
@@ -166,70 +186,28 @@ export class SupabaseRepository implements GameRepository {
     };
   }
 
+  /**
+   * GH-OPS M-8: `lerMapaView()` era uma varredura do mundo inteiro (todas as
+   * cidades → bairros → quarteirões → negócios), sem filtro, sem limite, SEM
+   * CACHE — e rodava em `Promise.all` a cada render de `/hub`. Sob 100
+   * jogadores navegando, isso é ~100 varreduras completas por minuto.
+   *
+   * A correção NÃO é filtrar por cidade do jogador: o mapa é a VITRINE
+   * REGIONAL do produto — ver o Vale do Café inteiro (não só a própria
+   * cidade) é o efeito de rede que o pitch depende ("meu vizinho de Mendes
+   * contratou o Documentador de IA"). Cortar isso resolveria performance
+   * matando o motivo do produto existir. Na escala real de lançamento (7
+   * cidades do ICP, dezenas a poucas centenas de negócios — não milhares), o
+   * problema nunca foi o TAMANHO da resposta, foi rodar a query de novo a
+   * cada request quando o dado muda raramente (só em cadastro/mudança de
+   * nível). `unstable_cache` com TTL curto resolve exatamente isso: mesmo
+   * resultado pra todo mundo, computado no máximo 1x a cada 30s.
+   *
+   * Se um dia a região crescer para múltiplos estados, aí sim vira paginação
+   * por cidade — não hoje.
+   */
   async lerMapaView(): Promise<MapaView> {
-    const { data, error } = await this.db
-      .from("cidades")
-      .select(
-        `slug, nome, prioritaria,
-         bairros ( slug, nome,
-           quarteiroes ( numero,
-             negocios ( id, lote, nome, segmento, nivel, degrau_atual ) ) )`,
-      )
-      .order("nome");
-
-    if (error) throw new Error(`lerMapaView: ${error.message}`);
-
-    type Bruto = {
-      slug: string;
-      nome: string;
-      prioritaria: boolean;
-      bairros: Array<{
-        slug: string;
-        nome: string;
-        quarteiroes: Array<{
-          numero: number;
-          negocios: Array<{
-            id: number;
-            lote: number;
-            nome: string;
-            segmento: Segmento;
-            nivel: number;
-            degrau_atual: number;
-          }>;
-        }>;
-      }>;
-    };
-
-    return {
-      cidades: ((data ?? []) as unknown as Bruto[]).map((c) => ({
-        slug: c.slug,
-        nome: c.nome,
-        prioritaria: c.prioritaria,
-        bairros: c.bairros.map((b) => ({
-          slug: b.slug,
-          nome: b.nome,
-          quarteiroes: b.quarteiroes.map((q) => ({
-            id: `q${q.numero}`,
-            nome: `Quarteirão ${q.numero}`,
-            lotes: Array.from({ length: 8 }, (_, i) => {
-              const n = q.negocios.find((x) => x.lote === i + 1);
-              return {
-                numero: i + 1,
-                negocio: n
-                  ? {
-                      id: String(n.id),
-                      nome: n.nome,
-                      segmento: n.segmento,
-                      nivel: n.nivel,
-                      degrauAtual: n.degrau_atual,
-                    }
-                  : null,
-              };
-            }),
-          })),
-        })),
-      })),
-    };
+    return buscarMapaViewCacheado();
   }
 
   /** Cadastro atômico: a RPC cria cidade/bairro/quarteirão e reserva o lote. */
@@ -250,6 +228,7 @@ export class SupabaseRepository implements GameRepository {
         p_presenca: dados.atributosIniciais.presenca.valor,
         p_aquisicao: dados.atributosIniciais.aquisicao.valor,
         p_capacidade: dados.atributosIniciais.capacidade.valor,
+        p_consentimento_lgpd_em: dados.consentimentoLgpdEm,
       })
       .single();
 
@@ -417,6 +396,7 @@ export class SupabaseRepository implements GameRepository {
         aquisicao: { valor: l.aquisicao, teto: TETO_ATRIBUTO },
         capacidade: { valor: l.capacidade, teto: TETO_ATRIBUTO },
       },
+      consentimentoLgpdEm: l.consentimento_lgpd_em,
     }));
   }
 
@@ -490,40 +470,60 @@ export class SupabaseRepository implements GameRepository {
   }
 
   /**
-   * Idempotente via `upsert` com `onConflict` na unique (tenant_id, cargo_id) —
-   * depois um select garante retornar a linha certa tanto no caso novo quanto
-   * no já-existente (mais simples e explícito que confiar no retorno do upsert).
+   * `insert` puro (não `upsert`) + captura de violação de unicidade — de
+   * propósito, GH-OPS M-10.
+   *
+   * ANTES: `upsert(..., { ignoreDuplicates: true })` engolia silenciosamente
+   * uma tentativa duplicada, e o chamador não tinha como saber se a linha
+   * era nova ou já existia — `features/gamificacao/actions.ts` sempre pagava
+   * XP/moeda depois. Como o pré-check ("já contratou?") e esta escrita são
+   * dois round trips separados, duas requisições quase simultâneas passavam
+   * as duas pelo pré-check e as duas "contratavam com sucesso" — pagando
+   * XP/moeda 2×.
+   *
+   * AGORA: tenta inserir; se o Postgres recusar por violação da unique
+   * `(tenant_id, cargo_id)` (SQLSTATE `23505`, propagado pelo PostgREST em
+   * `error.code`), a corrida foi perdida — busca a linha do vencedor e
+   * devolve `criado: false`. Qualquer outro erro continua sendo erro de
+   * verdade, não engolido.
    */
   async contratarFuncionario(
     tenantId: string,
     cargoId: string,
-  ): Promise<FuncionarioContratado> {
-    const { error: upsertError } = await this.db
+  ): Promise<{ funcionario: FuncionarioContratado; criado: boolean }> {
+    const { data: inserido, error: insertError } = await this.db
       .from("funcionarios_contratados")
-      .upsert(
-        { tenant_id: Number(tenantId), cargo_id: cargoId },
-        { onConflict: "tenant_id,cargo_id", ignoreDuplicates: true },
-      );
-    if (upsertError) {
-      throw new Error(`contratarFuncionario (upsert): ${upsertError.message}`);
-    }
-
-    const { data, error } = await this.db
-      .from("funcionarios_contratados")
+      .insert({ tenant_id: Number(tenantId), cargo_id: cargoId })
       .select("*")
-      .eq("tenant_id", Number(tenantId))
-      .eq("cargo_id", cargoId)
       .single();
 
-    if (error || !data) {
-      throw new Error(`contratarFuncionario (select): ${error?.message}`);
+    let bruto: { id: number; tenant_id: number; cargo_id: string; contratado_em: string };
+    let criado: boolean;
+
+    if (!insertError) {
+      bruto = inserido as typeof bruto;
+      criado = true;
+    } else if (insertError.code === "23505") {
+      const { data, error } = await this.db
+        .from("funcionarios_contratados")
+        .select("*")
+        .eq("tenant_id", Number(tenantId))
+        .eq("cargo_id", cargoId)
+        .single();
+      if (error || !data) {
+        throw new Error(`contratarFuncionario (select pós-corrida): ${error?.message}`);
+      }
+      bruto = data as typeof bruto;
+      criado = false;
+    } else {
+      throw new Error(`contratarFuncionario (insert): ${insertError.message}`);
     }
-    const bruto = this.paraFuncionario(
-      data as { id: number; tenant_id: number; cargo_id: string; contratado_em: string },
+
+    const [enriquecido] = await this.enriquecerDisponibilidade(
+      tenantId,
+      [this.paraFuncionario(bruto)],
     );
-    // contratação recém-criada/existente: enriquece antes de devolver
-    const [enriquecido] = await this.enriquecerDisponibilidade(tenantId, [bruto]);
-    return enriquecido;
+    return { funcionario: enriquecido, criado };
   }
 
   private paraAlocacao(l: {
@@ -619,13 +619,20 @@ export class SupabaseRepository implements GameRepository {
     }>).map((l) => this.paraTrabalho(l));
   }
 
-  /** Atômica via RPC `aceitar_trabalho` — idempotência + piso de atributos
-   *  (GH-ATR-03) checados na mesma transação (ver `0012_atr_requisitos.sql`). */
+  /**
+   * Atômica via RPC `aceitar_trabalho` — idempotência + piso de atributos
+   * (GH-ATR-03) checados na mesma transação. `ja_existia` (GH-OPS M-10,
+   * `0015_idempotencia_recompensa.sql`) é o que permite ao chamador
+   * (`features/gamificacao/actions.ts`) só pagar XP/moeda quando a linha
+   * foi criada AGORA, não quando a RPC só devolveu um registro pré-existente
+   * (sequencial ou por corrida genuína — os dois casos voltam com
+   * `ja_existia: true`).
+   */
   async aceitarTrabalho(
     tenantId: string,
     jobId: string,
     requisitos?: Partial<Record<AtributoChave, number>>,
-  ): Promise<TrabalhoAceito> {
+  ): Promise<{ trabalho: TrabalhoAceito; criado: boolean }> {
     const r = requisitos ?? {};
     const { data, error } = await this.db
       .rpc("aceitar_trabalho", {
@@ -641,9 +648,14 @@ export class SupabaseRepository implements GameRepository {
     if (error || !data) {
       throw new Error(error?.message ?? "aceitar_trabalho: sem retorno");
     }
-    return this.paraTrabalho(
-      data as { id: number; tenant_id: number; job_id: string; aceito_em: string },
-    );
+    const bruto = data as {
+      id: number;
+      tenant_id: number;
+      job_id: string;
+      aceito_em: string;
+      ja_existia: boolean;
+    };
+    return { trabalho: this.paraTrabalho(bruto), criado: !bruto.ja_existia };
   }
 
   private paraNo(l: {
@@ -1048,4 +1060,135 @@ export class SupabaseRepository implements GameRepository {
       this.paraProgresso(l),
     );
   }
+
+  private paraDocumentoEmitido(l: {
+    tenant_id: number;
+    doc_id: string;
+    primeira_emissao_em: string;
+    ultima_emissao_em: string;
+    versao_metodologia: string;
+  }): DocumentoEmitido {
+    return {
+      tenantId: String(l.tenant_id),
+      docId: l.doc_id,
+      primeiraEmissaoEm: l.primeira_emissao_em,
+      ultimaEmissaoEm: l.ultima_emissao_em,
+      versaoMetodologia: l.versao_metodologia,
+    };
+  }
+
+  async listarDocumentosEmitidos(tenantId: string): Promise<DocumentoEmitido[]> {
+    const { data, error } = await this.db
+      .from("documentos_emitidos")
+      .select("*")
+      .eq("tenant_id", Number(tenantId));
+    if (error) throw new Error(`listarDocumentosEmitidos: ${error.message}`);
+    return ((data ?? []) as Array<Parameters<typeof this.paraDocumentoEmitido>[0]>).map((l) =>
+      this.paraDocumentoEmitido(l),
+    );
+  }
+
+  /** Atômica via RPC `registrar_emissao_documento` — preserva
+   *  `primeira_emissao_em` no upsert (ver `0016_documentos.sql`). */
+  async registrarEmissaoDocumento(
+    tenantId: string,
+    docId: string,
+    versaoMetodologia: string,
+    _agoraIso: string,
+  ): Promise<DocumentoEmitido> {
+    const { data, error } = await this.db
+      .rpc("registrar_emissao_documento", {
+        p_tenant_id: Number(tenantId),
+        p_doc_id: docId,
+        p_versao_metodologia: versaoMetodologia,
+      })
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "registrar_emissao_documento: sem retorno");
+    }
+    return this.paraDocumentoEmitido(
+      data as Parameters<typeof this.paraDocumentoEmitido>[0],
+    );
+  }
 }
+
+/**
+ * Extraída da classe: `unstable_cache` precisa envolver uma função definida
+ * em escopo de MÓDULO (não recriada a cada chamada de método) para o cache
+ * realmente persistir entre requisições. Sem argumentos de propósito — o
+ * resultado é idêntico para qualquer chamador, então não há chave de cache
+ * variável para gerenciar. `revalidate: 30` é o TTL discutido no comentário
+ * de `lerMapaView` acima; `tags: ["mapa-view"]` existe para o dia em que
+ * fizer sentido invalidar sob demanda (ex.: logo após um cadastro), mas hoje
+ * ninguém chama `revalidateTag("mapa-view")` — o TTL curto já é suficiente
+ * para o volume de jogadores desta fase.
+ */
+const buscarMapaViewCacheado = unstable_cache(
+  async (): Promise<MapaView> => {
+    const { data, error } = await supabaseAdmin()
+      .from("cidades")
+      .select(
+        `slug, nome, prioritaria,
+         bairros ( slug, nome,
+           quarteiroes ( numero,
+             negocios ( id, lote, nome, segmento, nivel, degrau_atual ) ) )`,
+      )
+      .order("nome");
+
+    if (error) throw new Error(`lerMapaView: ${error.message}`);
+
+    type Bruto = {
+      slug: string;
+      nome: string;
+      prioritaria: boolean;
+      bairros: Array<{
+        slug: string;
+        nome: string;
+        quarteiroes: Array<{
+          numero: number;
+          negocios: Array<{
+            id: number;
+            lote: number;
+            nome: string;
+            segmento: Segmento;
+            nivel: number;
+            degrau_atual: number;
+          }>;
+        }>;
+      }>;
+    };
+
+    return {
+      cidades: ((data ?? []) as unknown as Bruto[]).map((c) => ({
+        slug: c.slug,
+        nome: c.nome,
+        prioritaria: c.prioritaria,
+        bairros: c.bairros.map((b) => ({
+          slug: b.slug,
+          nome: b.nome,
+          quarteiroes: b.quarteiroes.map((q) => ({
+            id: `q${q.numero}`,
+            nome: `Quarteirão ${q.numero}`,
+            lotes: Array.from({ length: 8 }, (_, i) => {
+              const n = q.negocios.find((x) => x.lote === i + 1);
+              return {
+                numero: i + 1,
+                negocio: n
+                  ? {
+                      id: String(n.id),
+                      nome: n.nome,
+                      segmento: n.segmento,
+                      nivel: n.nivel,
+                      degrauAtual: n.degrau_atual,
+                    }
+                  : null,
+              };
+            }),
+          })),
+        })),
+      })),
+    };
+  },
+  ["gamehub-mapa-view"],
+  { revalidate: 30, tags: ["mapa-view"] },
+);

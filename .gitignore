@@ -19,6 +19,13 @@ next-env.d.ts
 # Dados de negócios/usuários reais (nunca versionar)
 /data
 
+# Backups locais do Postgres self-hosted (GH-OPS Bloco 2) — nunca versionar
+# dump de banco com dado de empresa real.
+/deploy/backups
+# `deploy/supabase/.env` já cai na regra `.env` acima (sem barra = qualquer
+# pasta); explícito aqui só para quem grep no arquivo não passar batido.
+/deploy/supabase/.env
+
 # Cópias/experimentos do projeto dentro do próprio projeto.
 # (têm .git, .env e data/ próprios — nunca devem entrar neste repositório)
 /gamehub-independentlab

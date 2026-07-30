@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { hashSenha, verificarSenha } from "./password";
 import { novoId } from "./sessao";
-import type { AuthProvider, Identidade } from "./provider";
+import { EmailJaExisteError, type AuthProvider, type Identidade } from "./provider";
 
 /**
  * Autenticação local (protótipo): scrypt + salt em `data/auth/credenciais.json`.
@@ -31,11 +31,6 @@ async function escrever(lista: Credencial[]): Promise<void> {
 }
 
 export class LocalAuthProvider implements AuthProvider {
-  async emailExiste(email: string): Promise<boolean> {
-    const lista = await ler();
-    return lista.some((c) => c.email === email.toLowerCase());
-  }
-
   async registrar(
     _nome: string,
     email: string,
@@ -44,7 +39,7 @@ export class LocalAuthProvider implements AuthProvider {
     const lista = await ler();
     const normalizado = email.toLowerCase();
     if (lista.some((c) => c.email === normalizado)) {
-      throw new Error("E-mail já cadastrado");
+      throw new EmailJaExisteError(normalizado);
     }
     const usuarioId = novoId();
     lista.push({

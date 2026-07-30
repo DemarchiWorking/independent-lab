@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { screenVariants, springSnappy, pressable } from "@/lib/motion";
@@ -16,6 +17,7 @@ const TOTAL = perguntas.length + 1; // 10 perguntas + tela de conta
 export function Wizard() {
   const [passo, setPasso] = useState(0);
   const [valores, setValores] = useState<Record<string, string | string[]>>({});
+  const [aceiteLgpd, setAceiteLgpd] = useState(false);
   const [estado, formAction, pendente] = useActionState<EstadoForm, FormData>(
     cadastrar,
     {},
@@ -178,6 +180,32 @@ export function Wizard() {
                     autoComplete="new-password"
                     className="w-full rounded-md border-2 border-[#dbe3f0] bg-[#f7f9fc] px-3 py-2.5 text-sm outline-none focus:border-teal"
                   />
+                  {/* LGPD (GH-OPS-04): o `required` aqui é só UX — a
+                      checagem que decide de verdade é no servidor
+                      (`cadastrar()`, `fd.get("aceiteLgpd") !== "sim"`). */}
+                  <label className="flex items-start gap-2 text-xs text-[#5b6b86]">
+                    <input
+                      type="checkbox"
+                      name="aceiteLgpd"
+                      value="sim"
+                      required
+                      checked={aceiteLgpd}
+                      onChange={(e) => setAceiteLgpd(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-teal"
+                    />
+                    <span>
+                      Li e aceito a{" "}
+                      <Link
+                        href="/privacidade"
+                        target="_blank"
+                        className="font-bold text-teal underline"
+                      >
+                        política de privacidade
+                      </Link>{" "}
+                      — meus dados são usados para gerar meu diagnóstico e a
+                      gamificação, nunca vendidos a terceiros.
+                    </span>
+                  </label>
                 </div>
                 {estado.erro ? (
                   <p className="mt-3 rounded-sm bg-coral/15 px-3 py-2 text-xs font-bold text-coral-dark">
@@ -204,7 +232,7 @@ export function Wizard() {
         ) : null}
 
         {naConta ? (
-          <ActionButton type="submit" disabled={pendente} icon="arrow">
+          <ActionButton type="submit" disabled={pendente || !aceiteLgpd} icon="arrow">
             {pendente ? "Criando seu negócio…" : "Criar meu negócio"}
           </ActionButton>
         ) : (

@@ -1,6 +1,7 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import type { Sessao } from "@/lib/db/types";
+import { assinarToken, verificarToken } from "./token";
 
 const COOKIE = "gamehub_sessao";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 dias
@@ -15,18 +16,21 @@ function segredo(): string {
   return "dev-only-secret-labdatadev-gamehub";
 }
 
-function assinar(payload: string): string {
-  return createHmac("sha256", segredo()).update(payload).digest("hex");
-}
-
-/** Cookie httpOnly assinado: <base64(json)>.<hmac> */
+/**
+ * Cookie httpOnly assinado: <base64(json)>.<hmac>. A criptografia (e o `exp`
+ * dentro do payload assinado — GH-OPS M-6) mora em `token.ts`, testável sem
+ * `next/headers`; aqui é só a ponte com o cookie jar do Next.
+ */
 export async function criarSessao(sessao: Sessao): Promise<void> {
-  const payload = Buffer.from(JSON.stringify(sessao)).toString("base64url");
-  const token = `${payload}.${assinar(payload)}`;
+  const token = assinarToken(sessao, segredo(), Date.now(), MAX_AGE * 1000);
   const jar = await cookies();
   jar.set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
+    // Requisito funcional, não enfeite: em produção sem HTTPS este cookie
+    // nunca é enviado de volta pelo browser e ninguém consegue logar — é
+    // por isso que o domínio + certbot (deploy/vps-setup.sh) não são
+    // opcionais no runbook de VPS (GH-OPS).
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: MAX_AGE,
@@ -36,22 +40,7 @@ export async function criarSessao(sessao: Sessao): Promise<void> {
 export async function lerSessao(): Promise<Sessao | null> {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
-
-  const [payload, assinatura] = token.split(".");
-  if (!payload || !assinatura) return null;
-
-  const esperada = Buffer.from(assinar(payload), "hex");
-  const recebida = Buffer.from(assinatura, "hex");
-  if (esperada.length !== recebida.length) return null;
-  if (!timingSafeEqual(esperada, recebida)) return null;
-
-  try {
-    return JSON.parse(
-      Buffer.from(payload, "base64url").toString("utf8"),
-    ) as Sessao;
-  } catch {
-    return null;
-  }
+  return verificarToken(token, segredo(), Date.now());
 }
 
 export async function encerrarSessao(): Promise<void> {

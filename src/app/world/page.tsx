@@ -59,8 +59,12 @@ export default async function WorldPage() {
         mobilia={mobilia}
         moedaVirtual={negocio.moedaVirtual}
         atributos={negocio.atributos}
-        funcionarios={funcionarios.map((f) => f.cargoId)}
+        funcionarios={funcionarios}
         nomeNegocio={negocio.nome}
+        // relógio do SERVIDOR: é ele que decide a senioridade exibida na ficha
+        // do Funcionário de IA. O cliente nunca carimba esse tempo — mesmo
+        // princípio de `lib/disponibilidade.ts` e `historia/relogio.ts`.
+        agoraIso={new Date().toISOString()}
       />
     </main>
   );

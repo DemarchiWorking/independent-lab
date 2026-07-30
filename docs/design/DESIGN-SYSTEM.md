@@ -54,13 +54,14 @@ Escala (mobile-first): 12 · 14 · 16 · 20 · 24 · 32 · 40.
 | Componente | Descrição | Feature/UI |
 |---|---|---|
 | `HudBar` | 4 cantos: Dinheiro/Usuários/Data + Objetivo | moldura fixa |
-| `RibbonPanel` | modal branco + ribbon coral em ângulo + X | base de todos os modais |
+| `RibbonPanel` | modal branco + ribbon coral em ângulo + X | base de todos os modais · fecha com `Esc`, `aria-modal`, foco entra ao abrir e volta ao fechar |
 | `ActionButton` | CTA laranja full-width com custo | `primary` / `ghost` (cinza) |
 | `AlertBanner` | faixa vermelho-escura sob o HUD | avisos/prazos |
 | `HexTree` | grid isométrico de hexágonos coloridos + nota | parceiros/serviços |
 | `SidePanel` | painel lateral com abas Informação/Status | detalhe de nó/recurso |
 | `JobCard` / `JobList` | lista + detalhe (recompensa, rating, tempo) | marketplace de TI |
-| `AvatarBubble` | avatar pixel + balão de emoção | equipe/parceiros |
+| `AvatarBubble` ✅ | avatar + balão de "…" pulsante sobre a cabeça | World: convite a conversar (`world/render/desenho.ts` → `desenharBalao`, aceso por proximidade em `world/engine/proximidade.ts`) |
+| `PainelInteracao` ✅ | ficha do interlocutor + 4 escolhas + desfecho | World: conversa com NPC/vizinho (`world/interacao/`) |
 | `IsoRoom` | sala isométrica navegável (Habbo-like) | hub/empresa |
 | `UpgradeCompare` | tabela Atual × Próximo | evolução de sede/plano |
 

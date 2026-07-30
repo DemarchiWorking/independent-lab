@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { modalVariants } from "@/lib/motion";
@@ -23,6 +24,41 @@ export function RibbonPanel({
   children,
   className,
 }: RibbonPanelProps) {
+  const painelRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Comportamento de diálogo de verdade: `Esc` fecha e o foco entra no painel
+   * ao abrir, voltando para quem o abriu ao fechar.
+   *
+   * Sem isso, quem navega por teclado abria a janela e continuava com o foco
+   * lá atrás, no botão da tela — tabulando por baixo do overlay, sem saída a
+   * não ser achar o X no meio da ordem de tabulação.
+   *
+   * `onClose` é lido por ref, NUNCA declarado como dependência: as telas
+   * passam arrow inline (`onClose={() => setX(false)}`), então uma nova
+   * identidade a cada render faria o efeito re-rodar e roubar o foco de volta
+   * para o painel a cada tecla digitada dentro dele.
+   */
+  const fecharRef = useRef(onClose);
+  fecharRef.current = onClose;
+
+  useEffect(() => {
+    if (!open) return;
+
+    const anterior = document.activeElement;
+    painelRef.current?.focus({ preventScroll: true });
+
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") fecharRef.current();
+    };
+    document.addEventListener("keydown", aoTeclar);
+
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      if (anterior instanceof HTMLElement) anterior.focus({ preventScroll: true });
+    };
+  }, [open]);
+
   return (
     <AnimatePresence>
       {open ? (
@@ -35,15 +71,19 @@ export function RibbonPanel({
         >
           <div className="absolute inset-0 bg-black/55" />
           <motion.div
+            ref={painelRef}
             role="dialog"
+            aria-modal="true"
             aria-label={title}
+            // recebe foco por programa (não entra na ordem de tabulação)
+            tabIndex={-1}
             variants={modalVariants}
             initial="initial"
             animate="enter"
             exit="exit"
             onClick={(e) => e.stopPropagation()}
             className={cn(
-              "relative w-full max-w-xl rounded-md bg-panel p-4 pt-5 text-ink shadow-modal",
+              "relative w-full max-w-xl rounded-md bg-panel p-4 pt-5 text-ink shadow-modal outline-none",
               className,
             )}
           >

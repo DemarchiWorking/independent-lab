@@ -140,6 +140,34 @@ Regras herdadas do resto do projeto:
 - Preparação para futuro: se o produto virar multiplayer (visitar a sede de
   um vizinho), os avatares já têm o modelo de dados pronto.
 
+### 5.3.1 Conversar com quem está na sala (GH-WORLD-07, implementado)
+
+Chegando perto de um avatar, um balão de HQ com "…" acende sobre a cabeça
+dele e pulsa; clicar abre um painel com a ficha e **4 escolhas**. Três
+fronteiras que valem para qualquer evolução disso:
+
+1. **A regra de proximidade mora em `engine/proximidade.ts`, não no `render/`.**
+   O renderer pergunta "está no raio?" e desenha — não decide. É a mesma linha
+   que separa `engine/` de `render/` no resto do World, e é o que mantém a
+   regra testável sem browser (`proximidade.test.ts`). O raio é euclidiano
+   (1.6 células) porque na tela isométrica o vizinho diagonal *parece* tão
+   perto quanto o ortogonal, embora o caminhar seja de 4 vizinhos.
+2. **O clique por entidade precisa de `stopPropagation`.** É o único clique
+   por entidade do projeto — todo o resto resolve por célula, com um único
+   `pointertap` no `stage`. O evento borbulha do avatar até lá, então sem
+   `stopPropagation` o boneco sai andando por baixo do painel que acabou de
+   abrir. O NPC também só é clicável enquanto o balão está aceso, senão daria
+   para conversar do outro lado da sala.
+3. **O canvas nunca é a única via.** Ele é `role="img"` e o balão só existe em
+   pixels; a lista "Quem está na sala" no painel lateral abre exatamente a
+   mesma conversa por botão de verdade. Também é o caminho confiável de
+   validação headless, onde o hit-test do Pixi depende de frames renderizados.
+
+Conversar é **leitura e navegação**: nenhuma Server Action, nenhum XP, nenhuma
+moeda (evita farm de clique e a guarda anti-farm que ele exigiria). O catálogo
+de falas fica em `world/interacao/catalogo.ts`, no mesmo idioma de
+`vendas/pitchVisita.ts`.
+
 ### 5.4 Conectar com negócios da região (Mendes e vizinhos)
 - O World da sede não é uma ilha: a **porta de saída** da sala leva de volta
   ao Mapa regional já implementado (`features/mapa/`), onde os vizinhos do
@@ -163,6 +191,7 @@ Regras herdadas do resto do projeto:
 | **W4 — Colocação livre (drag-and-drop)** | Jogador reposiciona móveis dentro do grid |
 | **W5 — Avatares** | Avatar do dono + avatares dos Funcionários de IA contratados aparecem na sala |
 | **W6 — Social/vizinhos** | Visitar a sede de um vizinho (somente leitura) a partir do Mapa |
+| **W7 — Conversa** | Balão de proximidade + painel de 4 escolhas por NPC/vizinho (ver §5.3.1) |
 
 Cada fase é entregável e demonstrável sozinha — não é preciso esperar a W6
 pra ter algo mostrável.

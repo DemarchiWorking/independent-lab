@@ -1,14 +1,97 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
-> Atualizado: 2026-07-28 (logo após fechar `GH-ARV-02`). Sempre confira
-> `git log -1` antes de confiar neste arquivo — sessões concorrentes já
-> mexeram nesta pasta mais de uma vez sem atualizar este doc (ver nota em
-> `ESTADO-DO-PROJETO.md` §3.1).
+> Atualizado: 2026-07-30 (sessão GH-OPS em andamento, parada no meio do
+> Bloco 5). Sempre confira `git log -1` antes de confiar neste arquivo —
+> sessões concorrentes já mexeram nesta pasta mais de uma vez sem atualizar
+> este doc (ver nota em `ESTADO-DO-PROJETO.md` §3.1).
 
-## Estado
+## 🔴 LEIA PRIMEIRO — GH-OPS em andamento, retomar por aqui
 
-MVP para pitch Sebrae. Commitado e com `npm run typecheck && npm test &&
-npm run build` verdes (190 testes):
+**O card:** tirar o jogo do "só roda no meu PC" e colocar no ar de verdade —
+VPS Hostinger + Docker + Supabase self-hosted + presença ao vivo + o
+Diagnóstico de Maturidade Digital (o documento real que vira produto pro
+pitch). Plano completo e checkpoint detalhado em
+`C:\Users\demarchi\.claude\plans\como-engenheiro-de-sistemas-witty-duckling.md`
+(fora do repo — leia a seção **"🔖 CHECKPOINT"** no topo, é o resumo mais
+denso). Este parágrafo aqui é a versão curta.
+
+**Confira antes de qualquer coisa:**
+```bash
+npm run typecheck && npm test && npm run build   # tem que estar tudo verde (305 testes)
+```
+
+**Feito e verificado (Blocos 1–5 de 8):** os 6 defeitos P0 que quebrariam em
+produção (segmento do cadastro, paginação de e-mail, cadastro não-transacional,
+`GAMEHUB_DB=file` em produção, healthcheck falso, cookie sem HTTPS) — todos
+corrigidos com endereço exato no checkpoint do plano. Stack Supabase
+self-hosted em Docker (5 containers, `deploy/supabase/`), PM2 em cluster,
+cache do mapa regional, recompensa duplicada corrigida. O **Diagnóstico de
+Maturidade Digital** (`src/features/documentos/`) — gerado 100% de dado real,
+com HTML pra imprimir e `.docx` de verdade, validado ao vivo no navegador.
+LGPD mínimo (`/privacidade` + consentimento no cadastro). Presença ao vivo
+(`src/features/world/presenca/`) com os dois lados da degradação graciosa
+testados ao vivo (sem Supabase configurado → zero chamada de rede, tela
+normal; com Supabase mas sem `SUPABASE_JWT_SECRET` → 501 limpo).
+
+**Pendente — é exatamente onde continuar (dentro do Bloco 5):**
+1. **Presença simétrica em `WorldScreen.tsx`** (hoje só `VisitaScreen.tsx`
+   tem `usePresenca` — o dono não vê o visitante chegar ao vivo na própria
+   sede). É o incremento de maior valor disponível: mesmo hook, mesmo
+   `canal.ts`, sem mudança de contrato — só fiação repetida.
+2. **Token de presença não renova** (`jwt.ts` expira em 10 min,
+   `canal.ts`/`usePresenca.ts` não re-chamam `/api/realtime-token`). Decidir
+   se corrige agora (provável: `setInterval` ~8min) ou só documenta o limite.
+3. Depois disso, Blocos 6 (um-clique + `engines`), 7 (os 6 markdowns que
+   faltam de `docs/deploy/` — o `docs/deploy/README.md` mestre **já existe**),
+   8 (verificação end-to-end + PR).
+
+Nada commitado ainda — está tudo no working tree da branch
+`claude/npc-agent-interaction-6a2dd3`.
+
+---
+
+## Estado (histórico — GH-WORLD-07 e anteriores, MVP para pitch Sebrae)
+
+Com `npm run typecheck && npm test && npm run build`
+verdes (257 testes, antes do GH-OPS acima):
+
+- **`GH-WORLD-07` completo** — conversa com NPC no World. Chegar perto de um
+  Funcionário de IA (ou do dono da sede visitada) acende um balão "…" pulsante;
+  clicar abre a ficha + 4 escolhas com copy própria por cargo. Arquivos novos:
+  `world/engine/proximidade.ts`, `equipe-ia/senioridade.ts`,
+  `world/interacao/{tipos,catalogo}.ts` + `PainelInteracao.tsx`/`ListaNaSala.tsx`,
+  `shell/views.ts` (deep-link `?ver=`). Sem Server Action nova, sem migration,
+  sem XP (decisão registrada no card — conversa não pode virar farm de clique).
+  `CargoIA` ganhou `habilidades` (campo aditivo, **não colide** com a decisão em
+  aberto de `contribuicao` do `GH-EQP-02` abaixo). Validado no navegador com o
+  truque do `window.__world` — inclusive o `stopPropagation` (painel abre e o
+  boneco NÃO anda) e o pulso oscilando entre 0.9× e 1.1×.
+  - ⚠️ Achados da revisão, que valem para o próximo que mexer aqui:
+    1. `desenharAvatares` tinha um `continue` que **ignorava toda mudança em
+       avatar já existente** — virou ramo de mutação, senão contratar um
+       funcionário não acendia o balão dele.
+    2. `AnimatePresence mode="wait"` trava de vez com `requestAnimationFrame`
+       congelado — o painel usa um nó re-chaveado no lugar. O `CapituloCard.tsx`
+       ainda usa `mode="wait"` e tem o mesmo risco latente.
+    3. **`useEffect` dependendo do objeto do `useMemo`** apagava a conversa no
+       meio da leitura a cada `router.refresh()` (o `agoraIso` muda a cada
+       render do servidor). A dependência tem que ser o `avatarId`, que é
+       estável. Vale para qualquer painel que derive props assim.
+    4. `{...pressable}` num `<button>` comum vaza `whileHover`/`whileTap` como
+       atributo DOM e enche o console de aviso do React — tem que ser
+       `motion.button`. Corrigido aqui **e** no `CapituloCard.tsx`, que tinha o
+       mesmo bug e renderiza na mesma tela.
+    5. `npm run typecheck` pode falhar por `.next/types` **obsoleto** quando uma
+       rota é apagada (ex.: a rota temporária de selftest). Não é erro de
+       código: rode `npm run build` (regenera) ou apague `.next/types/app/api`.
+    6. Medir altura com `getBoundingClientRect()` dentro de um `RibbonPanel`
+       **mente em navegador headless**: a animação de entrada fica congelada
+       numa escala ~0.94 e encolhe tudo. Meça `getComputedStyle`, ou divida
+       pela escala do modal.
+
+  O `RibbonPanel` ganhou comportamento de diálogo de verdade (`Esc`,
+  `aria-modal`, foco entra ao abrir e volta ao fechar) — vale para a loja e o
+  upgrade de sede também, não só para a conversa.
 
 - Motor de história (`features/historia/`), guardas anti-farm de
   marketplace/parcerias (GH-FDN-01/02), disponibilidade de funcionário-IA
@@ -38,11 +121,14 @@ npm run build` verdes (190 testes):
   disjuntos, exceto `MapaScreen.tsx`/`painel/page.tsx` — só um `Link`
   adicionado em cada, sem tocar no resto).
 
-## Próxima tarefa: `GH-EQP-02` — EM ANDAMENTO, retomar por aqui
+## Depois do GH-OPS: `GH-EQP-02` — pausado, retomar quando o GH-OPS fechar
 
-> Sessão anterior parou na fase de pesquisa (nenhum arquivo de código editado
-> ainda — `git status` limpo). Isto aqui é o estado exato de onde continuar,
-> escrito para economizar uma rodada de exploração numa sessão nova.
+> ⚠️ Isto NÃO é a tarefa atual — o GH-OPS (seção no topo deste arquivo) é.
+> Preservado aqui porque a análise abaixo continua válida e não foi tocada
+> pela sessão de GH-OPS (arquivos disjuntos). Sessão que parou aqui tinha
+> concluído só a fase de pesquisa (nenhum arquivo de código editado ainda).
+> Estado exato de onde continuar, escrito para economizar uma rodada de
+> exploração numa sessão nova.
 
 **O card:** substituir "Aceitar trabalho" (1 clique) por um fluxo em 2
 etapas — depois de aceitar, abre um modal `Selecionar funcionário` que soma
@@ -155,6 +241,12 @@ conhecidas" no `AGENTS.md`). **Apague a rota antes de commitar.**
 
 1. `AGENTS.md` — regras não-negociáveis e mapa rápido do repo.
 2. Este arquivo.
-3. `docs/BACKLOG-PRODUTO.md` — todos os cards, prioridade e dependências.
-4. `docs/ESTADO-DO-PROJETO.md` §3.1 — relato detalhado de sessões
+3. **GH-OPS (tarefa atual):**
+   `C:\Users\demarchi\.claude\plans\como-engenheiro-de-sistemas-witty-duckling.md`
+   — plano completo, veredito de arquitetura, checklist de verificação e o
+   checkpoint com o mapeamento exato do que falta.
+4. `docs/deploy/README.md` — o guia de instalação/deploy já escrito (Docker,
+   Supabase self-hosted, prompt pronto pro Claude Code operar na VPS).
+5. `docs/BACKLOG-PRODUTO.md` — todos os cards, prioridade e dependências.
+6. `docs/ESTADO-DO-PROJETO.md` §3.1 — relato detalhado de sessões
    anteriores (só abrir se precisar entender uma decisão específica).

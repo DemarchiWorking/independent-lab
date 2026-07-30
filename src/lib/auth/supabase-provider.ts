@@ -1,5 +1,17 @@
-import { supabaseAdmin, supabaseAnon } from "@/lib/supabase/client";
-import type { AuthProvider, Identidade } from "./provider";
+import { criarClienteAnonimo, supabaseAdmin } from "@/lib/supabase/client";
+import { EmailJaExisteError, type AuthProvider, type Identidade } from "./provider";
+
+/**
+ * `code === "email_exists"` é o código estável do GoTrue para duplicidade
+ * (introduzido nas versões recentes). Verificamos também a mensagem como
+ * salvaguarda contra instalações self-hosted rodando uma versão do GoTrue
+ * anterior a esse código existir — o self-hosted deste projeto (GH-OPS bloco
+ * 2) não tem a garantia de estar sempre na última tag.
+ */
+function ehEmailDuplicado(error: { code?: string; message: string }): boolean {
+  if (error.code === "email_exists") return true;
+  return /already.*(registered|exists)|already been registered/i.test(error.message);
+}
 
 /**
  * Autenticação via Supabase Auth. A senha nunca transita pela nossa camada de
@@ -7,19 +19,6 @@ import type { AuthProvider, Identidade } from "./provider";
  * com rate limiting, verificação de e-mail e reset já resolvidos.
  */
 export class SupabaseAuthProvider implements AuthProvider {
-  /**
-   * Só há resposta confiável para e-mail existente através da API admin.
-   * Mantemos a checagem apenas para dar mensagem melhor no cadastro; o login
-   * continua com mensagem genérica.
-   */
-  async emailExiste(email: string): Promise<boolean> {
-    const { data, error } = await supabaseAdmin().auth.admin.listUsers();
-    if (error) throw new Error(`Supabase listUsers: ${error.message}`);
-    return data.users.some(
-      (u) => u.email?.toLowerCase() === email.toLowerCase(),
-    );
-  }
-
   async registrar(
     nome: string,
     email: string,
@@ -31,14 +30,18 @@ export class SupabaseAuthProvider implements AuthProvider {
       email_confirm: false,
       user_metadata: { nome },
     });
-    if (error || !data.user) {
-      throw new Error(`Supabase createUser: ${error?.message ?? "sem usuário"}`);
+    if (error) {
+      if (ehEmailDuplicado(error)) throw new EmailJaExisteError(email);
+      throw new Error(`Supabase createUser: ${error.message}`);
     }
+    if (!data.user) throw new Error("Supabase createUser: sem usuário na resposta");
     return { usuarioId: data.user.id };
   }
 
   async autenticar(email: string, senha: string): Promise<Identidade | null> {
-    const { data, error } = await supabaseAnon().auth.signInWithPassword({
+    // Cliente novo por chamada — nunca compartilhado. Ver GH-OPS M-9 e o
+    // comentário em `criarClienteAnonimo()`.
+    const { data, error } = await criarClienteAnonimo().auth.signInWithPassword({
       email,
       password: senha,
     });

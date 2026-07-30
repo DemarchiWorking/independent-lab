@@ -2,6 +2,7 @@ import type { AtributoChave } from "@tokens";
 import type {
   Alocacao,
   CapituloEntregue,
+  DocumentoEmitido,
   Endereco,
   EventoGlobal,
   FuncionarioContratado,
@@ -25,6 +26,15 @@ import type {
  * Ver docs/ARQUITETURA-MULTITENANT.md
  */
 export interface GameRepository {
+  /**
+   * Prova de vida do driver configurado — usado só por `/api/health`
+   * (GH-OPS M-5). Deliberadamente barato: o adapter Supabase faz um
+   * `head: true` contra uma tabela pequena e indexada (sem baixar linha
+   * nenhuma), nunca algo como `lerMapaView()`, que varre o mundo inteiro.
+   * `false` em vez de lançar — quem chama decide o código HTTP.
+   */
+  pingDb(): Promise<boolean>;
+
   /** ---- Geografia (global) ---- */
   lerMapa(): Promise<Mapa>;
   /** Mapa enriquecido com o resumo do negócio em cada lote (read model da UI). */
@@ -64,11 +74,21 @@ export interface GameRepository {
   /** `disponibilidade` de cada um vem enriquecida a partir de `Alocacao`
    *  (GH-EQP-01) — o chamador nunca cruza as duas listas na mão. */
   listarFuncionarios(tenantId: string): Promise<FuncionarioContratado[]>;
-  /** Idempotente: contratar o mesmo cargo duas vezes retorna o registro existente. */
+  /**
+   * Idempotente: contratar o mesmo cargo duas vezes retorna o registro
+   * existente, nunca duplica a linha. `criado` (GH-OPS M-10) é o que falta
+   * pra isso ser SEGURO, não só idempotente: um pré-check em
+   * `features/gamificacao/actions.ts` ("já contratou?") e esta chamada são
+   * dois round trips — duas requisições correndo ao mesmo tempo podem passar
+   * as duas pelo pré-check antes de qualquer uma escrever. Sem `criado`, o
+   * chamador não tinha como saber que a SEGUNDA chamada só encontrou o
+   * registro da primeira, e pagava XP/moeda de novo. Só pague quando
+   * `criado === true`.
+   */
   contratarFuncionario(
     tenantId: string,
     cargoId: string,
-  ): Promise<FuncionarioContratado>;
+  ): Promise<{ funcionario: FuncionarioContratado; criado: boolean }>;
 
   /** ---- Alocação de equipe (GH-EQP-01) ---- */
   /** Só as alocações ainda ativas (`expiraEm` no futuro) — as expiradas
@@ -90,15 +110,18 @@ export interface GameRepository {
 
   /** ---- Marketplace (guarda anti-farm, GH-FDN-01) ---- */
   listarTrabalhosAceitos(tenantId: string): Promise<TrabalhoAceito[]>;
-  /** Idempotente: aceitar o mesmo job duas vezes retorna o registro existente
-   *  (nunca paga XP/moeda de novo — mesmo padrão de `contratarFuncionario`).
-   *  `requisitos` (GH-ATR-03) é o piso mínimo de atributos exigido — só
-   *  avaliado na primeira aceitação (idempotência não reavalia requisito). */
+  /**
+   * Idempotente: aceitar o mesmo job duas vezes retorna o registro existente,
+   * nunca duplica a linha. `requisitos` (GH-ATR-03) é o piso mínimo de
+   * atributos exigido — só avaliado na primeira aceitação (idempotência não
+   * reavalia requisito). `criado` (GH-OPS M-10): mesma razão de
+   * `contratarFuncionario` — só pague XP/moeda quando `criado === true`.
+   */
   aceitarTrabalho(
     tenantId: string,
     jobId: string,
     requisitos?: Partial<Record<AtributoChave, number>>,
-  ): Promise<TrabalhoAceito>;
+  ): Promise<{ trabalho: TrabalhoAceito; criado: boolean }>;
 
   /** ---- Árvore de parcerias (GH-FDN-02 + custo variável GH-ARV-01) ---- */
   listarNosDesbloqueados(tenantId: string): Promise<NoDesbloqueado[]>;
@@ -202,6 +225,23 @@ export interface GameRepository {
     tenantId: string,
     eventoKey: string,
   ): Promise<ProgressoEventoGlobal[]>;
+
+  /** ---- Acervo de documentos (GH-OPS Bloco 4) ---- */
+  /** Hoje só existe registro para `diagnostico-maturidade` — ver `DocumentoEmitido`. */
+  listarDocumentosEmitidos(tenantId: string): Promise<DocumentoEmitido[]>;
+  /**
+   * Upsert por `(tenantId, docId)`: primeira chamada cria a linha, chamadas
+   * seguintes só atualizam `ultimaEmissaoEm`/`versaoMetodologia` — nunca
+   * duplica. Não recebe o CONTEÚDO do documento, só o metadado da emissão;
+   * quem gera o conteúdo é `features/documentos/motor.ts`, sempre a partir do
+   * dado vivo do negócio.
+   */
+  registrarEmissaoDocumento(
+    tenantId: string,
+    docId: string,
+    versaoMetodologia: string,
+    agoraIso: string,
+  ): Promise<DocumentoEmitido>;
 }
 
 export interface DeltaProgresso {
@@ -229,6 +269,10 @@ export interface NovoNegocio {
   /** valores iniciais dos 5 eixos, calculados pelo onboarding a partir das
    *  10 respostas (features/onboarding/scoring.ts) */
   atributosIniciais: Negocio["atributos"];
+  /** `null` = ainda não passou pela tela de consentimento (nunca deveria
+   *  acontecer no fluxo real — `cadastrar()` exige o aceite antes de chamar
+   *  isto — mas o tipo permite para não travar seed/teste). GH-OPS-04. */
+  consentimentoLgpdEm: string | null;
 }
 
 export type { Endereco };

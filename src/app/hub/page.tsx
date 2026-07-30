@@ -5,6 +5,7 @@ import { progresso } from "@/lib/gamificacao";
 import { DEGRAUS } from "@/features/onboarding/scoring";
 import { missaoAtual } from "@/features/gamificacao/missoes";
 import { GameShell } from "@/features/shell/GameShell";
+import { viewDeParam } from "@/features/shell/views";
 import { capituloAtual } from "@/features/historia/actions";
 import { CapituloGate } from "@/features/historia/CapituloGate";
 import { listarEventosAtivos } from "@/features/eventos-globais/actions";
@@ -12,9 +13,16 @@ import type { HudData } from "@/components/ui/HudBar";
 
 export const metadata = { title: "Hub · labdatadev gamehub" };
 
-export default async function HubPage() {
+interface HubPageProps {
+  /** `?ver=` abre o hub direto numa aba — ver `features/shell/views.ts` */
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function HubPage({ searchParams }: HubPageProps) {
   const sessao = await lerSessao();
   if (!sessao) redirect("/entrar");
+
+  const { ver } = await searchParams;
 
   const repo = getRepository();
   const [negocio, onboarding, vizinhos, mapa, funcionarios, sede, mobilia, trabalhos, nos] =
@@ -62,7 +70,7 @@ export default async function HubPage() {
           derrubaria o card no meio da leitura do jogador. */}
       <CapituloGate inicial={capitulo} />
       <GameShell
-        initialView="hub"
+        initialView={viewDeParam(ver)}
         hud={hud}
         missao={missao}
         mapa={mapa}

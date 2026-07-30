@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { getRepository } from "@/lib/db";
 import { getAuthProvider } from "@/lib/auth";
+import { EmailJaExisteError } from "@/lib/auth/provider";
 import { criarSessao, encerrarSessao } from "@/lib/auth/sessao";
 import { slugify } from "@/lib/db/file-adapter";
 import { calcular } from "@/features/onboarding/scoring";
@@ -60,7 +61,18 @@ function texto(fd: FormData, campo: string): string {
   return String(fd.get(campo) ?? "").trim();
 }
 
-/** Cadastro: conta + 10 respostas → tenant com lote no mapa + sessão. */
+/**
+ * Cadastro: conta + 10 respostas → tenant com lote no mapa + sessão.
+ *
+ * ORDEM É REGRA DE NEGÓCIO (GH-OPS M-3): a identidade (`auth.registrar`) é
+ * criada **antes** do negócio, não depois. Na ordem antiga, uma falha no
+ * registro (e-mail duplicado que passou pela checagem prévia quebrada, senha
+ * rejeitada pelo GoTrue, rate limit) deixava um **tenant órfão ocupando um
+ * lote do mapa** — `negocios` e `onboardings` já gravados, sem `membros`,
+ * inalcançável pela UI e sem forma de liberar aquele lote de volta. Nesta
+ * ordem, o pior caso passa a ser um usuário de auth sem tenant — recuperável
+ * por um admin, e nenhum lote do mapa fica preso.
+ */
 export async function cadastrar(
   _anterior: EstadoForm,
   fd: FormData,
@@ -78,8 +90,15 @@ export async function cadastrar(
     return { erro: "E-mail inválido." };
   if (senha.length < 8)
     return { erro: "A senha precisa ter pelo menos 8 caracteres." };
-  if (await auth.emailExiste(email))
-    return { erro: "Já existe uma conta com esse e-mail." };
+
+  // LGPD (GH-OPS-04): aceite explícito, checado no SERVIDOR — o `required`
+  // do checkbox no Wizard é só UX, nunca a garantia real (regra 4 do
+  // AGENTS.md). Sem isso o cadastro não segue, e nenhum negócio nasce sem
+  // consentimento registrado.
+  if (fd.get("aceiteLgpd") !== "sim") {
+    return { erro: "É preciso aceitar a política de privacidade para continuar." };
+  }
+  const consentimentoLgpdEm = new Date().toISOString();
 
   const segmentoBruto = texto(fd, "segmento") as Segmento;
   const respostas: Respostas = {
@@ -100,6 +119,19 @@ export async function cadastrar(
   if (!respostas.nomeNegocio)
     return { erro: "Informe o nome do seu negócio (pergunta 1)." };
 
+  // Toda validação de formulário passou — só agora criamos algo com efeito
+  // colateral. `registrar` é a fonte de verdade sobre e-mail duplicado (ver
+  // `EmailJaExisteError`); não há checagem prévia separada.
+  let identidade;
+  try {
+    identidade = await auth.registrar(nome, email, senha);
+  } catch (e) {
+    if (e instanceof EmailJaExisteError) {
+      return { erro: "Já existe uma conta com esse e-mail." };
+    }
+    throw e;
+  }
+
   const resultado = calcular(respostas);
 
   const negocio = await repo.criarNegocio({
@@ -112,6 +144,7 @@ export async function cadastrar(
     xpInicial: resultado.xpInicial,
     moedaVirtual: 500,
     atributosIniciais: resultado.atributosIniciais,
+    consentimentoLgpdEm,
   });
 
   await repo.salvarOnboarding({
@@ -125,7 +158,6 @@ export async function cadastrar(
 
   await darMesaDeBoasVindas(repo, negocio.id);
 
-  const identidade = await auth.registrar(nome, email, senha);
   await repo.vincularMembro({
     id: identidade.usuarioId,
     tenantId: negocio.id,

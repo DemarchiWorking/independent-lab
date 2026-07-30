@@ -65,7 +65,14 @@ export async function recompensar(
     if (jaContratado) {
       return { ok: false, erro: "Você já contratou esse cargo." };
     }
-    await repo.contratarFuncionario(sessao.tenantId, contextoId);
+    const { criado } = await repo.contratarFuncionario(sessao.tenantId, contextoId);
+    // GH-OPS M-10: o pré-check acima passou, mas entre ele e esta chamada
+    // outra requisição pode ter contratado primeiro (duplo-clique, retry de
+    // rede) — `criado: false` é essa corrida sendo pega DEPOIS da escrita,
+    // não antes. Sem isto, as duas requisições pagariam XP/moeda.
+    if (!criado) {
+      return { ok: false, erro: "Você já contratou esse cargo." };
+    }
   }
 
   if (evento === "servico_contratado") {
@@ -80,10 +87,15 @@ export async function recompensar(
     if (faltantes.length > 0) {
       return { ok: false, erro: mensagemRequisito(faltantes) };
     }
+    let criado: boolean;
     try {
-      await repo.aceitarTrabalho(sessao.tenantId, contextoId, job.requisitos);
+      ({ criado } = await repo.aceitarTrabalho(sessao.tenantId, contextoId, job.requisitos));
     } catch (e) {
       return { ok: false, erro: traduzirErro(e) };
+    }
+    // mesma corrida de `funcionario_ia_contratado` acima, ver comentário lá
+    if (!criado) {
+      return { ok: false, erro: "Você já aceitou esse trabalho." };
     }
   }
 

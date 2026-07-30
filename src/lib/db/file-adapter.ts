@@ -13,6 +13,7 @@ import type {
   Bairro,
   CapituloEntregue,
   Cidade,
+  DocumentoEmitido,
   Endereco,
   EventoGlobal,
   FuncionarioContratado,
@@ -101,6 +102,14 @@ function novoQuarteirao(indice: number): Quarteirao {
 type FuncionarioArmazenado = Omit<FuncionarioContratado, "disponibilidade">;
 
 export class FileRepository implements GameRepository {
+  // Sem dependência externa a checar: o processo Node rodando já É a prova de
+  // vida do driver `file`. `data/` é criado sob demanda no primeiro `write`
+  // (ver `escreverJson`), então testar a existência do diretório aqui daria
+  // falso "unhealthy" num checkout novo que ainda não gravou nada.
+  async pingDb(): Promise<boolean> {
+    return true;
+  }
+
   async lerMapa(): Promise<Mapa> {
     return lerJson<Mapa>(MAPA, mapaInicial());
   }
@@ -223,6 +232,7 @@ export class FileRepository implements GameRepository {
       nivel: nivelPorXp(dados.xpInicial),
       moedaVirtual: dados.moedaVirtual,
       atributos: dados.atributosIniciais,
+      consentimentoLgpdEm: dados.consentimentoLgpdEm,
     };
     await escreverJson(path.join(tenantDir(id), "negocio.json"), negocio);
     return negocio;
@@ -332,13 +342,13 @@ export class FileRepository implements GameRepository {
   async contratarFuncionario(
     tenantId: string,
     cargoId: string,
-  ): Promise<FuncionarioContratado> {
+  ): Promise<{ funcionario: FuncionarioContratado; criado: boolean }> {
     const arquivo = path.join(tenantDir(tenantId), "funcionarios.json");
     const atuais = await lerJson<FuncionarioArmazenado[]>(arquivo, []);
     const existente = atuais.find((f) => f.cargoId === cargoId);
     if (existente) {
       const [enriquecido] = await this.enriquecerDisponibilidade(tenantId, [existente]);
-      return enriquecido;
+      return { funcionario: enriquecido, criado: false };
     }
 
     const novo: FuncionarioArmazenado = {
@@ -350,7 +360,7 @@ export class FileRepository implements GameRepository {
     atuais.push(novo);
     await escreverJson(arquivo, atuais);
     // contratação recém-criada nunca tem alocação — livre por construção
-    return { ...novo, disponibilidade: { estado: "livre" } };
+    return { funcionario: { ...novo, disponibilidade: { estado: "livre" } }, criado: true };
   }
 
   /** Enriquece o registro armazenado com `disponibilidade`, derivada das
@@ -415,11 +425,12 @@ export class FileRepository implements GameRepository {
     tenantId: string,
     jobId: string,
     requisitos?: Partial<Record<AtributoChave, number>>,
-  ): Promise<TrabalhoAceito> {
+  ): Promise<{ trabalho: TrabalhoAceito; criado: boolean }> {
     const arquivo = path.join(tenantDir(tenantId), "trabalhos.json");
     const atuais = await lerJson<TrabalhoAceito[]>(arquivo, []);
     const existente = atuais.find((t) => t.jobId === jobId);
-    if (existente) return existente; // idempotente: já concedido, não reavalia requisito
+    // idempotente: já concedido, não reavalia requisito, não paga de novo
+    if (existente) return { trabalho: existente, criado: false };
 
     if (requisitos) {
       const negocio = await this.lerNegocio(tenantId);
@@ -437,7 +448,7 @@ export class FileRepository implements GameRepository {
     };
     atuais.push(novo);
     await escreverJson(arquivo, atuais);
-    return novo;
+    return { trabalho: novo, criado: true };
   }
 
   async listarNosDesbloqueados(tenantId: string): Promise<NoDesbloqueado[]> {
@@ -698,5 +709,41 @@ export class FileRepository implements GameRepository {
       await escreverJson(path.join(tenantDir(tenantId), "negocio.json"), negocio);
     }
     return progresso;
+  }
+
+  async listarDocumentosEmitidos(tenantId: string): Promise<DocumentoEmitido[]> {
+    return lerJson<DocumentoEmitido[]>(
+      path.join(tenantDir(tenantId), "documentos.json"),
+      [],
+    );
+  }
+
+  async registrarEmissaoDocumento(
+    tenantId: string,
+    docId: string,
+    versaoMetodologia: string,
+    agoraIso: string,
+  ): Promise<DocumentoEmitido> {
+    const arquivo = path.join(tenantDir(tenantId), "documentos.json");
+    const atuais = await lerJson<DocumentoEmitido[]>(arquivo, []);
+    const existente = atuais.find((d) => d.docId === docId);
+
+    if (existente) {
+      existente.ultimaEmissaoEm = agoraIso;
+      existente.versaoMetodologia = versaoMetodologia;
+      await escreverJson(arquivo, atuais);
+      return existente;
+    }
+
+    const novo: DocumentoEmitido = {
+      tenantId,
+      docId,
+      primeiraEmissaoEm: agoraIso,
+      ultimaEmissaoEm: agoraIso,
+      versaoMetodologia,
+    };
+    atuais.push(novo);
+    await escreverJson(arquivo, atuais);
+    return novo;
   }
 }

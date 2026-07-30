@@ -30,6 +30,8 @@ interface WorldCanvasProps {
   /** id do avatar controlado pelo jogador */
   avatarDonoId: string;
   onCliqueCelula: (celula: Celula) => void;
+  /** clique num NPC/jogador com o balão de conversa aceso (GH-WORLD-07) */
+  onInteragirAvatar?: (avatarId: string) => void;
   ref?: Ref<WorldCanvasHandle>;
 }
 
@@ -38,10 +40,12 @@ function descrever(estado: EstadoCena): string {
   const { cols, rows } = estado.geo;
   const moveis = estado.moveis.length;
   const pessoas = estado.avatares.length;
+  const conversaveis = estado.avatares.filter((a) => a.interagivel).length;
   return (
     `Sala isométrica da sede, ${cols} por ${rows} espaços. ` +
     `${moveis === 0 ? "Nenhum móvel colocado" : `${moveis} ${moveis === 1 ? "móvel colocado" : "móveis colocados"}`}. ` +
-    `${pessoas} ${pessoas === 1 ? "pessoa" : "pessoas"} na sala.`
+    `${pessoas} ${pessoas === 1 ? "pessoa" : "pessoas"} na sala` +
+    `${conversaveis > 0 ? `, ${conversaveis} ${conversaveis === 1 ? "disponível" : "disponíveis"} para conversar pela lista "Quem está na sala"` : ""}.`
   );
 }
 
@@ -49,6 +53,7 @@ export function WorldCanvas({
   estado,
   avatarDonoId,
   onCliqueCelula,
+  onInteragirAvatar,
   ref,
 }: WorldCanvasProps) {
   const descricaoAcessivel = descrever(estado);
@@ -59,8 +64,15 @@ export function WorldCanvas({
   // callbacks/estado mais recentes sem re-montar a cena a cada render
   const cliqueRef = useRef(onCliqueCelula);
   cliqueRef.current = onCliqueCelula;
+  const interagirRef = useRef(onInteragirAvatar);
+  interagirRef.current = onInteragirAvatar;
   const estadoRef = useRef(estado);
   estadoRef.current = estado;
+  // Quem o jogador controla é fixo por montagem ("dono" no /world, "visitante"
+  // na visita) — lido por ref só para não virar dependência do efeito de
+  // montagem, que precisa rodar uma única vez.
+  const donoIdRef = useRef(avatarDonoId);
+  donoIdRef.current = avatarDonoId;
 
   useImperativeHandle(
     ref,
@@ -106,7 +118,11 @@ export function WorldCanvas({
       appLocal = app;
       hospedeiro.appendChild(app.canvas);
 
-      const cena = new Cena(app, (celula) => cliqueRef.current(celula));
+      const cena = new Cena(app, {
+        aoClicarCelula: (celula) => cliqueRef.current(celula),
+        aoInteragir: (avatarId) => interagirRef.current?.(avatarId),
+        avatarControladoId: donoIdRef.current,
+      });
       cena.sincronizar(estadoRef.current);
       cenaRef.current = cena;
       setPronto(true);

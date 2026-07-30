@@ -262,6 +262,45 @@ export function desenharMarcadorTile(cor: number, alpha = 0.5): Graphics {
   return g;
 }
 
+/**
+ * Altura (local) onde o balão de conversa flutua sobre o avatar.
+ *
+ * Fica acima da etiqueta de nome (que ocupa até ~y = -58) e ainda dentro do
+ * headroom do canvas (`ALTURA_PAREDE + TILE_H` = 90px acima da fileira do
+ * fundo) — se descer, colide com o nome; se subir, corta no topo da sala.
+ */
+const BALAO_Y = -78;
+
+/**
+ * Balão de HQ com "…" — o convite a conversar com um NPC (GH-WORLD-07).
+ *
+ * Desenhado com a origem no CENTRO do balão de propósito: a cena pulsa o balão
+ * via `scale`, e escalar em torno do centro dá "respiração"; em torno de um
+ * canto daria a impressão de o balão escorregar para o lado.
+ */
+export function desenharBalao(): Container {
+  const grupo = new Container();
+  const g = new Graphics();
+
+  // corpo + rabicho apontando para a cabeça
+  g.roundRect(-16, -10, 32, 20, 7).fill({ color: CENARIO.balao });
+  g.poly([-4, 9, 4, 9, 0, 17]).fill({ color: CENARIO.balao });
+  g.roundRect(-16, -10, 32, 20, 7).stroke({
+    width: 1.5,
+    color: CENARIO.balaoBorda,
+    alpha: 0.45,
+  });
+
+  // as reticências
+  for (const x of [-6, 0, 6]) {
+    g.circle(x, 0, 2.1).fill({ color: CENARIO.balaoPonto, alpha: 0.75 });
+  }
+
+  grupo.addChild(g);
+  grupo.position.set(0, BALAO_Y);
+  return grupo;
+}
+
 export interface OpcoesAvatar {
   cor: number;
   nome: string;
@@ -321,5 +360,8 @@ export function desenharAvatar({ cor, nome, dono }: OpcoesAvatar): Container {
   etiqueta.scale.set(0.9);
   grupo.addChild(etiqueta);
 
+  // O balão de conversa NÃO nasce aqui: quem o cria e o guarda é a cena
+  // (`cena.ts`), que é quem sabe se aquele avatar é interagível. Esta função
+  // desenha um personagem, e só. Ver `desenharBalao` acima.
   return grupo;
 }

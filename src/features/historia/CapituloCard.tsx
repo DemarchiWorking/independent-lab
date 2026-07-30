@@ -120,7 +120,10 @@ export function CapituloCard({
                 Documento liberado no seu acervo: {documento}
               </p>
             ) : null}
-            <button
+            {/* `motion.button` porque `pressable` traz `whileHover`/`whileTap`:
+                num `<button>` comum o React repassa como atributo DOM e enche
+                o console de aviso (mesmo ajuste feito em `PainelInteracao`) */}
+            <motion.button
               type="button"
               {...pressable}
               onClick={() => {
@@ -133,7 +136,7 @@ export function CapituloCard({
               className="mt-3 w-full rounded-md bg-orange px-3 py-2 text-center text-[12px] font-extrabold text-ink shadow-[0_3px_0] shadow-orange-dark"
             >
               Continuar
-            </button>
+            </motion.button>
           </motion.div>
         ) : (
           <motion.div

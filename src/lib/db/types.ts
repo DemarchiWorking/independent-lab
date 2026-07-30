@@ -81,6 +81,10 @@ export interface Negocio {
   moedaVirtual: number;
   /** os 5 eixos da economia de atributos — ver lib/atributos.ts */
   atributos: Atributos;
+  /** quando o dono aceitou a política de privacidade no cadastro (LGPD,
+   *  GH-OPS-04) — `null` para negócios cadastrados antes desta coluna
+   *  existir, nunca "não aceitou". Ver `supabase/migrations/0017_lgpd_consentimento.sql`. */
+  consentimentoLgpdEm: string | null;
 }
 
 export interface Usuario {
@@ -237,6 +241,22 @@ export interface ProgressoEventoGlobal {
   tenantId: string;
   contagem: number;
   completoEm: string | null;
+}
+
+/**
+ * Registro de emissão de um documento do acervo (GH-OPS Bloco 4) — só
+ * metadado, nunca o conteúdo (ver `supabase/migrations/0016_documentos.sql`).
+ * `docId` é `string` aqui de propósito (mesmo padrão de `EventoGlobal.objetivo`
+ * acima): a união fechada de ids reais mora em
+ * `features/documentos/tipos.ts` (`DocumentoId`) — `lib/` nunca importa de
+ * `features/`.
+ */
+export interface DocumentoEmitido {
+  tenantId: string;
+  docId: string;
+  primeiraEmissaoEm: string;
+  ultimaEmissaoEm: string;
+  versaoMetodologia: string;
 }
 
 /** Sessão autenticada. */

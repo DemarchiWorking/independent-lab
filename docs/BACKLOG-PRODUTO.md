@@ -662,6 +662,70 @@ onboarding continuam privados).
 
 ---
 
+### GH-WORLD-07 — Conversar com Funcionário de IA e com o vizinho ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | M |
+| Depende de | `GH-WORLD-05`, `GH-WORLD-06`, `GH-EQP-01` |
+| Corresponde a | Fase **W7** |
+
+**Descrição:** Os bonecos da sala eram cenário — o Funcionário de IA, que é o
+produto que a empresa vende, era a coisa mais inerte da tela. Chegando perto
+de um NPC (ou do dono da sede visitada), aparece um balão de HQ com "…"
+pulsando; clicar abre a ficha dele e **4 opções de conversa que variam por
+agente/jogador**.
+
+**Critérios de aceitação:**
+- [x] Balão acende por PROXIMIDADE do avatar controlado (raio de 1.6 células:
+      cobre ortogonal e diagonal, exclui 2 tiles) e apaga ao se afastar — regra
+      pura em `world/engine/proximidade.ts`, nunca dentro do `render/`
+- [x] Balão pulsa (zoom in/out, 0.9×–1.1×) e fica **estático** sob
+      `prefers-reduced-motion`
+- [x] Clicar no NPC abre o painel **sem o avatar sair andando** — o handler por
+      entidade dá `stopPropagation` antes do handler de célula do `stage`
+- [x] Exatamente 4 opções por interlocutor, com copy própria por cargo
+- [x] Toda resposta cita **dado real**: entrega/frequência do cargo,
+      `disponibilidade` (livre × "ocupado no serviço X até DD/MM"), habilidades
+      liberadas por senioridade, segmento/degrau/nível de sede do vizinho
+- [x] Ficha com ícone do cargo, título de senioridade, **barra** de progresso e
+      as habilidades — inclusive as ainda travadas, com quantos dias faltam
+- [x] Na visita: o dono vizinho é interlocutor (4 opções, uma delas destaca o
+      `PitchPanel` já existente) e os Funcionários de IA dele viram vitrine
+- [x] Caminho acessível equivalente: lista "Quem está na sala" com botão por
+      pessoa — o canvas é `role="img"`, não pode ser a única via
+- [x] `?ver=` abre o `/hub` direto na aba certa, senão os atalhos da conversa
+      seriam promessa vazia (whitelist, não cast — a URL é entrada do usuário)
+- [x] Sala sem equipe mostra convite a contratar, **não** a instrução
+      impossível de "chegue perto de alguém" — é o estado do jogador novo
+- [x] Diálogo de teclado completo: `Esc` fecha, foco entra no painel ao abrir e
+      volta para quem o abriu ao fechar, `aria-modal` (melhoria no
+      `RibbonPanel`, vale para loja e upgrade também)
+- [x] Mobile-first verificado a 375px: painel cabe, opções empilham, sem scroll
+      horizontal e alvos de toque de 44px
+
+**Sem recompensa, de propósito:** conversar não dá XP nem moeda. Seria farm de
+XP clicando no mesmo boneco, e exigiria cooldown persistido + guarda anti-farm
+no padrão `GH-FDN-01`. Conversa informa e navega; quem recompensa é a tela de
+destino. Travado por teste (`EfeitoInteracao` não tem variante de recompensa).
+
+**Senioridade é LEITURA, não mecânica:** derivada por função pura de
+`contratadoEm` + relógio do **servidor** (`equipe-ia/senioridade.ts`). Não dá
+XP, não mexe em atributo, não destrava nada no jogo — só organiza o que já é
+verdade e revela o que o cargo entrega em etapas. Se um dia valer alguma coisa,
+vira estado persistido com guarda, não derivação.
+
+**Regras de segurança:** nenhuma Server Action nova — a feature é leitura +
+navegação. Nenhum dado novo do visitado é exposto: a ficha do vizinho mostra o
+mesmo que o `PitchPanel` já mostrava.
+
+**Dados trafegados:** `FuncionarioContratado` completo (antes só `cargoId`) na
+PRÓPRIA sede — `contratadoEm`/`disponibilidade` já eram do próprio tenant. Na
+visita continua só `cargoId`.
+
+---
+
 ## Épico 6 — Mapa-múndi Multi-tenant (P1/P2)
 
 > Escala o ecossistema de "um quarteirão" para "bairro → cidade → região".
