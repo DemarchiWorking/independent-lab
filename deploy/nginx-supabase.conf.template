@@ -1,0 +1,36 @@
+# ==============================================================================
+# labdatadev-gamehub — reverse proxy Nginx para o Supabase self-hosted (Kong).
+# Gerado por deploy/vps-setup.sh a partir deste template (substitui
+# {{API_DOMAIN}}). Não edite o arquivo final na VPS — edite este template.
+#
+# Kong escuta em 127.0.0.1:8000 (nunca exposto direto — ver
+# deploy/supabase/docker-compose.yml). Este bloco é a ÚNICA porta de entrada
+# pública do Supabase, e é o mesmo motivo de `Upgrade`/`Connection: upgrade`
+# do template do app: o Realtime (presença ao vivo, Bloco 5) é WebSocket.
+# ==============================================================================
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{API_DOMAIN}};
+
+    client_max_body_size 5m;
+
+    location / {
+        limit_req zone=gamehub_geral burst=40 nodelay;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        # Realtime mantém a conexão WebSocket aberta por muito tempo — o
+        # timeout padrão de 60s do Nginx derrubaria presença ociosa em
+        # silêncio, parecendo um bug de "gente sumindo da sala".
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}

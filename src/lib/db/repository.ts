@@ -34,6 +34,13 @@ import type {
  * Ver docs/ARQUITETURA-MULTITENANT.md
  */
 export interface GameRepository {
+  /**
+   * Round trip mais barato possível contra o banco — usado só pelo
+   * healthcheck (`src/app/api/health/route.ts`) para distinguir "processo no
+   * ar" de "processo no ar mas banco fora". Nunca lança: devolve `false` no
+   * lugar. Ver `deploy/deploy.sh` (GH-OPS).
+   */
+  pingDb(): Promise<boolean>;
   /** ---- Geografia (global) ---- */
   lerMapa(): Promise<Mapa>;
   /**

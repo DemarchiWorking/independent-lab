@@ -1,0 +1,25 @@
+# ==============================================================================
+# labdatadev-gamehub — zonas de rate limiting (GH-OPS M-11).
+#
+# `limit_req_zone` só é válido no nível `http{}` do Nginx, nunca dentro de um
+# `server{}` — por isso este arquivo vai em `/etc/nginx/conf.d/`, que o
+# `nginx.conf` padrão do pacote Debian/Ubuntu já inclui de dentro do `http{}`
+# (os `server{}` de app/api ficam em `sites-enabled/`, como sempre).
+#
+# Antes desta mudança não existia limitação de taxa em lugar nenhum — nem
+# aqui, nem em `middleware.ts` (não existe), nem no Supabase. Qualquer
+# cliente autenticado podia chamar Server Actions sem limite algum.
+#
+# Duas zonas:
+#   gamehub_geral → toda a navegação normal do jogo. 20 req/s por IP com
+#                   estouro (`burst`) de 40 é folgado para 100 jogadores reais
+#                   clicando na UI, e ainda barra um script fazendo flood.
+#   gamehub_auth  → só `/entrar` e `/cadastro`. 5 req/s por IP desestimula
+#                   força bruta de senha sem incomodar um usuário legítimo
+#                   errando a senha duas vezes.
+#
+# `nodelay` em ambas: sem ele, o Nginx enfileira e atrasa requisições dentro
+# do burst — numa demo ao vivo, atraso silencioso é pior que um 429 direto.
+# ==============================================================================
+limit_req_zone $binary_remote_addr zone=gamehub_geral:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=gamehub_auth:10m rate=5r/s;

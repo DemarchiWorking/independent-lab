@@ -1,0 +1,97 @@
+# ==============================================================================
+# labdatadev-gamehub — roteamento Kong para o Supabase self-hosted (Bloco 2).
+#
+# TEMPLATE: `__ANON_KEY__`/`__SERVICE_ROLE_KEY__` são trocados pelo `entrypoint`
+# do serviço `kong` em docker-compose.yml antes do Kong subir. Nunca edite o
+# `kong.yml` gerado dentro do container — edite este arquivo.
+#
+# Três serviços expostos, batendo com o `client.ts` do app
+# (NEXT_PUBLIC_SUPABASE_URL + /auth/v1, /rest/v1, /realtime/v1 — é o supabase-js
+# quem monta esses sufixos sozinho):
+#   /auth/v1/*      → GoTrue      (login/cadastro — Bloco 1)
+#   /rest/v1/*      → PostgREST   (hoje sem uso direto do browser; a app
+#                                  server-side já fala com o Postgres via
+#                                  `service_role`, mas a rota fica pronta)
+#   /realtime/v1/*  → Realtime    (presença ao vivo — Bloco 5)
+#
+# `key-auth` + `acl` em rest/realtime são o portão de entrada do Kong (só
+# quem carrega `apikey: <anon ou service_role>` passa) — a autorização FINA
+# continua sendo o JWT (`Authorization: Bearer`) validado por PostgREST/GoTrue
+# e a RLS do Postgres. `/auth/v1` fica sem esse portão de propósito: é o
+# próprio GoTrue quem autentica ali, e exigir `apikey` cedo demais quebraria
+# o fluxo padrão do `supabase-js`.
+# ==============================================================================
+
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: auth-v1
+    url: http://auth:9999
+    routes:
+      - name: auth-v1-all
+        paths: ["/auth/v1/"]
+        strip_path: true
+    plugins:
+      - name: cors
+        config:
+          origins: ["*"]
+          credentials: false
+          methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+          headers: [Authorization, apikey, Content-Type, X-Client-Info]
+
+  - name: rest-v1
+    url: http://rest:3000/
+    routes:
+      - name: rest-v1-all
+        paths: ["/rest/v1/"]
+        strip_path: true
+    plugins:
+      - name: cors
+        config:
+          origins: ["*"]
+          credentials: false
+          methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+          headers: [Authorization, apikey, Content-Type, X-Client-Info, Prefer]
+      - name: key-auth
+        config:
+          key_names: [apikey]
+          hide_credentials: true
+      - name: acl
+        config:
+          allow: [anon, service_role]
+
+  - name: realtime-v1
+    # Endpoint Phoenix do Realtime é montado em `/socket` internamente.
+    url: http://realtime-dev.gamehub-realtime:4000/socket
+    routes:
+      - name: realtime-v1-all
+        paths: ["/realtime/v1/"]
+        strip_path: true
+    plugins:
+      - name: cors
+        config:
+          origins: ["*"]
+          credentials: false
+          methods: [GET, POST, OPTIONS]
+          headers: [Authorization, apikey, Content-Type, X-Client-Info]
+      - name: key-auth
+        config:
+          key_names: [apikey]
+          hide_credentials: true
+      - name: acl
+        config:
+          allow: [anon, service_role]
+
+consumers:
+  - username: anon
+    keyauth_credentials:
+      - key: __ANON_KEY__
+    acls:
+      - group: anon
+
+  - username: service_role
+    keyauth_credentials:
+      - key: __SERVICE_ROLE_KEY__
+    acls:
+      - group: service_role

@@ -77,6 +77,17 @@ export class SupabaseRepository implements GameRepository {
     return supabaseAdmin();
   }
 
+  async pingDb(): Promise<boolean> {
+    // Query mais barata possível: `head: true` não traz linha nenhuma, só
+    // confirma que o PostgREST/Postgres responde. `cidades` existe desde a
+    // 0001 e é seed fixo — nunca some.
+    const { error } = await this.db
+      .from("cidades")
+      .select("slug", { head: true, count: "exact" })
+      .limit(1);
+    return !error;
+  }
+
   /** Resolve cidade/bairro/quarteirão de um negócio (1 query com joins). */
   private async local(quarteiraoId: number): Promise<LinhaLocal> {
     const { data, error } = await this.db

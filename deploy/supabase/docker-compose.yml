@@ -1,0 +1,212 @@
+# ==============================================================================
+# labdatadev-gamehub — Supabase self-hosted, REDUZIDO (GH-OPS Bloco 2).
+#
+# 5 containers, não os ~11 do compose oficial da Supabase:
+#   db (Postgres) · auth (GoTrue) · rest (PostgREST) · realtime · kong
+#
+# FORA de propósito (e por quê):
+#   - studio    → GUI de admin; numa VPS pequena na semana do pitch, um
+#                 `docker compose exec db psql` via túnel SSH resolve o mesmo
+#                 sem mais um container escutando porta.
+#   - storage, imgproxy → o motor de documentos (Bloco 4) NUNCA persiste blob:
+#                 regenera o HTML/.docx sob demanda a partir do dado vivo. Sem
+#                 Storage, não há por que ter Storage.
+#   - functions → nenhuma Edge Function é usada; Server Actions do Next.js
+#                 já cobrem toda mutação.
+#   - meta      → API de introspecção de schema só serve ao Studio.
+#   - supavisor → pooler de conexão Postgres; nosso app fala com o Postgres
+#                 só via PostgREST (HTTP) e GoTrue (HTTP), nunca com o
+#                 protocolo `postgres://` direto — não há conexão para
+#                 agrupar. Migrations/backup usam `docker compose exec db`,
+#                 dentro da rede do compose, sem expor a porta 5432 ao host.
+#
+# Resultado: metade da RAM do stack oficial, metade da superfície de ataque,
+# metade das coisas que podem quebrar na véspera.
+#
+# Imagens e variáveis conferidas contra a referência oficial em 2026-07-29
+# (docker/docker-compose.yml e docker/.env.example do repo supabase/supabase,
+# branch master). Ao atualizar: reconfira as tags e os nomes de variável —
+# eles mudam entre releases do Supabase.
+#
+# Uso — nunca direto, sempre via deploy/supabase-up.sh (aplica as migrations
+# depois de subir e checa saúde de cada serviço antes de seguir):
+#   ./deploy/supabase-up.sh
+# ==============================================================================
+
+name: gamehub-supabase
+
+networks:
+  supabase-net:
+    driver: bridge
+
+volumes:
+  supabase-db-data:
+    name: gamehub-supabase-db-data
+
+services:
+  db:
+    image: supabase/postgres:17.6.1.136
+    container_name: gamehub-supabase-db
+    restart: unless-stopped
+    networks: [supabase-net]
+    # SEM `ports:` — o Postgres nunca fica alcançável fora da rede do compose,
+    # nem em 127.0.0.1. Migrations e backup usam `docker compose exec db`.
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env.supabase}"
+      JWT_SECRET: "${JWT_SECRET:?defina JWT_SECRET no .env.supabase}"
+      JWT_EXP: "3600"
+    volumes:
+      - supabase-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h 127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 2g
+    cpus: 2.0
+
+  auth:
+    image: supabase/gotrue:v2.189.0
+    container_name: gamehub-supabase-auth
+    restart: unless-stopped
+    networks: [supabase-net]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      API_EXTERNAL_URL: "${SUPABASE_PUBLIC_URL}/auth/v1"
+      GOTRUE_SITE_URL: "${SITE_URL}"
+      GOTRUE_URI_ALLOW_LIST: "${SITE_URL}"
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: "postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres"
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_SECRET: "${JWT_SECRET}"
+      # Sem SMTP configurado de propósito: o cadastro roda com
+      # `email_confirm: false` (`src/lib/auth/supabase-provider.ts`) — o
+      # produto não depende de e-mail transacional para o pitch.
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9999/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 256m
+
+  rest:
+    image: postgrest/postgrest:v14.12
+    container_name: gamehub-supabase-rest
+    restart: unless-stopped
+    networks: [supabase-net]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: "postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres"
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: "${JWT_SECRET}"
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      # A escrita real acontece via as RPCs `security definer` das migrations
+      # (`aplicar_progresso`, `criar_negocio_com_lote`...), chamadas com
+      # SERVICE_ROLE — mesmo padrão do app hoje (`supabase-adapter.ts:63-66`).
+      PGRST_DB_MAX_ROWS: "1000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 256m
+
+  realtime:
+    # Nome do container SEM sufixo numérico: versões recentes do realtime
+    # derivam o nome do "tenant" padrão do próprio hostname do container
+    # quando `SEED_SELF_HOST=true` — manter fixo evita reconfigurar nada.
+    image: supabase/realtime:v2.102.3
+    container_name: realtime-dev.gamehub-realtime
+    restart: unless-stopped
+    networks: [supabase-net]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "4000"
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: supabase_admin
+      DB_PASSWORD: "${POSTGRES_PASSWORD}"
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: "SET search_path TO _realtime"
+      DB_ENC_KEY: "${REALTIME_DB_ENC_KEY}"
+      API_JWT_SECRET: "${JWT_SECRET}"
+      SECRET_KEY_BASE: "${REALTIME_SECRET_KEY_BASE}"
+      APP_NAME: gamehub_realtime
+      SEED_SELF_HOST: "true"
+      RUN_JANITOR: "true"
+      ERL_AFLAGS: "-proto_dist inet_tcp"
+    healthcheck:
+      test:
+        - CMD
+        - sh
+        - -c
+        - >-
+          curl -sSfo /dev/null -H "Authorization: Bearer ${JWT_SECRET}"
+          http://127.0.0.1:4000/api/tenants/gamehub_realtime/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 512m
+
+  kong:
+    image: kong/kong:3.9.1
+    container_name: gamehub-supabase-kong
+    restart: unless-stopped
+    networks: [supabase-net]
+    depends_on:
+      auth: { condition: service_healthy }
+      rest: { condition: service_healthy }
+      realtime: { condition: service_healthy }
+    # Kong não faz substituição de `${VAR}` dentro do YAML declarativo — o
+    # entrypoint troca as chaves antes de iniciar. `sed` puro (sem `envsubst`,
+    # que não vem garantido na imagem base do Kong), então funciona em
+    # qualquer variante da imagem.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -e
+        sed \
+          -e "s|__ANON_KEY__|${ANON_KEY}|g" \
+          -e "s|__SERVICE_ROLE_KEY__|${SERVICE_ROLE_KEY}|g" \
+          /kong/kong.template.yml > /kong/kong.yml
+        exec /docker-entrypoint.sh kong docker-start
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: "64 160k"
+    volumes:
+      - ./kong.yml:/kong/kong.template.yml:ro
+    # Só a porta do Kong toca o host, e só em loopback — o Nginx da VPS
+    # (deploy/nginx.conf.template) é quem fala com a internet.
+    ports:
+      - "127.0.0.1:${KONG_HTTP_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 512m

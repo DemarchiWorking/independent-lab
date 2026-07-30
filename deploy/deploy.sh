@@ -38,12 +38,27 @@ fi
 pm2 save
 
 log "health check"
-sleep 2
-if curl -fsS -o /dev/null http://127.0.0.1:8081; then
-  echo "    OK — app respondendo em 127.0.0.1:8081"
+# Antes: `curl` na `/` — a home inteira (SSR + leitura de banco), 1 tentativa
+# só, `sleep 2` fixo. Falso negativo fácil em cold start, e não distinguia
+# "processo não subiu" de "banco fora do ar" (GH-OPS M-5). Agora: `/api/health`
+# (round trip barato, ver `src/app/api/health/route.ts`), com algumas
+# tentativas — `pm2 reload` some com o processo por um instante até o novo
+# assumir a porta.
+HEALTH_URL="http://127.0.0.1:8081/api/health"
+ok=""
+for tentativa in $(seq 1 10); do
+  if resposta=$(curl -fsS "$HEALTH_URL" 2>/dev/null); then
+    ok="$resposta"
+    break
+  fi
+  sleep 1
+done
+
+if [ -n "$ok" ]; then
+  echo "    OK — $HEALTH_URL respondeu: $ok"
 else
   echo
-  echo "[ERRO] o app não respondeu depois do deploy."
+  echo "[ERRO] $HEALTH_URL não respondeu 2xx depois do deploy (10 tentativas)."
   echo "       Veja os logs: pm2 logs labdatadev-gamehub --lines 100"
   exit 1
 fi

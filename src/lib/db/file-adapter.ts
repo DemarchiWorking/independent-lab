@@ -110,6 +110,12 @@ function novoQuarteirao(indice: number): Quarteirao {
 type FuncionarioArmazenado = Omit<FuncionarioContratado, "disponibilidade">;
 
 export class FileRepository implements GameRepository {
+  async pingDb(): Promise<boolean> {
+    // Adapter de arquivo não tem banco a pingar — se o processo Node está de
+    // pé, o "banco" (JSON em disco) está acessível. Sempre saudável.
+    return true;
+  }
+
   async lerMapa(): Promise<Mapa> {
     return lerJson<Mapa>(MAPA, mapaInicial());
   }
