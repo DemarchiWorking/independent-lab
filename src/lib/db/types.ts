@@ -312,6 +312,23 @@ export interface Sessao {
   email: string;
 }
 
+/**
+ * Solicitação de serviço que um cliente faz ao Laboratório Demarchi de dentro
+ * do jogo (site/app/automação/funcionalidade). `tipo` e `status` são `string`
+ * de propósito aqui (lib/ não conhece o catálogo) — as uniões estreitas vivem
+ * em `features/labdatadev/tipos.ts`. Ver `docs/ecossistema/`.
+ */
+export interface SolicitacaoServico {
+  id: string;
+  tenantId: string;
+  tipo: string;
+  titulo: string;
+  descricao: string;
+  status: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 /** ---------- Read model do mapa (para a UI, não o domínio) ----------
  *  Enriquece a geografia com um resumo do negócio em cada lote ocupado. */
 

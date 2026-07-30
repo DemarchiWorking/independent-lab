@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/client";
 import { TETO_ATRIBUTO } from "@/lib/atributos";
 import { disponibilidadeDe } from "@/lib/disponibilidade";
 import { slugify } from "./file-adapter";
-import type { DeltaProgresso, GameRepository, NovoNegocio } from "./repository";
+import type { DeltaProgresso, GameRepository, NovaSolicitacao, NovoNegocio } from "./repository";
 import type {
   Alocacao,
   BairroResumo,
@@ -29,6 +29,7 @@ import type {
   Sede,
   Segmento,
   SolicitacaoContato,
+  SolicitacaoServico,
   TrabalhoAceito,
   Usuario,
 } from "./types";
@@ -1485,5 +1486,85 @@ export class SupabaseRepository implements GameRepository {
     return ((data ?? []) as Array<Parameters<typeof this.paraProgresso>[0]>).map((l) =>
       this.paraProgresso(l),
     );
+  }
+
+  // ---- Solicitações de serviço (labdatadev) ----
+
+  private paraSolicitacao(l: {
+    id: number;
+    tenant_id: number;
+    tipo: string;
+    titulo: string;
+    descricao: string;
+    status: string;
+    criado_em: string;
+    atualizado_em: string;
+  }): SolicitacaoServico {
+    return {
+      id: String(l.id),
+      tenantId: String(l.tenant_id),
+      tipo: l.tipo,
+      titulo: l.titulo,
+      descricao: l.descricao,
+      status: l.status,
+      criadoEm: l.criado_em,
+      atualizadoEm: l.atualizado_em,
+    };
+  }
+
+  async criarSolicitacao(input: NovaSolicitacao): Promise<SolicitacaoServico> {
+    const { data, error } = await this.db
+      .from("solicitacoes_servico")
+      .insert({
+        tenant_id: Number(input.tenantId),
+        tipo: input.tipo,
+        titulo: input.titulo,
+        descricao: input.descricao,
+      })
+      .select("*")
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "criarSolicitacao: sem retorno");
+    }
+    return this.paraSolicitacao(data as Parameters<typeof this.paraSolicitacao>[0]);
+  }
+
+  async listarSolicitacoesDoTenant(tenantId: string): Promise<SolicitacaoServico[]> {
+    const { data, error } = await this.db
+      .from("solicitacoes_servico")
+      .select("*")
+      .eq("tenant_id", Number(tenantId))
+      .order("criado_em", { ascending: false });
+    if (error) throw new Error(`listarSolicitacoesDoTenant: ${error.message}`);
+    return ((data ?? []) as Array<Parameters<typeof this.paraSolicitacao>[0]>).map((l) =>
+      this.paraSolicitacao(l),
+    );
+  }
+
+  async listarTodasSolicitacoes(): Promise<SolicitacaoServico[]> {
+    const { data, error } = await this.db
+      .from("solicitacoes_servico")
+      .select("*")
+      .order("criado_em", { ascending: false });
+    if (error) throw new Error(`listarTodasSolicitacoes: ${error.message}`);
+    return ((data ?? []) as Array<Parameters<typeof this.paraSolicitacao>[0]>).map((l) =>
+      this.paraSolicitacao(l),
+    );
+  }
+
+  async atualizarStatusSolicitacao(
+    id: string,
+    status: string,
+  ): Promise<SolicitacaoServico> {
+    const { data, error } = await this.db
+      .from("solicitacoes_servico")
+      .update({ status, atualizado_em: new Date().toISOString() })
+      .eq("id", Number(id))
+      .select("*")
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "atualizarStatusSolicitacao: sem retorno");
+    }
+    return this.paraSolicitacao(data as Parameters<typeof this.paraSolicitacao>[0]);
   }
 }

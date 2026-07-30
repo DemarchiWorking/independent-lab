@@ -7,7 +7,7 @@ import { aplicarGanhos, atributosFaltantes } from "@/lib/atributos";
 import { alocacoesAtivasEm, disponibilidadeDe } from "@/lib/disponibilidade";
 import { eventoAtivoEm } from "@/lib/eventos-globais";
 import type { AtributoChave } from "@tokens";
-import type { DeltaProgresso, GameRepository, NovoNegocio } from "./repository";
+import type { DeltaProgresso, GameRepository, NovaSolicitacao, NovoNegocio } from "./repository";
 import type {
   Alocacao,
   Bairro,
@@ -36,6 +36,7 @@ import type {
   Quarteirao,
   Sede,
   SolicitacaoContato,
+  SolicitacaoServico,
   TrabalhoAceito,
   Usuario,
 } from "./types";
@@ -50,6 +51,10 @@ const MAPA = path.join(ROOT, "geografia", "mapa.json");
 const INDEX_MEMBROS = path.join(ROOT, "index", "membros.json");
 /** Global (não por tenant) — mesmo "cartaz" para todo mundo, ver MAPA acima. */
 const EVENTOS_GLOBAIS = path.join(ROOT, "eventos-globais.json");
+/** Global também: o painel admin (labdatadev) precisa ler TODAS as
+ *  solicitações de todos os tenants; um arquivo único é o que torna o
+ *  "listar tudo" trivial no modo file (dev/demo, escritor único). */
+const SOLICITACOES = path.join(ROOT, "solicitacoes-servico.json");
 export const LOTES_POR_QUARTEIRAO = 8;
 
 /** Cidades do ICP primário — fonte única em lib/regiao.ts (espelhada em
@@ -1079,5 +1084,47 @@ export class FileRepository implements GameRepository {
       await escreverJson(path.join(tenantDir(tenantId), "negocio.json"), negocio);
     }
     return progresso;
+  }
+
+  // ---- Solicitações de serviço (labdatadev) ----
+
+  async criarSolicitacao(input: NovaSolicitacao): Promise<SolicitacaoServico> {
+    const atuais = await lerJson<SolicitacaoServico[]>(SOLICITACOES, []);
+    const agora = new Date().toISOString();
+    const nova: SolicitacaoServico = {
+      id: randomBytes(8).toString("hex"),
+      tenantId: input.tenantId,
+      tipo: input.tipo,
+      titulo: input.titulo,
+      descricao: input.descricao,
+      status: "recebida",
+      criadoEm: agora,
+      atualizadoEm: agora,
+    };
+    atuais.push(nova);
+    await escreverJson(SOLICITACOES, atuais);
+    return nova;
+  }
+
+  async listarSolicitacoesDoTenant(tenantId: string): Promise<SolicitacaoServico[]> {
+    const atuais = await lerJson<SolicitacaoServico[]>(SOLICITACOES, []);
+    return atuais.filter((s) => s.tenantId === tenantId);
+  }
+
+  async listarTodasSolicitacoes(): Promise<SolicitacaoServico[]> {
+    return lerJson<SolicitacaoServico[]>(SOLICITACOES, []);
+  }
+
+  async atualizarStatusSolicitacao(
+    id: string,
+    status: string,
+  ): Promise<SolicitacaoServico> {
+    const atuais = await lerJson<SolicitacaoServico[]>(SOLICITACOES, []);
+    const alvo = atuais.find((s) => s.id === id);
+    if (!alvo) throw new Error(`Solicitação ${id} não encontrada.`);
+    alvo.status = status;
+    alvo.atualizadoEm = new Date().toISOString();
+    await escreverJson(SOLICITACOES, atuais);
+    return alvo;
   }
 }

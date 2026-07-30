@@ -23,6 +23,7 @@ import type {
   ProgressoEventoGlobal,
   Sede,
   SolicitacaoContato,
+  SolicitacaoServico,
   TrabalhoAceito,
   Usuario,
 } from "./types";
@@ -345,6 +346,27 @@ export interface GameRepository {
     tenantId: string,
     eventoKey: string,
   ): Promise<ProgressoEventoGlobal[]>;
+
+  /** ---- Solicitações de serviço (labdatadev, ver docs/ecossistema/) ---- */
+  /** Cria uma solicitação com status inicial `recebida`. Sem validação de
+   *  negócio aqui — a Server Action já validou tipo/título/descrição; o
+   *  `check` da migration é a garantia real dos valores de `tipo`. */
+  criarSolicitacao(input: NovaSolicitacao): Promise<SolicitacaoServico>;
+  /** Só as solicitações DESTE tenant (dado privado do cliente). */
+  listarSolicitacoesDoTenant(tenantId: string): Promise<SolicitacaoServico[]>;
+  /** Todas as solicitações, de todos os tenants — só para o painel admin
+   *  (a Server Action checa `souAdmin` antes de chamar). */
+  listarTodasSolicitacoes(): Promise<SolicitacaoServico[]>;
+  /** Muda o status de uma solicitação (fluxo de atendimento, só admin). */
+  atualizarStatusSolicitacao(id: string, status: string): Promise<SolicitacaoServico>;
+}
+
+/** Entrada de `criarSolicitacao` — o servidor deriva id/status/datas. */
+export interface NovaSolicitacao {
+  tenantId: string;
+  tipo: string;
+  titulo: string;
+  descricao: string;
 }
 
 export interface DeltaProgresso {

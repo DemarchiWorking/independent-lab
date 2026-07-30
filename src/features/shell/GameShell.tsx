@@ -51,8 +51,9 @@ type CoreView =
 export type View = CoreView | ModuleKey;
 
 /** Chaves do menu lateral: as views do shell + entradas que só navegam para
- *  uma rota própria (o World). "world" nunca vira `view` — tem href. */
-type LateralKey = View | "world";
+ *  uma rota própria (o World, o estúdio labdatadev). Essas nunca viram
+ *  `view` — têm href. */
+type LateralKey = View | "world" | "labdatadev";
 
 const NAV_BASE: ReadonlyArray<NavItem<CoreView>> = [
   { key: "hub", label: "Hub", icon: "grid" },
@@ -205,6 +206,9 @@ export function GameShell({
       destaque: true,
     },
     { key: "sede", label: "Sede (resumo)", icon: "cube", disponivel: temSede },
+    // Computador do escritório: o estúdio labdatadev, onde o cliente pede
+    // site/app/automação e novas funcionalidades (rota própria /labdatadev).
+    { key: "labdatadev", label: "labdatadev · Estúdio", icon: "monitor", href: "/labdatadev" },
     { key: "parcerias", label: "Parcerias", icon: "network" },
     { key: "eventos", label: "Eventos", icon: "calendar" },
     { key: "mapa", label: "Mapa da região", icon: "globe", disponivel: temMapa },
@@ -337,7 +341,8 @@ export function GameShell({
           items={lateralItems}
           current={view}
           onSelect={(k) => {
-            if (k !== "world") go(k); // "world" navega por href, não troca de aba
+            // "world" e "labdatadev" navegam por href (rota própria), não trocam de aba
+            if (k !== "world" && k !== "labdatadev") go(k);
           }}
         />
 
