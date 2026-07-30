@@ -316,7 +316,7 @@ export interface Sessao {
  * Solicitação de serviço que um cliente faz ao Laboratório Demarchi de dentro
  * do jogo (site/app/automação/funcionalidade). `tipo` e `status` são `string`
  * de propósito aqui (lib/ não conhece o catálogo) — as uniões estreitas vivem
- * em `features/labdatadev/tipos.ts`. Ver `docs/ecossistema/`.
+ * em `features/labdatadev/tipos.ts`. Ver `documentos/ecossistema/`.
  */
 export interface SolicitacaoServico {
   id: string;

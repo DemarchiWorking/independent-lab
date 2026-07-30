@@ -2142,3 +2142,78 @@ visitantes de verdade aparecem como avatares adicionais, sem tocar em
 > **Nota de priorização:** `GH-OPS-04` (LGPD) aparece antes de `GH-OPS-01`
 > (deploy) de propósito — não faz sentido colocar no ar um sistema que
 > coleta budget de empresário real sem política de privacidade publicada.
+
+---
+
+## Épico LAB — Ecossistema no computador do escritório (P1)
+
+O computador/celular do escritório vira o "SO do negócio": cada projeto real
+do Laboratório Demarchi (site, app, automação, consultoria) entra como um app.
+Estudo e modelo de integração (N1 atalho / N2 iframe / N3 mini-app nativo) em
+[`documentos/ecossistema/`](../documentos/ecossistema/README.md).
+
+### GH-LAB-01 — Estúdio labdatadev: solicitar serviço + painel admin ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | M |
+| Depende de | `GH-ATR-01` (degrau), `GH-OPS-04` (LGPD já publicada) |
+
+**Descrição:** O cliente pede site/app/automação/nova funcionalidade pelo
+computador do escritório (`/labdatadev`); o fundador gere tudo em
+`/admin/labdatadev`. Primeiro app do ecossistema dentro do jogo.
+
+**Critérios de aceitação:**
+- [x] Migration `0027_solicitacoes_servico` (RLS: cliente vê só o próprio;
+      escrita/admin via service_role) + `GameRepository` nos 2 adapters
+- [x] Domínio puro testado (`features/labdatadev/motor.ts`, 10 casos: funil de
+      status, resumo/KPIs)
+- [x] Server Actions gated (`souAdmin` para o painel; degrau mínimo para criar)
+- [x] Gate por degrau espelhado em menu + rota + Server Action (degrau ≥ 2)
+- [x] XP anti-farm só na 1ª solicitação (via `aplicarProgresso`)
+- [x] Entrada no menu lateral do World (ícone `monitor` → `/labdatadev`)
+- [x] Gates: typecheck, testes, build
+
+**Boas práticas:** união estreita fora de `lib/`; cor só por token; progressão
+só via `aplicarProgresso`; 🪙 do jogo nunca sugere pagamento real do serviço.
+
+---
+
+### GH-LAB-02 — Primeiro app externo no desktop: Portfólio (N1)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | P |
+| Depende de | `GH-LAB-01` |
+
+**Descrição:** Adicionar o Portfólio Demarchi como ícone do computador que
+abre `portfoliodemarchi.com.br` (atalho externo, nível N1 do modelo de
+integração). Ver [`documentos/ecossistema/01-portfolio-demarchi.md`](../documentos/ecossistema/01-portfolio-demarchi.md).
+
+**Critérios de aceitação:**
+- [ ] Catálogo genérico de "apps do computador" (id, nome, ícone, href, gate)
+      — o labdatadev e o Portfólio viram entradas, não código hardcodado
+- [ ] Confirmar se o site permite `<iframe>`; se não, manter N1 (nova aba)
+- [ ] Nenhum dado do jogador enviado ao site externo sem ação explícita
+
+---
+
+### GH-LAB-03 — "Comprar o computador" como gate real (evolução do degrau)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | M |
+| Depende de | `GH-LAB-01`, catálogo de móveis (`features/sede`) |
+
+**Descrição:** Hoje o estúdio libera por degrau (≥ 2). Evoluir para o modelo
+do produto: o desktop abre depois de **comprar o computador** (móvel da sede),
+e cada app "instala" conforme degrau/nível — com evento de gamificação
+(toast "Novo app instalado") ao liberar.
+
+**Critérios de aceitação:**
+- [ ] Comprar o móvel "computador" libera o desktop (além do gate de degrau)
+- [ ] Liberar um app dispara evento de gamificação (XP + toast), uma vez
+- [ ] Anti-farm: instalar/reinstalar não repaga

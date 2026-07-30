@@ -6,7 +6,7 @@
 --
 -- É a ponte jogo → negócio real: a jogabilidade ensina maturidade digital;
 -- esta tabela é onde o interesse vira um pedido acionável, gerido no painel
--- admin (/admin/labdatadev). Ver docs/ecossistema/06-consultoria-e-entregaveis.md.
+-- admin (/admin/labdatadev). Ver documentos/ecossistema/06-consultoria-e-entregaveis.md.
 --
 -- Padrão de persistência: mesma classe de `ofertas` (0001) — escrita direta
 -- pela Server Action com a service_role key (nunca policy de insert), leitura

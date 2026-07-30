@@ -11,6 +11,19 @@
  */
 import type { SolicitacaoServico } from "@/lib/db/types";
 
+/**
+ * Degrau mínimo para o "computador do escritório" liberar o estúdio labdatadev.
+ * Degrau 2 = "Diagnóstico Técnico" (ver `features/onboarding/scoring.ts`
+ * DEGRAUS): a narrativa é "depois do diagnóstico, você começa a construir".
+ * Gate espelhado em 3 lugares — menu (UX), rota e Server Action (fonte de
+ * verdade), conforme a regra do AGENTS.md.
+ */
+export const DEGRAU_MINIMO_LABDATADEV = 2;
+
+/** XP concedido UMA vez, no primeiro pedido do cliente (anti-farm: só quando
+ *  ainda não havia nenhuma solicitação). Reforça o eixo de presença digital. */
+export const XP_PRIMEIRA_SOLICITACAO = 60;
+
 /** Os 4 serviços que o Laboratório Demarchi entrega. */
 export type TipoServico = "site" | "app" | "automacao" | "funcionalidade";
 

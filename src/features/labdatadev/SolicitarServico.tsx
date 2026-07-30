@@ -30,7 +30,11 @@ export function SolicitarServico() {
     iniciar(async () => {
       const r = await criarSolicitacaoServico({ tipo, titulo, descricao });
       if (r.ok) {
-        setSucesso("Pedido enviado! Você acompanha o andamento aqui embaixo.");
+        setSucesso(
+          r.ganhoXp && r.ganhoXp > 0
+            ? `Pedido enviado! +${r.ganhoXp} XP pela sua primeira solicitação. Acompanhe abaixo.`
+            : "Pedido enviado! Você acompanha o andamento aqui embaixo.",
+        );
         router.refresh();
       } else {
         setErro(r.erro ?? "Não foi possível enviar o pedido.");

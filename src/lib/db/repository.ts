@@ -347,7 +347,7 @@ export interface GameRepository {
     eventoKey: string,
   ): Promise<ProgressoEventoGlobal[]>;
 
-  /** ---- Solicitações de serviço (labdatadev, ver docs/ecossistema/) ---- */
+  /** ---- Solicitações de serviço (labdatadev, ver documentos/ecossistema/) ---- */
   /** Cria uma solicitação com status inicial `recebida`. Sem validação de
    *  negócio aqui — a Server Action já validou tipo/título/descrição; o
    *  `check` da migration é a garantia real dos valores de `tipo`. */
