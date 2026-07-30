@@ -3,6 +3,14 @@
 > Você (humano) abre uma sessão do Claude Code por SSH na VPS e cola a seção
 > **"PROMPT"** abaixo. O resto deste arquivo é o contexto que o agente lê
 > sozinho — ele acompanha o código, não vive num plano fora do repositório.
+>
+> **Branch de deploy:** `integracao-deploy-vps`. Clone e continue nela:
+> ```
+> git clone -b integracao-deploy-vps https://github.com/DemarchiWorking/independent-lab.git ~/labdatadev-gamehub
+> ```
+> É a única branch com a camada Supabase/Docker. Todo commit de continuação
+> (correção/integração feita na VPS) vai nesta mesma branch, até você decidir
+> fundir na `main` pelo GitHub.
 
 ---
 

@@ -113,11 +113,16 @@ gera `GAMEHUB_SECRET` e alinha as 3 variáveis do Supabase (`URL`, `ANON_KEY`,
 
 ### 5.1 Levar o código
 
+> **Qual branch?** A camada de deploy vive na branch **`integracao-deploy-vps`**
+> (ainda não fundida na `main`). Enquanto não fizer o merge no GitHub, **clone
+> essa branch** — é a única com o Supabase/Docker pronto. Todo commit de
+> continuação (correções/integrações na VPS) vai **nesta mesma branch**.
+
 Com o repositório no GitHub (recomendado — habilita o deploy automático da
 seção 5.4):
 ```bash
 ssh usuario@ip-da-vps
-git clone <url-do-repo> ~/labdatadev-gamehub
+git clone -b integracao-deploy-vps https://github.com/DemarchiWorking/independent-lab.git ~/labdatadev-gamehub
 ```
 Sem GitHub ainda, `rsync` direto (exclua o que é local/gerado):
 ```bash
