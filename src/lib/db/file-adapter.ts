@@ -17,6 +17,7 @@ import type {
   Cidade,
   ConviteResgatado,
   DestaqueBairro,
+  DocumentoEmitido,
   Endereco,
   EscopoMapa,
   EventoGlobal,
@@ -1126,5 +1127,43 @@ export class FileRepository implements GameRepository {
     alvo.atualizadoEm = new Date().toISOString();
     await escreverJson(SOLICITACOES, atuais);
     return alvo;
+  }
+
+  // ---- Acervo de documentos (Diagnóstico de Maturidade) ----
+
+  async listarDocumentosEmitidos(tenantId: string): Promise<DocumentoEmitido[]> {
+    return lerJson<DocumentoEmitido[]>(
+      path.join(tenantDir(tenantId), "documentos.json"),
+      [],
+    );
+  }
+
+  async registrarEmissaoDocumento(
+    tenantId: string,
+    docId: string,
+    versaoMetodologia: string,
+    agoraIso: string,
+  ): Promise<DocumentoEmitido> {
+    const arquivo = path.join(tenantDir(tenantId), "documentos.json");
+    const atuais = await lerJson<DocumentoEmitido[]>(arquivo, []);
+    const existente = atuais.find((d) => d.docId === docId);
+
+    if (existente) {
+      existente.ultimaEmissaoEm = agoraIso;
+      existente.versaoMetodologia = versaoMetodologia;
+      await escreverJson(arquivo, atuais);
+      return existente;
+    }
+
+    const novo: DocumentoEmitido = {
+      tenantId,
+      docId,
+      primeiraEmissaoEm: agoraIso,
+      ultimaEmissaoEm: agoraIso,
+      versaoMetodologia,
+    };
+    atuais.push(novo);
+    await escreverJson(arquivo, atuais);
+    return novo;
   }
 }

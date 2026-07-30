@@ -26,6 +26,7 @@ import type {
   Onboarding,
   ParceriaFormada,
   ProgressoEventoGlobal,
+  DocumentoEmitido,
   Sede,
   Segmento,
   SolicitacaoContato,
@@ -1566,5 +1567,57 @@ export class SupabaseRepository implements GameRepository {
       throw new Error(error?.message ?? "atualizarStatusSolicitacao: sem retorno");
     }
     return this.paraSolicitacao(data as Parameters<typeof this.paraSolicitacao>[0]);
+  }
+
+  // ---- Acervo de documentos (Diagnóstico de Maturidade) ----
+
+  private paraDocumentoEmitido(l: {
+    tenant_id: number;
+    doc_id: string;
+    primeira_emissao_em: string;
+    ultima_emissao_em: string;
+    versao_metodologia: string;
+  }): DocumentoEmitido {
+    return {
+      tenantId: String(l.tenant_id),
+      docId: l.doc_id,
+      primeiraEmissaoEm: l.primeira_emissao_em,
+      ultimaEmissaoEm: l.ultima_emissao_em,
+      versaoMetodologia: l.versao_metodologia,
+    };
+  }
+
+  async listarDocumentosEmitidos(tenantId: string): Promise<DocumentoEmitido[]> {
+    const { data, error } = await this.db
+      .from("documentos_emitidos")
+      .select("*")
+      .eq("tenant_id", Number(tenantId));
+    if (error) throw new Error(`listarDocumentosEmitidos: ${error.message}`);
+    return ((data ?? []) as Array<Parameters<typeof this.paraDocumentoEmitido>[0]>).map((l) =>
+      this.paraDocumentoEmitido(l),
+    );
+  }
+
+  /** Atômica via RPC `registrar_emissao_documento` — preserva
+   *  `primeira_emissao_em` no upsert (ver `0028_documentos.sql`). */
+  async registrarEmissaoDocumento(
+    tenantId: string,
+    docId: string,
+    versaoMetodologia: string,
+    _agoraIso: string,
+  ): Promise<DocumentoEmitido> {
+    const { data, error } = await this.db
+      .rpc("registrar_emissao_documento", {
+        p_tenant_id: Number(tenantId),
+        p_doc_id: docId,
+        p_versao_metodologia: versaoMetodologia,
+      })
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "registrar_emissao_documento: sem retorno");
+    }
+    return this.paraDocumentoEmitido(
+      data as Parameters<typeof this.paraDocumentoEmitido>[0],
+    );
   }
 }

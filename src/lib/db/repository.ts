@@ -21,6 +21,7 @@ import type {
   Onboarding,
   ParceriaFormada,
   ProgressoEventoGlobal,
+  DocumentoEmitido,
   Sede,
   SolicitacaoContato,
   SolicitacaoServico,
@@ -359,6 +360,23 @@ export interface GameRepository {
   listarTodasSolicitacoes(): Promise<SolicitacaoServico[]>;
   /** Muda o status de uma solicitação (fluxo de atendimento, só admin). */
   atualizarStatusSolicitacao(id: string, status: string): Promise<SolicitacaoServico>;
+
+  /** ---- Acervo de documentos (Diagnóstico de Maturidade) ---- */
+  /** Hoje só existe registro para `diagnostico-maturidade` — ver `DocumentoEmitido`. */
+  listarDocumentosEmitidos(tenantId: string): Promise<DocumentoEmitido[]>;
+  /**
+   * Upsert por `(tenantId, docId)`: primeira chamada cria a linha, chamadas
+   * seguintes só atualizam `ultimaEmissaoEm`/`versaoMetodologia` — nunca
+   * duplica. Não recebe o CONTEÚDO do documento, só o metadado da emissão;
+   * quem gera o conteúdo é `features/documentos/motor.ts`, sempre a partir do
+   * dado vivo do negócio.
+   */
+  registrarEmissaoDocumento(
+    tenantId: string,
+    docId: string,
+    versaoMetodologia: string,
+    agoraIso: string,
+  ): Promise<DocumentoEmitido>;
 }
 
 /** Entrada de `criarSolicitacao` — o servidor deriva id/status/datas. */

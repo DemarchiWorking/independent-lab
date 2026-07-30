@@ -304,6 +304,20 @@ export interface ConviteResgatado {
   resgatadoEm: string;
 }
 
+/**
+ * Metadado de um documento emitido (nunca o conteúdo — o Diagnóstico é sempre
+ * regenerado do dado vivo por `features/documentos/motor.ts`). `docId` é
+ * `string` solto aqui (lib/ não conhece o catálogo); a união estreita vive em
+ * `features/documentos/tipos.ts`. Ver migration `0028_documentos.sql`.
+ */
+export interface DocumentoEmitido {
+  tenantId: string;
+  docId: string;
+  primeiraEmissaoEm: string;
+  ultimaEmissaoEm: string;
+  versaoMetodologia: string;
+}
+
 /** Sessão autenticada. */
 export interface Sessao {
   usuarioId: string;
