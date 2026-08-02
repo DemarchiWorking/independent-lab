@@ -16,4 +16,12 @@ export interface AuthProvider {
   registrar(nome: string, email: string, senha: string): Promise<Identidade>;
   /** `null` quando e-mail ou senha não conferem (nunca diferencie os dois). */
   autenticar(email: string, senha: string): Promise<Identidade | null>;
+  /**
+   * Compensação de cadastro que falhou no meio (GH-SEC-04): desfaz uma
+   * credencial recém-criada quando o passo seguinte (`vincularMembro`)
+   * falha, evitando uma conta autenticável sem negócio vinculado — hoje
+   * irrecuperável pelo usuário (sem `GH-SEC-03`, fluxo de reset). Nunca
+   * para remover uma conta em uso.
+   */
+  removerConta(usuarioId: string): Promise<void>;
 }

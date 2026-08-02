@@ -55,4 +55,9 @@ export class SupabaseAuthProvider implements AuthProvider {
     if (error || !data.user) return null;
     return { usuarioId: data.user.id };
   }
+
+  async removerConta(usuarioId: string): Promise<void> {
+    const { error } = await supabaseAdmin().auth.admin.deleteUser(usuarioId);
+    if (error) throw new Error(`Supabase deleteUser: ${error.message}`);
+  }
 }

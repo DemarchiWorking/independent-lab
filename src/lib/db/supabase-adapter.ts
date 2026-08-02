@@ -404,6 +404,14 @@ export class SupabaseRepository implements GameRepository {
     return data ? this.paraDominio(data as LinhaNegocio) : null;
   }
 
+  async excluirNegocio(tenantId: string): Promise<void> {
+    const { error } = await this.db
+      .from("negocios")
+      .delete()
+      .eq("id", Number(tenantId));
+    if (error) throw new Error(`excluirNegocio: ${error.message}`);
+  }
+
   /** N+1 aceitável por ora (1 `local()` por negócio) — dataset público hoje é
    *  pequeno (ver GH-MAPA-01); revisitar se `sitemap.xml` ficar lento. */
   async listarNegociosPublicos(): Promise<Negocio[]> {

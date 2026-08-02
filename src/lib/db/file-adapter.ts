@@ -377,6 +377,21 @@ export class FileRepository implements GameRepository {
     );
   }
 
+  async excluirNegocio(tenantId: string): Promise<void> {
+    const mapa = await this.lerMapa();
+    for (const cidade of mapa.cidades) {
+      for (const bairro of cidade.bairros) {
+        for (const quarteirao of bairro.quarteiroes) {
+          for (const lote of quarteirao.lotes) {
+            if (lote.tenantId === tenantId) lote.tenantId = null;
+          }
+        }
+      }
+    }
+    await escreverJson(MAPA, mapa);
+    await fs.rm(tenantDir(tenantId), { recursive: true, force: true });
+  }
+
   async listarNegociosPublicos(): Promise<Negocio[]> {
     const raiz = path.join(ROOT, "tenants");
     let pastas: string[];

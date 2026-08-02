@@ -167,15 +167,16 @@ export async function cadastrar(
 
   const resultado = calcular(respostas);
 
-  // CEP (GH-CEP-01): campo oculto que o Wizard preenche quando resolve
-  // cidade/bairro via `lib/localizacao/cep.ts` — puramente informativo aqui,
-  // `cidade`/`bairro` acima já são a fonte que o cadastro usa de qualquer
-  // forma (dropdown manual ou autofill por CEP passam pelos MESMOS dois
-  // campos). Só 8 dígitos numéricos viram um CEP salvo; qualquer outra coisa
-  // (campo ausente, digitação incompleta) vira `undefined`, nunca erro de
-  // cadastro — CEP nunca é obrigatório.
+  // CEP (GH-CEP-01): campo oculto que o Wizard grava assim que os 8 dígitos
+  // existem (`Wizard.tsx`), resolvendo ou não cidade/bairro via
+  // `lib/localizacao/cep.ts` — `cidade`/`bairro` acima continuam sendo a
+  // fonte que o cadastro usa (dropdown manual ou autofill por CEP passam
+  // pelos MESMOS dois campos). Campo obrigatório: o Wizard já bloqueia
+  // avançar sem os 8 dígitos, mas a checagem aqui é a que vale — o cliente
+  // nunca é fonte de verdade sozinho (regra 4 do AGENTS.md).
   const cepBruto = texto(fd, "cep").replace(/\D/g, "");
-  const cep = /^\d{8}$/.test(cepBruto) ? cepBruto : undefined;
+  if (!/^\d{8}$/.test(cepBruto)) return { erro: "Informe um CEP válido (8 dígitos)." };
+  const cep = cepBruto;
 
   const negocio = await repo.criarNegocio({
     nome: respostas.nomeNegocio,
@@ -192,34 +193,56 @@ export async function cadastrar(
     cep,
   });
 
-  await repo.salvarOnboarding({
-    tenantId: negocio.id,
-    respostas,
-    scoreFit: resultado.scoreFit,
-    degrauAlvo: resultado.degrauAlvo,
-    servicosRecomendados: resultado.servicosRecomendados,
-    respondidoEm: new Date().toISOString(),
-  });
+  // GH-SEC-04: daqui até `criarSessao` são 3 escritas que não podem virar
+  // uma transação real (Supabase Auth é um serviço HTTP à parte do
+  // Postgres onde `negocios` vive) — a alternativa é compensação: se
+  // qualquer passo falhar, desfaz o que já foi criado antes de devolver o
+  // erro, para nunca sobrar negócio sem dono nem conta autenticável sem
+  // negócio vinculado (essa segunda é irrecuperável pelo usuário hoje, sem
+  // fluxo de reset — GH-SEC-03).
+  let identidade: Awaited<ReturnType<typeof auth.registrar>> | null = null;
+  try {
+    await repo.salvarOnboarding({
+      tenantId: negocio.id,
+      respostas,
+      scoreFit: resultado.scoreFit,
+      degrauAlvo: resultado.degrauAlvo,
+      servicosRecomendados: resultado.servicosRecomendados,
+      respondidoEm: new Date().toISOString(),
+    });
 
-  await darMesaDeBoasVindas(repo, negocio.id);
-  await resgatarConviteSeExistir(repo, negocio.id, texto(fd, "convite") || null);
+    await darMesaDeBoasVindas(repo, negocio.id);
+    await resgatarConviteSeExistir(repo, negocio.id, texto(fd, "convite") || null);
 
-  const identidade = await auth.registrar(nome, email, senha);
-  await repo.vincularMembro({
-    id: identidade.usuarioId,
-    tenantId: negocio.id,
-    nome,
-    email,
-    papel: "dono",
-    criadoEm: new Date().toISOString(),
-  });
+    identidade = await auth.registrar(nome, email, senha);
+    await repo.vincularMembro({
+      id: identidade.usuarioId,
+      tenantId: negocio.id,
+      nome,
+      email,
+      papel: "dono",
+      criadoEm: new Date().toISOString(),
+    });
 
-  await criarSessao({
-    usuarioId: identidade.usuarioId,
-    tenantId: negocio.id,
-    nome,
-    email,
-  });
+    await criarSessao({
+      usuarioId: identidade.usuarioId,
+      tenantId: negocio.id,
+      nome,
+      email,
+    });
+  } catch (erro) {
+    if (identidade) {
+      await auth.removerConta(identidade.usuarioId).catch((e) => {
+        console.error(`[cadastro] falha ao reverter credencial órfã de ${negocio.id}:`, e);
+      });
+    }
+    await repo.excluirNegocio(negocio.id).catch((e) => {
+      console.error(`[cadastro] falha ao reverter negócio órfão ${negocio.id}:`, e);
+    });
+    console.error(`[cadastro] revertido depois de falhar no meio (negócio ${negocio.id}):`, erro);
+    return { erro: "Não foi possível concluir o cadastro. Tente novamente." };
+  }
+
   redirect("/painel");
 }
 

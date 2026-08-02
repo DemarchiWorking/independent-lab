@@ -85,6 +85,15 @@ export interface GameRepository {
    * Concorrência é resolvida no adapter (advisory lock no Postgres).
    */
   criarNegocio(dados: NovoNegocio): Promise<Negocio>;
+  /**
+   * Compensação de cadastro que falhou no meio (GH-SEC-04) — nunca para
+   * excluir uma conta em uso. Só é seguro chamar logo após `criarNegocio`,
+   * antes de qualquer atividade real: tabelas com histórico
+   * (`progresso_eventos_globais`, `solicitacoes_servico`) não têm
+   * `on delete cascade` de propósito e bloqueariam a exclusão de um tenant
+   * que já tivesse dado esses passos.
+   */
+  excluirNegocio(tenantId: string): Promise<void>;
   lerNegocio(tenantId: string): Promise<Negocio | null>;
   /** Todos os negócios com `perfilPublico = true` (GH-GROW-01) — para o
    *  `sitemap.xml` dinâmico. Só campos já públicos por design (mesma RLS

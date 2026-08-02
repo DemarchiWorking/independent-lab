@@ -63,4 +63,9 @@ export class LocalAuthProvider implements AuthProvider {
     if (!(await verificarSenha(senha, cred.hash))) return null;
     return { usuarioId: cred.usuarioId };
   }
+
+  async removerConta(usuarioId: string): Promise<void> {
+    const lista = await ler();
+    await escrever(lista.filter((c) => c.usuarioId !== usuarioId));
+  }
 }
