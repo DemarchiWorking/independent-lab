@@ -160,14 +160,45 @@ especificação ainda, não como código). Prova que a DIREÇÃO visual e a
 paleta corrigida funcionam antes de qualquer linha de Pixi.js ser escrita
 — exatamente o ponto de fazer mockup antes de implementar.
 
+## Fase 1 implementada e em produção (2026-08-02, commit `0e8a184`)
+
+Primeira fatia REAL do Mapa Vivo está no ar em `:3006` (não é mais só
+mockup) — escolhida por ser segura/baixo risco, sem tocar geometria do
+Pixi:
+
+- `design-system/tokens.ts`: `color.tier` (5 cores, mesma paleta validada
+  nos mockups — sem colisão com presença/vizinhança).
+- `src/lib/tier.ts` (+ `tier.test.ts`, 4 testes novos): `classeTier()` /
+  `nomeArvoreTier()`.
+- `src/features/world/render/cores.ts`: `corDePresenca()` (sempre teal,
+  Pixi) e `corDoTier()` (Pixi, ainda não chamada em nenhum render — pronta
+  pra quando o `MapaPin`/`SedeNameplate` completo existir).
+- `src/features/world/VisitaScreen.tsx`: avatar de presença ao vivo trocado
+  de `corDoAtributo("processo")` pra `corDePresenca()`; badge de tier novo
+  no HUD (ponto colorido + rótulo "Semente"/"Broto"/etc., nunca texto
+  direto sobre a cor — mesma disciplina de acessibilidade da spine).
+
+**Validado em produção de verdade** (não só mockup): login real via
+Playwright (conta `demarchiworking@gmail.com`), screenshot de
+`/world/visitar/1` — badge "● Semente" aparece certo, cena renderiza sem
+erro, `Ligar para o escritório` (feature de sessão anterior) continua
+funcionando. Gates: typecheck + 323 testes + build, todos verdes, antes
+do deploy.
+
+**O que ainda é só spec, não código** (não confundir): o `MapaPin`/
+terreno estilizado do MAPA em si (a parte mais visível/ambiciosa do
+pedido original) — isso depende da fase de arquitetura (Winston) que
+ainda não rodou. Fase 1 só tocou a Sede (cor de presença + badge), que
+era segura de fazer sem essa decisão.
+
 ## Próxima ação concreta (sempre manter esta linha atualizada)
 
-**AGORA:** spines corrigidas, 3 mockups validados por screenshot real
-(2 bugs de layout achados e corrigidos, ver §Validação visual real
-acima), Artifact publicado e compartilhado com o usuário. Sugestões de
-melhoria gráfica de longo prazo (minhas + a visão do usuário) registradas
-em [`MELHORIAS-FUTURAS.md`](MELHORIAS-FUTURAS.md). Falta, em ordem:
-(1) o usuário confirmar que o visual do Artifact está bom (perguntado,
-resposta ainda não chegou nesta sessão), (2) opcionalmente rodar a
-verificação de daltonismo com ferramenta real, (3) marcar as spines
-`status: final`, (4) handoff pro Winston (`bmad-create-architecture`).
+Mockups validados (2 bugs corrigidos), Fase 1 real implementada e em
+produção. Próximos, em ordem: (1) usuário confirmar visual do Artifact
+(perguntado, sem resposta ainda), (2) `bmad-create-architecture`
+(Winston) — decide como renderizar o Mapa/terreno de verdade (é o item
+que falta pra "a parte mais visível" do pedido), resolve a dependência
+de `sede.nivel` não exposto em `negocios_publico`, (3) depois disso,
+`bmad-create-epics-and-stories`, (4) implementação faseada do Mapa em si.
+Sugestões de melhoria gráfica de longo prazo (minhas + a visão do
+usuário) em [`MELHORIAS-FUTURAS.md`](MELHORIAS-FUTURAS.md).

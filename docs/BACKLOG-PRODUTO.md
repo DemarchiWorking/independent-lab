@@ -1170,6 +1170,10 @@ deste card, de propósito) registradas em `MELHORIAS-FUTURAS.md`.
       não só leitura de código) — achou e corrigiu 2 bugs de layout que a
       Reviewer Gate (baseada em texto) não pegou; ver
       `docs/mapa-vivo/STATUS-BMAD-UX.md` §Validação visual real
+- [x] **Fase 1 implementada e em produção** (commit `0e8a184`): cor de
+      tier (`design-system/tokens.ts`) + presença consistente na Sede
+      (`VisitaScreen.tsx`) — validado com login real via Playwright
+      contra `:3006`, screenshot confirma badge "Semente" correto
 - [ ] Usuário revisou o Artifact publicado e confirmou a direção (link
       compartilhado, resposta ainda não chegou nesta sessão)
 - [ ] Verificação de daltonismo com ferramenta real (não só leitura

@@ -28,9 +28,13 @@ uma Reviewer Gate (completude + acessibilidade) em andamento.
 ## Próxima ação concreta
 
 Ver a última seção de `mapa-vivo/STATUS-BMAD-UX.md` — mantida atualizada a
-cada marco. No momento deste checkpoint: aguardando Reviewer Gate
-(2 subagentes, completude + acessibilidade) antes de gerar os mockups
-HTML das telas-chave.
+cada marco. **Atualizado 2026-08-02, fim de sessão:** Reviewer Gate feita,
+mockups validados por screenshot real (2 bugs corrigidos), Fase 1 REAL
+implementada e deployada em produção (commit `0e8a184`, cor de tier +
+presença na Sede), validada com login real via Playwright contra `:3006`.
+Próximo: usuário confirmar o Artifact, depois `bmad-create-architecture`
+(Winston) pra decidir como renderizar o Mapa/terreno de verdade (a parte
+mais visível do pedido original ainda não foi implementada — só a Sede).
 
 ## Regra não-negociável desta iniciativa
 
