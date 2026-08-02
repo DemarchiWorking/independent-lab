@@ -50,14 +50,21 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
   const definir = (campo: string, valor: string | string[]) =>
     setValores((v) => ({ ...v, [campo]: valor }));
 
-  // CEP (GH-CEP-01): autofill de cidade/bairro na pergunta "cidade" — o
-  // dropdown/texto manual continuam funcionando normalmente por baixo, isto
-  // é só um atalho. Debounce de 400ms evita bater na rota a cada tecla;
-  // dispara só com os 8 dígitos completos.
+  // CEP (GH-CEP-01): campo obrigatório na pergunta "cidade" — autofill de
+  // cidade/bairro é o atalho, cidade/bairro continuam preenchíveis à mão
+  // (dropdown/texto abaixo) quando a ViaCEP não resolve, mas o CEP em si
+  // precisa estar completo (8 dígitos) para avançar. Debounce de 400ms evita
+  // bater na rota a cada tecla; dispara só com os 8 dígitos completos.
   const [cepInput, setCepInput] = useState("");
   const [statusCep, setStatusCep] = useState<
     "idle" | "buscando" | "encontrado" | "fora-do-piloto" | "nao-encontrado"
   >("idle");
+
+  /** Máscara `99999-999` — só dígitos, hífen inserido sozinho após o 5º. */
+  const mascararCep = (valor: string): string => {
+    const digitos = valor.replace(/\D/g, "").slice(0, 8);
+    return digitos.length > 5 ? `${digitos.slice(0, 5)}-${digitos.slice(5)}` : digitos;
+  };
 
   useEffect(() => {
     const digitos = cepInput.replace(/\D/g, "");
@@ -65,6 +72,12 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
       setStatusCep("idle");
       return;
     }
+    // Grava o CEP cru assim que os 8 dígitos existem — independe da ViaCEP
+    // resolver ou não (rede fora do ar, CEP genuíno sem match na base
+    // deles). Sendo campo obrigatório agora, precisa viajar no submit mesmo
+    // quando cidade/bairro acabam preenchidos à mão pelo dropdown abaixo.
+    setValores((v) => ({ ...v, cep: digitos }));
+
     const controlador = new AbortController();
     setStatusCep("buscando");
 
@@ -107,6 +120,12 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
         : [...atual, valor],
     );
   };
+
+  // CEP obrigatório: a pergunta "cidade" (onde o campo de CEP vive) só libera
+  // avançar com os 8 dígitos completos, além da própria cidade escolhida.
+  const cepCompleto = cepInput.replace(/\D/g, "").length === 8;
+  const podeAvancar =
+    pergunta?.campo === "cidade" ? respondida && cepCompleto : respondida;
 
   return (
     <form action={formAction} className="w-full max-w-lg">
@@ -156,14 +175,23 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
 
                 {pergunta.campo === "cidade" ? (
                   <div className="mt-3">
+                    <label className="mb-1 block text-[11px] font-bold text-muted">
+                      CEP *
+                    </label>
                     <input
                       inputMode="numeric"
                       value={cepInput}
-                      onChange={(e) => setCepInput(e.target.value)}
-                      placeholder="Seu CEP (opcional) — preenche cidade e bairro sozinho"
+                      onChange={(e) => setCepInput(mascararCep(e.target.value))}
+                      placeholder="00000-000 — preenche cidade e bairro sozinho"
                       maxLength={9}
+                      required
                       className="w-full rounded-md border-2 border-[#dbe3f0] bg-[#f7f9fc] px-3 py-2.5 text-sm outline-none focus:border-teal"
                     />
+                    {cepInput.length > 0 && !cepCompleto && statusCep === "idle" ? (
+                      <p className="mt-1.5 text-[11px] font-bold text-[#5b6b86]">
+                        Faltam {8 - cepInput.replace(/\D/g, "").length} dígitos.
+                      </p>
+                    ) : null}
                     {statusCep === "buscando" ? (
                       <p className="mt-1.5 text-[11px] font-bold text-muted">
                         Buscando endereço…
@@ -349,8 +377,8 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
           </ActionButton>
         ) : (
           <ActionButton
-            onClick={() => respondida && setPasso((p) => p + 1)}
-            disabled={!respondida}
+            onClick={() => podeAvancar && setPasso((p) => p + 1)}
+            disabled={!podeAvancar}
             icon="arrow"
           >
             Continuar

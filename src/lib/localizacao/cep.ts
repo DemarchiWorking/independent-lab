@@ -61,14 +61,21 @@ export async function resolverLocalizacaoPorCep(
     if (!resposta.ok) return null;
 
     const dados = (await resposta.json()) as RespostaViaCep;
-    if (dados.erro || !dados.localidade || !dados.bairro || !dados.uf) {
+    // `dados.bairro` vem vazio da ViaCEP para uma fração grande de CEPs
+    // reais — qualquer CEP que cubra uma cidade inteira em vez de um bairro
+    // específico (comum em cidades pequenas do ICP, incluindo Mendes, usada
+    // em todo o seed de demo). Exigir `bairro` truthy aqui rejeitava CEPs
+    // válidos como "não encontrado": bug ao vivo, não hipotético. "Centro" é
+    // o mesmo fallback já usado no cadastro manual (`cadastrar()` em
+    // `features/auth/actions.ts`) quando o campo vem vazio.
+    if (dados.erro || !dados.localidade || !dados.uf) {
       return null;
     }
 
     return {
       cep,
       cidade: dados.localidade,
-      bairro: dados.bairro,
+      bairro: dados.bairro || "Centro",
       uf: dados.uf,
       cidadeReconhecida: encontrarCidadeRegiao(dados.localidade) !== undefined,
     };
