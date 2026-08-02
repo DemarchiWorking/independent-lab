@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { Sessao } from "@/lib/db/types";
 
 const COOKIE = "gamehub_sessao";
@@ -19,6 +19,23 @@ function assinar(payload: string): string {
   return createHmac("sha256", segredo()).update(payload).digest("hex");
 }
 
+/**
+ * `secure` precisa refletir o protocolo REAL da requisição, não
+ * `NODE_ENV`: este projeto também é servido em produção por IP puro, sem
+ * domínio/HTTPS na frente (nginx só com `listen 80`, ver `nginx.conf`).
+ * Um cookie `Secure` sobre HTTP puro é descartado pelo browser em
+ * silêncio — o login parece funcionar (o redirect dispara) mas a sessão
+ * nunca persiste, e toda página protegida joga de volta pra `/entrar`.
+ * `X-Forwarded-Proto` é setado pelo nginx (`proxy_set_header
+ * X-Forwarded-Proto $scheme`) e reflete o protocolo do cliente mesmo
+ * atrás do proxy — se um dia houver HTTPS na frente, isso já fica certo
+ * sozinho.
+ */
+async function conexaoSegura(): Promise<boolean> {
+  const proto = (await headers()).get("x-forwarded-proto");
+  return proto === "https";
+}
+
 /** Cookie httpOnly assinado: <base64(json)>.<hmac> */
 export async function criarSessao(sessao: Sessao): Promise<void> {
   const payload = Buffer.from(JSON.stringify(sessao)).toString("base64url");
@@ -27,7 +44,7 @@ export async function criarSessao(sessao: Sessao): Promise<void> {
   jar.set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: await conexaoSegura(),
     path: "/",
     maxAge: MAX_AGE,
   });
