@@ -49,3 +49,7 @@ deploy/terraform/*.tfstate
 deploy/terraform/*.tfstate.*
 deploy/terraform/*.tfvars
 deploy/terraform/crash.log
+
+# Estado local de deploy Docker (deploy/docker/update.sh e rollback.sh) —
+# qual commit está no ar em CADA host é fato do host, não do repositório.
+deploy/docker/.state/

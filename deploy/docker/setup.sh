@@ -112,6 +112,14 @@ fi
 COMPOSE_FILES=(-f docker-compose.yml)
 
 if [ "$WITH_SUPABASE" = "1" ]; then
+  # `KONG_HTTP_PORT` (shell env vence sobre deploy/supabase/.env na
+  # resolução do Compose): garante 8010 mesmo em VPS onde o arquivo já foi
+  # gerado com o default antigo (8000) antes deste script passar a evitá-lo
+  # — sem isso, um `setup.sh --with-supabase` de novo nesta VPS falha com
+  # "port is already allocated" porque 127.0.0.1:8000 já é o Kong do
+  # Company HQ (achado ao vivo 2026-08-02, ver deploy/supabase-up.sh).
+  export KONG_HTTP_PORT="${KONG_HTTP_PORT:-8010}"
+
   # ---------------------------------------------------------------------
   # URL PÚBLICA do Kong (achado B1, auditoria BMAD/NFR 2026-08-01): a
   # presença ao vivo abre um WebSocket DIRETO do navegador pro Kong — o
@@ -125,8 +133,16 @@ if [ "$WITH_SUPABASE" = "1" ]; then
       log "URL pública do Kong (labd-cloud/Traefik): $GAMEHUB_PUBLIC_URL"
     else
       log "Detectando IP público (pra presença ao vivo alcançar o Kong)..."
-      HOST_PUBLICO="$(curl -fsS --max-time 3 https://ifconfig.me 2>/dev/null || true)"
+      # `-4` força IPv4: sem isso, em host com IPv6 configurado, `ifconfig.me`
+      # pode responder o IPv6 — e um IPv6 cru numa URL (sem colchetes) é
+      # inválido (`http://2a02:...::1:8010` é ambíguo, não parseia). Achado
+      # ao vivo nesta VPS (Hostinger tem IPv6 por padrão). Mantém o colchete
+      # como defesa a mais, caso `-4` falhe silenciosamente em algum provider.
+      HOST_PUBLICO="$(curl -4 -fsS --max-time 3 https://ifconfig.me 2>/dev/null || true)"
       if [ -n "$HOST_PUBLICO" ]; then
+        case "$HOST_PUBLICO" in
+          *:*) HOST_PUBLICO="[${HOST_PUBLICO}]" ;; # IPv6 — precisa de colchetes numa URL
+        esac
         export GAMEHUB_PUBLIC_URL="http://${HOST_PUBLICO}:${KONG_HTTP_PORT:-8000}"
         echo "    Detectado: $GAMEHUB_PUBLIC_URL"
       else
@@ -225,3 +241,15 @@ if [ "$LABD_CLOUD" = "1" ]; then
 fi
 echo "   Logs:     docker compose ${COMPOSE_FILES[*]} logs -f"
 echo "============================================================"
+
+# ---------------------------------------------------------------------------
+# 6. Estado do deploy — grava quais overlays foram usados e a imagem +
+#    commit de agora, pra deploy/docker/update.sh e deploy/docker/rollback.sh
+#    saberem reproduzir o mesmo comando sem o operador ter que lembrar.
+# ---------------------------------------------------------------------------
+mkdir -p deploy/docker/.state
+printf '%s\n' "${COMPOSE_FILES[*]}" > deploy/docker/.state/compose-files
+if COMMIT="$(git rev-parse --short HEAD 2>/dev/null)"; then
+  echo "$COMMIT" > deploy/docker/.state/last-deployed-commit
+  docker tag labdatadev-gamehub:latest "labdatadev-gamehub:$COMMIT" 2>/dev/null || true
+fi

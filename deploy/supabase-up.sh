@@ -72,9 +72,15 @@ if [ ! -f ".env" ]; then
   # ignorado — o `sed` não acha a linha, e um fallback "adiciona se faltar"
   # entraria DEPOIS e gravaria o loopback por cima da intenção do operador.
   {
-    echo "SUPABASE_PUBLIC_URL=http://127.0.0.1:8000"
+    echo "SUPABASE_PUBLIC_URL=http://127.0.0.1:8010"
     echo "SITE_URL=http://127.0.0.1:8081"
-    echo "KONG_HTTP_PORT=8000"
+    # 8000 é o default de qualquer Supabase self-hosted, mas nesta VPS (e em
+    # qualquer VPS que já rode outro stack Supabase, ex. Company HQ em
+    # /opt/company/supabase) 127.0.0.1:8000 já está ocupado — achado ao vivo
+    # 2026-08-02: `docker compose up` do Kong falhou com "port is already
+    # allocated" rodando este script pela 2a vez numa VPS com outro Supabase
+    # já no ar. 8010 evita a colisão sem exigir coordenação manual.
+    echo "KONG_HTTP_PORT=8010"
   } >> .env
   chmod 600 .env
   echo "    deploy/supabase/.env criado. NUNCA apague sem motivo — apagar" \
