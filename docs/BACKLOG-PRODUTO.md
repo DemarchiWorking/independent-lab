@@ -1156,7 +1156,8 @@ entrada — `CONTEXTO-E-DECISOES.md` (o porquê, decisões capturadas do
 usuário) e `STATUS-BMAD-UX.md` (o estado técnico exato, path dos arquivos
 de verdade, mantido atualizado a cada marco). As spines de verdade
 (`DESIGN.md`/`EXPERIENCE.md`) vivem no workspace BMAD da VPS — path
-completo em `STATUS-BMAD-UX.md`.
+completo em `STATUS-BMAD-UX.md`. Melhorias gráficas de longo prazo (fora
+deste card, de propósito) registradas em `MELHORIAS-FUTURAS.md`.
 
 **Critérios de aceitação:**
 - [x] `DESIGN.md` (paleta, tipografia, componentes) e `EXPERIENCE.md` (IA,
@@ -1165,8 +1166,12 @@ completo em `STATUS-BMAD-UX.md`.
       críticos/altos corrigidos nas spines
 - [x] 3 mockups HTML das telas-chave (`mapa-quarteirao.html`,
       `sheet-detalhe-pin.html`, `sede-continuidade.html`)
-- [ ] Usuário revisou os mockups e confirmou a direção (não feito ainda
-      nesta sessão — próximo passo real)
+- [x] Validação visual real (screenshot via Playwright/Chromium headless,
+      não só leitura de código) — achou e corrigiu 2 bugs de layout que a
+      Reviewer Gate (baseada em texto) não pegou; ver
+      `docs/mapa-vivo/STATUS-BMAD-UX.md` §Validação visual real
+- [ ] Usuário revisou o Artifact publicado e confirmou a direção (link
+      compartilhado, resposta ainda não chegou nesta sessão)
 - [ ] Verificação de daltonismo com ferramenta real (não só leitura
       manual) — achado medium/low ainda aberto
 - [ ] Spines marcadas `status: final`

@@ -8,7 +8,8 @@
 > [`../CHECKPOINT-2026-08-02-mapa-vivo-ux-design.md`](../CHECKPOINT-2026-08-02-mapa-vivo-ux-design.md)
 > — aponta pro passo exato onde parou. Este arquivo é o "porquê" completo;
 > [`STATUS-BMAD-UX.md`](STATUS-BMAD-UX.md) é o "onde estão os arquivos e o
-> que falta tecnicamente".
+> que falta tecnicamente"; [`MELHORIAS-FUTURAS.md`](MELHORIAS-FUTURAS.md)
+> é o que fica pra depois (não é escopo deste card).
 
 ---
 

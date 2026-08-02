@@ -122,11 +122,52 @@ reforço, mas não substitui uma verificação de QA com ferramenta (ex.:
 emulação de visão do Chrome DevTools) antes de considerar isso fechado de
 verdade.
 
+## Validação visual real (2026-08-02) — não só leitura da spec
+
+Depois de escrever os 3 mockups, rodei Chromium headless (Playwright,
+`/opt/labdatadev/node_modules/playwright`) pra tirar screenshot de cada um
+e **olhar de verdade** o resultado renderizado — ler a spec/HTML não é a
+mesma coisa que ver o pixel final, e isso encontrou 2 bugs reais que
+nenhuma das duas revisões anteriores (que leem texto, não renderizam)
+tinha como pegar:
+
+1. **Pin "TecNorte TI" colidindo com a `MapaLegenda`** no canto inferior
+   esquerdo do mockup do Quarteirão — reposicionado.
+2. **Texto do `ChegadaSpotlight`** ("Chegou! Padaria da Vila já está no
+   mapa.") vazando por cima do pin vizinho (Vitalys Saúde) — badge
+   redimensionado (largura fixa, quebra de linha) e os pins do painel B
+   afastados um pouco mais.
+
+Também reforcei visualmente o mockup 3 (`sede-continuidade.html`): o
+interior estava genérico demais (uma caixa vazia com dois pontos) —
+adicionei silhuetas simples de mobília + textura de piso, com uma
+etiqueta explícita "geometria já existente" (pra não sugerir que a
+geometria da sala está sendo redesenhada — não está, ver `Foundation` em
+`EXPERIENCE.md`).
+
+**Confirmado depois dos fixes** (novo screenshot): paleta sem colisão
+visual entre presença (teal) e tier (agora azul/roxo/prata/bronze/
+dourado — nenhum verde/teal), contornos legíveis contra o terreno,
+badges/labels legíveis, sheet desktop/mobile sem bug nenhum encontrado.
+Artifact publicado com os 3 mockups atualizados:
+https://claude.ai/code/artifact/33723a5f-6610-4e16-a382-961e26e37125
+
+**O que esta validação NÃO cobre** (sendo honesto sobre o limite): isto é
+validação de MOCKUP estático (HTML/CSS), não da implementação real em
+Pixi.js — não prova FPS, não prova o comportamento do canvas de verdade,
+não prova a lista DOM espelhada de teclado (que só existe como
+especificação ainda, não como código). Prova que a DIREÇÃO visual e a
+paleta corrigida funcionam antes de qualquer linha de Pixi.js ser escrita
+— exatamente o ponto de fazer mockup antes de implementar.
+
 ## Próxima ação concreta (sempre manter esta linha atualizada)
 
-**AGORA:** as spines estão corrigidas e com 3 mockups HTML em `mockups/`
-(`mapa-quarteirao.html`, `sheet-detalhe-pin.html`, `sede-continuidade.html`).
-Falta, em ordem: (1) o usuário revisar os mockups (ainda não mostrados a
-ele nesta sessão — próxima coisa a fazer), (2) opcionalmente rodar a
+**AGORA:** spines corrigidas, 3 mockups validados por screenshot real
+(2 bugs de layout achados e corrigidos, ver §Validação visual real
+acima), Artifact publicado e compartilhado com o usuário. Sugestões de
+melhoria gráfica de longo prazo (minhas + a visão do usuário) registradas
+em [`MELHORIAS-FUTURAS.md`](MELHORIAS-FUTURAS.md). Falta, em ordem:
+(1) o usuário confirmar que o visual do Artifact está bom (perguntado,
+resposta ainda não chegou nesta sessão), (2) opcionalmente rodar a
 verificação de daltonismo com ferramenta real, (3) marcar as spines
 `status: final`, (4) handoff pro Winston (`bmad-create-architecture`).
