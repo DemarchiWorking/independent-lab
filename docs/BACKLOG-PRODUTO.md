@@ -2622,13 +2622,13 @@ de funcionar colado no User Data de uma VM Ubuntu limpa.
 
 ---
 
-### GH-MULTI-04 — Presença ao vivo alcançável de um navegador real 🔴 (aberto)
+### GH-MULTI-04 — Presença ao vivo alcançável de um navegador real 🟡 (infra validada, falta o passe visual)
 
 | Campo | Valor |
 |---|---|
 | Prioridade | **P0 — bloqueia demonstrar "metaverso ao vivo" no pitch** |
 | Esforço | M |
-| Depende de | `GH-OPS-08` |
+| Depende de | `GH-OPS-08` — **não se aplica a este deploy** (ver nota) |
 
 **Descrição:** a exceção não-tratada do achado B1 (tela de visita quebrando
 com `Application error`) já foi corrigida em 2026-08-01/02 — `canal.ts`/
@@ -2636,17 +2636,39 @@ com `Application error`) já foi corrigida em 2026-08-01/02 — `canal.ts`/
 config de presença por prop de Server Component, nunca lendo
 `NEXT_PUBLIC_*` dentro de código `"use client"`, e `deploy/docker/setup.sh`
 já calcula `GAMEHUB_PUBLIC_URL`/`GAMEHUB_REALTIME_PUBLIC_URL` (prioridade:
-env explícito > domínio labd-cloud > IP público autodetectado). **O que
-ainda falta:** nenhum router Traefik existe hoje para publicar o Kong
-(`api.gamehub.labd.cloud`) — sem isso, `GAMEHUB_REALTIME_PUBLIC_URL` fica
-vazio e a presença cai no no-op limpo (não quebra mais, mas também não
-funciona). Ver `GH-OPS-08`.
+env explícito > domínio labd-cloud > IP público autodetectado).
+
+**Nota 2026-08-02:** `GH-OPS-08` (Traefik pra publicar o Kong) é sobre o
+deploy `labd-cloud` especificamente — **este** deploy (VPS standalone,
+`docker-compose.yml` + `docker-compose.supabase.yml`) já publica o Kong
+DIRETO por IP:porta (`http://2.25.146.39:8010`), sem Traefik no meio.
+Confirmado: `GAMEHUB_REALTIME_PUBLIC_URL` está setado certo no container
+rodando, e o Kong responde de fora (`curl` externo, HTTP 404 na raiz — como
+esperado, as rotas reais são `/rest/v1`, `/realtime/v1` etc.).
+
+**Validado ao vivo (2026-08-02):** script Node rodando no host (fora do
+Docker), usando `@supabase/supabase-js` com a URL pública e a
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` real — exatamente o par que o browser usaria
+— abriu DOIS clientes independentes no canal `sede:1` (mesmo formato de
+`canalUtil.ts`), cada um com `track()` do seu payload. Os dois se
+enxergaram no evento de `sync` (`presenceState()` de cada lado contém o
+outro). Prova que o WebSocket público, a anon key e o contrato de payload
+funcionam ponta a ponta de fora do Docker — o mesmo caminho que
+`VisitaScreen.tsx` usa. **O que isto NÃO prova:** que a tela renderiza os
+avatares corretamente, que o React hidrata e reage ao `sync` na UI, ou
+qualquer coisa visual — só a validação em navegador real fecha isso de
+verdade.
 
 **Critérios de aceitação:**
-- [ ] `GH-OPS-08` fechado primeiro (Kong publicado com TLS)
+- [x] ~~`GH-OPS-08` fechado primeiro~~ — não bloqueia este deploy (Kong já
+      público sem Traefik, ver nota acima)
+- [x] Infra de Realtime validada de fora do Docker com anon key real
+      (script + resultado documentados acima) — substitui parcialmente o
+      teste de navegador para o caminho de rede/autenticação
 - [ ] Teste de navegador real: duas sessões distintas em
       `/world/visitar/<id>` na mesma sede se enxergam, com screenshot
-      anexado ao card
+      anexado ao card — **ainda pendente**, precisa de navegador de
+      verdade (humano ou Claude em Chrome)
 - [ ] Fallback confirmado: sem config válida, a tela renderiza sem
       presença e sem erro de console
 - [ ] Nota em `docs/architecture/CARGA-1000-SIMULTANEOS.md` registrando que
