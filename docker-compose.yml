@@ -52,7 +52,17 @@ services:
     <<: *default-restart
     logging: *default-logging
     env_file:
-      - .env
+      # `required: false` (Compose >= 2.24): sem isto, um `docker compose up`
+      # numa cópia recém-clonada do repo morre ANTES de subir qualquer coisa
+      # com "env file .env not found" — o `.env` é gerado por
+      # `deploy/docker/setup.sh`, que é justamente o que o modo "só quero
+      # jogar localmente" não quer ter que rodar. Com `required: false` o
+      # arquivo continua sendo lido quando existe (produção), e a sua
+      # ausência deixa de ser fatal (Windows/Docker Desktop, 1 comando).
+      # Os defaults que tornam essa ausência SEGURA estão em
+      # `docker-compose.override.yml`.
+      - path: .env
+        required: false
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1

@@ -71,17 +71,34 @@ npm test            # vitest — gate obrigatório
 npm run build       # gate obrigatório antes de qualquer deploy
 ```
 
-**Stack real (Docker, com Supabase — paridade com produção):**
-duplo-clique em `start.bat` (Windows, abre o WSL sozinho) ou `./start.sh`
-(Linux/Mac/VPS) — chamam `deploy/docker/setup.sh --with-supabase`. É o
-caminho recomendado pra ver o produto de verdade (cadastro persiste,
-login funciona, mapa/vizinhos reais).
+### Os 4 jeitos de subir isto (do mais simples ao mais completo)
 
-**Modo dev leve (sem Docker, sem Postgres):** duplo-clique em
-`iniciar.bat` (Windows) ou `./iniciar.sh` (Linux/Mac) — só `npm run dev`
-com `GAMEHUB_DB=file`. Bom pra mexer em UI rápido; cadastro/login não
-persistem de verdade entre reinícios (arquivo local) e multiplayer/
-Supabase não existem nesse modo.
+| Quero... | Faço | Banco | Multiplayer |
+|---|---|---|---|
+| **Jogar no meu Windows, 2 cliques** | duplo-clique em **`JOGAR.bat`** | arquivo (volume Docker) | não |
+| **1 comando em qualquer SO** | **`docker compose up -d`** | arquivo (volume Docker) | não |
+| **Mexer em UI rápido** | `./iniciar.sh` / `iniciar.bat` (`npm run dev`) | arquivo, em `./data/` | não |
+| **Produção / pitch / multiplayer** | **`./deploy/docker/setup.sh --with-supabase`** (ou `./start.sh`) | Postgres real | **sim** |
+
+**`docker compose up -d` funciona num clone limpo, sem `.env`, sem rodar
+script nenhum** — é `docker-compose.override.yml` que fornece os defaults
+seguros (`GAMEHUB_DB=file`, `GAMEHUB_SECRET` de dev, 1 réplica). Esse
+override é carregado SÓ quando não se passa `-f`; como `setup.sh`,
+`update.sh` e `rollback.sh` sempre passam `-f docker-compose.yml ...`,
+**produção nunca o enxerga**. Não mexa nessa propriedade sem entender que
+é ela que impede config de dev vazar pra VPS.
+
+**Numa VPS nova, um comando só (do zero ao ar, multiplayer):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/DemarchiWorking/independent-lab/integracao-deploy-vps/deploy/docker/bootstrap.sh | sudo bash
+```
+Leva ~5-6 min na primeira vez (piso: ~2,9 GB de imagem Docker pra baixar —
+ver o cabeçalho de `deploy/docker/bootstrap.sh` pra como chegar em <2 min).
+
+⚠️ **Multiplayer/presença ao vivo só existe no modo Supabase.** O modo
+arquivo é single-player: serve pra demonstrar a gamificação inteira
+(cadastro, mapa, sede, XP, escada de valor) sem infra, mas o WebSocket de
+presença fala direto com o Realtime do Supabase e fica em no-op.
 
 ## Validação sem infra (truques úteis neste projeto)
 
