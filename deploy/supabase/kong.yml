@@ -61,6 +61,19 @@ services:
         config:
           allow: [anon, service_role]
 
+  # Achado rodando o harness de carga pela 1ª vez de verdade (Épico 13,
+  # 2026-08-01): com `hide_credentials: true` (igual ao de `rest-v1` acima),
+  # Kong autentica o `apikey` e VALIDA — mas então REMOVE o parâmetro antes
+  # de repassar pro upstream. PostgREST não liga pra isso (só olha o JWT
+  # `Authorization`), mas o próprio Realtime faz sua PRÓPRIA checagem de
+  # `apikey` (independente do Kong) e rejeitava toda conexão com
+  # `MissingAPIKey` — nenhum handshake `phx_join` chegava a acontecer, então
+  # a presença ao vivo (`GH-MULTI-02/03`) nunca teria funcionado em produção
+  # nenhuma vez, mesmo com o resto do stack saudável. `hide_credentials:
+  # false` só aqui deixa o Realtime ver o `apikey` que ele mesmo exige — a
+  # segurança de borda continua sendo o `key-auth`+`acl` do Kong (que já
+  # rejeita antes disso quem não tem `anon`/`service_role`), então isto não
+  # abre acesso novo, só para de esconder um dado que o upstream precisa.
   - name: realtime-v1
     # Endpoint Phoenix do Realtime é montado em `/socket` internamente.
     url: http://realtime-dev.gamehub-realtime:4000/socket
@@ -78,7 +91,9 @@ services:
       - name: key-auth
         config:
           key_names: [apikey]
-          hide_credentials: true
+          # false (diferente do rest-v1 acima) — ver comentário logo acima
+          # deste serviço: o próprio Realtime exige ver o `apikey`.
+          hide_credentials: false
       - name: acl
         config:
           allow: [anon, service_role]

@@ -37,3 +37,15 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Worktrees de agente (Claude Code) — scratch de sessão, nunca versiona.
+.claude/worktrees/
+
+# Terraform (deploy/terraform/) — estado e segredos nunca versionam.
+# `.terraform.lock.hcl` FICA de fora deste ignore de propósito — é o lock
+# de versão de provider, deve ser commitado (prática padrão Terraform).
+deploy/terraform/.terraform/
+deploy/terraform/*.tfstate
+deploy/terraform/*.tfstate.*
+deploy/terraform/*.tfvars
+deploy/terraform/crash.log

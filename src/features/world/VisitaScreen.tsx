@@ -21,7 +21,7 @@ import type { WorldCanvasHandle } from "./render/WorldCanvas";
 import { InteracaoNpc } from "./InteracaoNpc";
 import { avataresProximos, type AvatarProximo } from "./engine/proximidade";
 import { entrarNaSala } from "./presenca/canal";
-import type { VisitantePresente } from "./presenca/canalUtil";
+import type { PresencaConfig, VisitantePresente } from "./presenca/canalUtil";
 import type { ItemMobiliaColocado, Negocio, Sede } from "@/lib/db/types";
 
 /**
@@ -60,6 +60,10 @@ interface VisitaScreenProps {
   /** identidade pública de quem está visitando — anunciada no canal de
    *  presença (GH-MULTI-03). Só fachada: tenantId + nome do negócio. */
   visitante: { tenantId: string; nome: string };
+  /** `null` quando não há Supabase configurado (`GAMEHUB_DB=file`) — vem
+   *  de um Server Component (`page.tsx`), nunca lido de `process.env`
+   *  aqui dentro (ver `canalUtil.ts`, `PresencaConfig`, para o porquê). */
+  presencaConfig: PresencaConfig | null;
 }
 
 export function VisitaScreen({
@@ -68,6 +72,7 @@ export function VisitaScreen({
   mobilia,
   funcionarios,
   visitante,
+  presencaConfig,
 }: VisitaScreenProps) {
   const canvasRef = useRef<WorldCanvasHandle | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -76,22 +81,25 @@ export function VisitaScreen({
 
   /**
    * Presença ao vivo na sala (GH-MULTI-03). `entrarNaSala` é no-op
-   * silencioso sem `NEXT_PUBLIC_SUPABASE_URL`, então em `GAMEHUB_DB=file`
-   * esta tela funciona exatamente como antes — degradação limpa, não
-   * feature flag espalhada pela UI.
+   * silencioso sem `presencaConfig`, então em `GAMEHUB_DB=file` esta tela
+   * funciona exatamente como antes — degradação limpa, não feature flag
+   * espalhada pela UI.
    *
    * Depende só de valores primitivos (`id`, `tenantId`, `nome`) e não do
    * objeto `visitante`: uma prop recriada a cada render do servidor faria
    * este efeito derrubar e reabrir o canal em loop, e cada reconexão
    * aparece como entrar/sair para todo mundo que está na sala.
+   * `presencaConfig` é estável (vem do `page.tsx`, não muda entre renders
+   * do client) — incluído nas deps por completude, não porque varia.
    */
   useEffect(() => {
     return entrarNaSala(
       negocioVisitado.id,
       { tenantId: visitante.tenantId, nome: visitante.nome, entrouEm: new Date().toISOString() },
       setPresentes,
+      presencaConfig,
     );
-  }, [negocioVisitado.id, visitante.tenantId, visitante.nome]);
+  }, [negocioVisitado.id, visitante.tenantId, visitante.nome, presencaConfig]);
 
   /** Quem mais está aqui agora — eu não conto (já sou o avatar "visitante"). */
   const outrosPresentes = useMemo(

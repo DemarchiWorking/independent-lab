@@ -359,6 +359,7 @@ export class FileRepository implements GameRepository {
       perfilPublico: dados.perfilPublico,
       consentimentoEm: new Date().toISOString(),
       consentimentoVersao: dados.consentimentoVersao,
+      cep: dados.cep,
     };
     await escreverJson(path.join(tenantDir(id), "negocio.json"), negocio);
     return negocio;

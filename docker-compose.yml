@@ -1,0 +1,140 @@
+# ============================================================================
+# labdatadev-gamehub — compose BASE, portátil (roda em qualquer VPS/cloud
+# com Docker, sem depender de nada externo a este arquivo).
+#
+# `docker compose up -d --wait` sobe: app (Next.js standalone) + nginx
+# (proxy próprio, rate limiting, headers de segurança). Nenhuma rede
+# externa, nenhum Traefik, nenhum Supabase de terceiro é exigido aqui —
+# esses entram como OVERLAY (ver abaixo), nunca como base.
+#
+# Pré-requisito: um arquivo `.env` na raiz do projeto (nunca commitado —
+# ver .gitignore) com pelo menos:
+#   GAMEHUB_DB=file                          # ou "supabase", ver overlays
+#   GAMEHUB_SECRET=<openssl rand -hex 32>
+#   NEXT_PUBLIC_SUPABASE_URL=...              # só se GAMEHUB_DB=supabase
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY=...         # só se GAMEHUB_DB=supabase
+#   SUPABASE_SERVICE_ROLE_KEY=...             # só se GAMEHUB_DB=supabase
+#
+# Uso (VPS/cloud nova, do zero, com Supabase self-hosted vendorizado):
+#   docker compose -f docker-compose.yml -f docker-compose.supabase.yml \
+#     up -d --wait
+#
+# Uso (esta VPS — labd.cloud, reaproveitando Supabase/Traefik já existentes):
+#   docker compose -f docker-compose.yml -f docker-compose.labd-cloud.yml \
+#     up -d --wait
+#
+# Uso (mais simples possível — GAMEHUB_DB=file, sem Postgres nenhum, só
+# para validar que o container sobe):
+#   docker compose up -d --wait
+# ============================================================================
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: labdatadev-gamehub:latest
+    # SEM `container_name` de propósito (Épico 13, escala): um nome fixo
+    # entra em conflito com `deploy.replicas` > 1 — Compose recusa escalar
+    # um serviço com nome de container fixo. Os nomes viram
+    # `labdatadev-gamehub-app-1`, `-2`, `-3` automaticamente; o nome do
+    # SERVIÇO (`app`, usado pelo Nginx e pelos overlays de
+    # docker-compose.supabase.yml/labd-cloud.yml) não muda.
+    <<: *default-restart
+    logging: *default-logging
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    networks:
+      - gamehub-internal
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      # 3 réplicas (era 1): o WebSocket de presença fala DIRETO com o
+      # Supabase, nunca atravessa este app (ver `BMAD-MULTIPLAYER-VPS.md`
+      # §3.3.1) — mas centenas de Server Actions/SSR simultâneos em 1
+      # processo Node viram o teto de vazão bem antes do Supabase, mesmo
+      # raciocínio que já levou o modo PM2 a `cluster`/3 em
+      # `deploy/ecosystem.config.js`. Ajustável via `GAMEHUB_APP_REPLICAS`
+      # sem editar o compose. NÚMERO NÃO VALIDADO POR CARGA AINDA — ver
+      # `deploy/loadtest/presenca-k6.js`.
+      replicas: ${GAMEHUB_APP_REPLICAS:-3}
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    # Mesmo achado do serviço `nginx` abaixo — sobe o teto de file
+    # descriptors do container (default 1024), que sob 100–1000 conexões
+    # simultâneas de Server Actions/SSR vira gargalo antes do Node em si.
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: labdatadev-gamehub-nginx
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      # Porta do HOST configurável — 3006 é a primeira livre nesta VPS
+      # (3001 octea, 3002 v4mos, 3003 carou, 3004 labdatadev, 3005 gamehub
+      # demo/PM2 já em uso). Em outra VPS/cloud, qualquer porta livre serve.
+      - "0.0.0.0:${GAMEHUB_HTTP_PORT:-3006}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    # `app` agora tem N réplicas (Épico 13) — `nginx.conf` resolve o nome do
+    # serviço dinamicamente via DNS embutido do Docker (`resolver 127.0.0.11`)
+    # em vez de um `upstream` estático de 1 IP só, senão só a 1ª réplica
+    # receberia tráfego.
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - gamehub-internal
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/nginx-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # Teto explícito (Épico 13, escala) — mesmo raciocínio dos outros
+    # serviços: nginx é leve, mas sem limite um pico de tráfego pode disputar
+    # CPU com os outros produtos desta VPS.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+    # Achado rodando pela 1ª vez de verdade (2026-08-01): o default do
+    # container (1024 file descriptors) é MENOR que `worker_connections
+    # 4096` do nginx.conf — nginx avisa e trunca o limite efetivo sozinho, o
+    # que capa a capacidade real bem abaixo de 1000 concorrentes (cada
+    # conexão proxied usa 2 fds — cliente + upstream). `nofile` explícito
+    # corrige a causa raiz.
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+networks:
+  gamehub-internal:
+    driver: bridge

@@ -1,14 +1,27 @@
 name: Deploy VPS
 
 # Esteira de melhoria contínua: todo push na main tenta publicar na VPS.
-# O gate de verdade roda DENTRO de deploy/deploy.sh (typecheck+test+build) —
-# se algo quebrar lá, a VPS mantém a versão anterior no ar.
+# O gate de verdade deste job (lint-and-typecheck) roda ANTES de tocar na
+# VPS; do lado da VPS, `deploy/docker/setup.sh --build` também refaz o
+# `npm run build` dentro da imagem Docker (Next.js roda typecheck no build
+# por padrão) — se algo quebrar em qualquer um dos dois lados, a VPS mantém
+# a versão anterior no ar (containers antigos só são substituídos depois que
+# os novos passam no healthcheck do `--wait`).
+#
+# Caminho de deploy: Docker Compose (Épico 13, 2026-08-01) — substitui o
+# `deploy/deploy.sh` (modo PM2, legado) que este workflow chamava antes.
+# Ver `deploy/vps-setup.sh` (cabeçalho) para o porquê da troca e
+# `docs/deploy/README.md` para o guia completo.
 #
 # Configuração necessária (Settings → Secrets and variables → Actions):
 #   VPS_HOST     ex.: 2.25.146.39
 #   VPS_USER     ex.: root
 #   VPS_SSH_KEY  chave privada com acesso à VPS (par da chave já autorizada)
 #   VPS_PATH     (opcional) caminho do projeto na VPS — padrão ~/labdatadev-gamehub
+#
+# Flags passadas a `deploy/docker/setup.sh` nesta VPS especificamente
+# (labd.cloud, Supabase próprio + Traefik já existente) — numa VPS/cloud
+# diferente, ajuste para o que fizer sentido lá (ver cabeçalho do script).
 
 on:
   push:
@@ -40,4 +53,5 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd "${{ secrets.VPS_PATH || '~/labdatadev-gamehub' }}"
-            ./deploy/deploy.sh
+            git pull --ff-only
+            ./deploy/docker/setup.sh --with-supabase --labd-cloud

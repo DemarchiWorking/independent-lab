@@ -1,13 +1,14 @@
-import { supabaseAnon } from "@/lib/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import {
+  configValida,
   nomeCanal,
   presentesDe,
-  supabaseConfigurado,
   type EstadoPresenca,
+  type PresencaConfig,
   type VisitantePresente,
 } from "./canalUtil";
 
-export type { VisitantePresente } from "./canalUtil";
+export type { PresencaConfig, VisitantePresente } from "./canalUtil";
 
 /**
  * Presença ao vivo numa sala (GH-MULTI-02) — Supabase Realtime Presence.
@@ -27,13 +28,19 @@ export type { VisitantePresente } from "./canalUtil";
  * verificado contra Postgres real antes de qualquer tela chamar
  * `entrarNaSala` em produção. Ver `docs/GAPS-DE-INTEGRACAO.md` (🔴).
  *
- * Hoje nenhuma tela chama esta função — a integração é `GH-MULTI-03`.
+ * Integrado em `VisitaScreen.tsx` (`GH-MULTI-03`).
  */
 
 /**
  * Entra na sala de presença de `salaTenantId`, anuncia `eu` como presente
  * e chama `aoMudar` com a lista completa de presentes a cada mudança.
  * Devolve a função de saída (chamar no cleanup do `useEffect`).
+ *
+ * `config` vem de um Server Component (lê `process.env` em runtime, nunca
+ * congelado em build time — ver o porquê completo em `canalUtil.ts`,
+ * `PresencaConfig`). Cria um cliente Supabase novo por chamada em vez de
+ * reusar um singleton: simples, e o custo de `createClient` é desprezível
+ * perto do ciclo de vida de uma visita (a tela inteira desmonta ao sair).
  *
  * `subscribe` + `track` acontecem no MESMO canal, com o `track` dentro do
  * callback de status: `track()` só tem efeito depois que o canal está de
@@ -42,18 +49,22 @@ export type { VisitantePresente } from "./canalUtil";
  * (como um rascunho anterior deste módulo fazia) produz um `track` que
  * nunca chega a ninguém.
  *
- * No-op silencioso quando não há Supabase configurado: em
- * `GAMEHUB_DB=file` a tela de visita continua funcionando normalmente,
- * só sem presença — degradação limpa, nunca exceção.
+ * No-op silencioso quando `config` é `null`/inválida: em `GAMEHUB_DB=file`
+ * a tela de visita continua funcionando normalmente, só sem presença —
+ * degradação limpa, nunca exceção.
  */
 export function entrarNaSala(
   salaTenantId: string,
   eu: VisitantePresente,
   aoMudar: (presentes: VisitantePresente[]) => void,
+  config: PresencaConfig | null,
 ): () => void {
-  if (!supabaseConfigurado()) return () => {};
+  if (!configValida(config)) return () => {};
 
-  const canal = supabaseAnon().channel(nomeCanal(salaTenantId));
+  const cliente = createClient(config.url, config.anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const canal = cliente.channel(nomeCanal(salaTenantId));
 
   canal.on("presence", { event: "sync" }, () => {
     aoMudar(presentesDe(canal.presenceState<VisitantePresente>() as EstadoPresenca));

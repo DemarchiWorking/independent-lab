@@ -89,6 +89,10 @@ export interface Negocio {
    *  `Onboarding`, que guarda as respostas reais). */
   consentimentoEm: string;
   consentimentoVersao: string;
+  /** CEP bruto informado no cadastro, quando resolvido por
+   *  `lib/localizacao/cep.ts` — dado **privado**, só para auditoria/suporte;
+   *  nenhuma tela lê este campo. `undefined` se o cadastro foi manual. */
+  cep?: string;
 }
 
 export interface Usuario {

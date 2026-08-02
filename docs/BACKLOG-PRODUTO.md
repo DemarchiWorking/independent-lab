@@ -1587,7 +1587,7 @@ do primeiro cadastro real: política de privacidade mínima publicada.
 
 ---
 
-### GH-OPS-03 — Validar RLS em runtime + testes de isolamento
+### GH-OPS-03 — Validar RLS em runtime + testes de isolamento ✅
 
 | Campo | Valor |
 |---|---|
@@ -1600,16 +1600,31 @@ Nunca rodaram contra um Postgres real. Este é o card que separa "acho que
 está isolado" de "provei que está isolado".
 
 **Critérios de aceitação:**
-- [ ] `supabase start && supabase db reset` roda sem erro
-- [ ] Teste automatizado provando que o tenant A **não consegue** ler
-      `onboardings` do tenant B (o dado mais sensível do sistema)
-- [ ] Teste provando que `negocios` (fachada) É legível entre tenants —
-      confirma que a exposição intencional funciona como projetado
-- [ ] Teste do fluxo completo de cadastro com `GAMEHUB_DB=supabase`
+- [x] `supabase start && supabase db reset` roda sem erro — as 32 migrations
+      (`0001`–`0032`) aplicam limpo contra Postgres 17 real (stack local
+      isolada via `supabase` CLI, 2026-08-01)
+- [x] Teste provando que tenant A **não consegue** ler `negocios`/
+      `membros`/`onboardings` de tenant B — confirmado via API REST real
+      com JWT `authenticated` assinado, dois usuários reais (`auth.users`)
+      e depois com os 6 tenants do próprio `SEED_DEMO`: leitura cross-tenant
+      devolve `[]`, UPDATE cross-tenant afeta 0 linhas, sem erro nem vazamento
+- [x] Teste provando que a vitrine pública (`negocios_publico`) É legível
+      por `anon` sem login, e sem expor `xp`/`moeda_virtual`/atributos
+- [x] Teste do fluxo completo de cadastro com `GAMEHUB_DB=supabase` —
+      `SEED_DEMO=1 npx vitest run src/scripts/seed-demo.test.ts` passa
+      100% contra o Postgres real (cadastro, onboarding, sede, equipe de
+      IA, parceria, nó, lição, oferta, login de demo via GoTrue real)
+
+**Achado no processo (2 bugs P0 reais, nunca antes detectáveis por parsing
+estático):** `0031` (execute da função `tenant_atual()` nunca liberado para
+`authenticated`) e `0032`, escrito nesta revisão (nenhuma tabela tinha
+`GRANT` de base para `anon`/`authenticated`/`service_role` — RLS sem GRANT
+de tabela é letra morta no Postgres). Ver
+[`docs/architecture/DBA-ARQUITETURA-ESCALA-2026.md`](architecture/DBA-ARQUITETURA-ESCALA-2026.md)
+§1 para o relato completo.
 
 **Regras de segurança:** 🔴 este card **é** a garantia de segurança
-multi-tenant. Enquanto não for concluído, tratar o modo `supabase` como
-não-validado para produção com dados reais de múltiplos clientes.
+multi-tenant — agora verificada como fato, não mais hipótese.
 
 **Dados trafegados:** dados de teste, nunca reais.
 
@@ -2119,6 +2134,207 @@ visitantes de verdade aparecem como avatares adicionais, sem tocar em
 
 ---
 
+## Épico 14 — Escala e Replicação (100–1000 simultâneos, deploy 1-click)
+
+> Continuação direta do Épico 13 (multiplayer): assume que a presença ao
+> vivo por bairro/sede já é a arquitetura certa (nenhum redesenho aqui) e
+> resolve três perguntas separadas — (1) como um jogador chega no bairro
+> CERTO sem escolher manualmente, (2) o stack aguenta 100–1000 conexões
+> simultâneas de verdade, e (3) como replicar tudo isso numa VPS/cloud nova
+> com o mínimo de passo manual. Feito e validado em 2026-08-01 (sessão de
+> arquitetura + execução, não só planejamento).
+
+### GH-CEP-01 — CEP auto-aloca cidade/bairro real no cadastro ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | P |
+| Depende de | — |
+
+**Descrição:** o cadastro escolhia cidade (dropdown das 6 do ICP) e bairro
+(texto livre) manualmente. Agora o jogador pode digitar o CEP — o servidor
+resolve cidade/bairro reais via ViaCEP (API pública br, sem chave, sem
+custo) e pré-preenche os dois campos, que continuam editáveis (fallback
+manual sempre visível). Distribui jogadores pela geografia real em vez de
+todo mundo escolher "Centro" por padrão — dilui a carga de canais de
+presença organicamente, sem sharding técnico separado.
+
+**Critérios de aceitação:**
+- [x] `lib/localizacao/cep.ts` — `resolverLocalizacaoPorCep(cep)`, só
+      servidor, timeout 3s, degrada pra `null` em qualquer falha (CEP
+      inválido, ViaCEP fora do ar, cidade fora do ICP ainda resolve, só
+      marca `cidadeReconhecida: false`)
+- [x] Rota `api/localizacao/cep/[cep]` — o Wizard chama via `fetch`,
+      nunca fala com o ViaCEP direto do browser
+- [x] `Wizard.tsx` — campo CEP na pergunta "cidade", autofill de
+      cidade+bairro, dropdown/texto manual continuam funcionando
+      normalmente por baixo
+- [x] CEP é dado **privado** — coluna `cep` em `negocios`, nunca em
+      `negocios_publico`, `NovoNegocio.cep` opcional nos dois adapters
+      (file + supabase)
+- [x] Migration `0033_localizacao_cep.sql` — `criar_negocio_com_lote`
+      ganha `p_cep default null` (sobrecarga, não substitui — mesmo
+      padrão de `0005/0012/0015/0018`)
+- [x] Validado contra Postgres real: as 33 migrations aplicam limpo,
+      `SEED_DEMO=1` passa via `GAMEHUB_DB=supabase`, RPC testado
+      manualmente com CEP real (Volta Redonda) confirma persistência e
+      que a view pública não expõe a coluna
+- [x] `npm run typecheck && npm test && npm run build` verdes (307 testes)
+
+**Regras de segurança:** resolução de CEP roda só server-side; o cadastro
+nunca confiou em cidade/bairro do client de forma diferente de antes (já
+era texto livre) — CEP não muda o modelo de confiança, só melhora a UX.
+
+**Dados trafegados:** CEP bruto (8 dígitos) — privado, só auditoria/suporte.
+
+---
+
+### GH-ESC-01 — Dimensionar stack para 100–1000 conexões simultâneas ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | M |
+| Depende de | Épico 13 (arquitetura de presença por canal) |
+
+**Descrição:** o stack Docker (app + Nginx + Supabase vendorizado) estava
+calibrado para o piloto/demo, não para o volume-alvo. Ajustes medidos e
+testados de verdade (não só calculados) contra o harness de carga
+(`GH-ESC-02`).
+
+**Critérios de aceitação:**
+- [x] `PGRST_DB_POOL=40` + `PGRST_DB_POOL_TIMEOUT=10` no PostgREST (era
+      default de 10 — teto real de vazão antes do Postgres)
+- [x] `max_connections=200` no Postgres (alinhado ao pool maior)
+- [x] `deploy.replicas` no serviço `app` (default 3, `GAMEHUB_APP_REPLICAS`
+      ajustável) — `container_name` fixo removido (incompatível com
+      réplicas > 1)
+- [x] `nginx.conf` trocado de `upstream` estático para `resolver
+      127.0.0.11` + `proxy_pass` por variável — só assim as réplicas
+      recebem tráfego de verdade (validado: `docker stats` mostrou as 2
+      réplicas de teste recebendo I/O, não só a primeira)
+- [x] `ulimits.nofile` (65536) em `app` e `nginx` — achado real rodando:
+      `worker_connections 4096` sem isso excedia o limite padrão do
+      container (1024) e o Nginx truncava sozinho, capando a capacidade
+      real bem abaixo do pretendido
+- [x] `cpus`/`mem_limit` explícitos em todos os containers do gamehub —
+      orçamento total documentado (~6,2 GB) para não sufocar
+      v4mos/octea/labdatadev/n8n na mesma VPS compartilhada
+- [x] `docker compose config` valida sintaxe/merge de todos os overlays
+
+**Regras de segurança:** nenhuma nova — só capacidade.
+
+---
+
+### GH-ESC-02 — Harness de carga real (k6) + bug crítico de Realtime achado e corrigido ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P0 (achado bloqueante) |
+| Esforço | M |
+| Depende de | `GH-ESC-01` |
+
+**Descrição:** `deploy/loadtest/presenca-k6.js` simula N conexões Presence
+(protocolo Phoenix, payload fiel ao `RealtimeChannel` real) + tráfego HTTP
+concorrente. **Achado mais importante:** a presença ao vivo NUNCA
+funcionava contra o Supabase self-hosted vendorizado —
+`deploy/supabase/kong.yml` tinha `hide_credentials: true` na rota
+`realtime-v1` (copiado do padrão de `rest-v1`), que faz Kong autenticar o
+`apikey` e então REMOVÊ-LO antes de repassar pro upstream. PostgREST não
+liga pra isso, mas o Realtime faz sua própria checagem e rejeitava toda
+conexão (`MissingAPIKey`) — bug de infraestrutura, não de capacidade,
+invisível a qualquer teste de sintaxe/tipo.
+
+**Critérios de aceitação:**
+- [x] `hide_credentials: false` só na rota `realtime-v1` (comentário no
+      próprio `kong.yml` explica por que isso não abre superfície nova)
+- [x] Handshake `phx_join` retorna HTTP 101 (era 403) após a correção
+- [x] 100 VUs simultâneos: 100% sucesso, `ws_connecting` médio 3ms
+- [x] 500 VUs simultâneos: 100% sucesso, `ws_connecting` médio 2,8ms
+- [x] 1000 VUs simultâneos: 100% sucesso (0 falhas), mas latência de
+      conexão degrada para ~258ms médio (p95 310ms, pico 10,5s) — **não
+      investigado a fundo ainda**, é o próximo gatilho real antes de um
+      piloto regional grande (ver `docs/architecture/CARGA-1000-SIMULTANEOS.md`)
+- [x] HTTP concorrente (`/api/health` via Nginx, réplicas da `GH-ESC-01`)
+      nunca foi o gargalo em nenhuma rodada (0% erro, p95 < 14ms)
+- [x] Resultado documentado com honestidade sobre o que NÃO foi testado
+      (protocolo binário real do client, produção hospedada, reconexão em
+      massa) em `docs/architecture/CARGA-1000-SIMULTANEOS.md`
+- [x] Todo o stack de teste derrubado ao final (nada ficou no ar — sem
+      go-live)
+
+**Regras de segurança:** a correção do Kong não abre acesso novo — o
+portão de entrada (`key-auth`+`acl`) continua intacto; só para de esconder
+do Realtime um dado que ele mesmo exige.
+
+---
+
+### GH-ESC-03 — Consolidar caminho de deploy (Docker canônico, PM2 legado) ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | P |
+| Depende de | `GH-ESC-01` |
+
+**Descrição:** `deploy/vps-setup.sh` (PM2) e `deploy/docker/setup.sh`
+(Docker) coexistiam como dois caminhos de deploy paralelos, e o CI/CD
+ainda chamava o modo PM2 (`deploy/deploy.sh`) mesmo com o Docker já sendo
+o caminho compatível com esta VPS compartilhada (decisão já registrada em
+`DBA-ARQUITETURA-ESCALA-2026.md` §2).
+
+**Critérios de aceitação:**
+- [x] `deploy/docker/setup.sh` ganha `--build` no `up` (sem isso,
+      re-rodar depois de um `git pull` não pegava código novo) e `--replicas
+      N` (`GAMEHUB_APP_REPLICAS`)
+- [x] `deploy/vps-setup.sh` marcado como legado no cabeçalho, com os
+      motivos concretos e redirecionamento — mantido, não apagado
+- [x] `.github/workflows/deploy.yml` atualizado para `git pull` +
+      `deploy/docker/setup.sh --with-supabase --labd-cloud`
+- [x] `docs/deploy/README.md` atualizado (seção "1-bis") com o caminho
+      canônico e a comparação PM2×Docker
+- [x] Idempotência validada de verdade: `deploy/docker/setup.sh` rodado
+      2x seguidas localmente, sem erro nem duplicação; `--replicas 2`
+      testado (removeu a 3ª réplica sozinho)
+
+**Regras de segurança:** nenhuma nova.
+
+---
+
+### GH-ESC-04 — Terraform de referência para replicar em VPS/cloud nova ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P3 |
+| Esforço | P |
+| Depende de | `GH-ESC-03` |
+
+**Descrição:** `deploy/docker/cloud-init.yaml` já existia (1-click,
+colar manual no provisionamento de qualquer provedor) — faltava a camada
+declarativa/versionada de criar a VM em si. `deploy/terraform/`, provedor
+de referência Hetzner Cloud, reaproveita o MESMO cloud-init (`file(...)`,
+não duplica lógica).
+
+**Critérios de aceitação:**
+- [x] `hcloud_server` + `hcloud_firewall` + `hcloud_ssh_key`, `user_data`
+      = `cloud-init.yaml` existente
+- [x] `server_type` default dimensionado a partir do orçamento medido em
+      `GH-ESC-01` (8 GB, não um número arbitrário)
+- [x] `terraform init` + `terraform validate`: sucesso
+- [x] `terraform plan` (token/chave de formato válido, não reais): grafo
+      de 3 recursos corretos, `user_data` carregou o cloud-init
+      corretamente — **nenhum `apply` rodado, nenhuma VM criada**
+- [x] README do módulo documenta como trocar de provedor e o que
+      explicitamente não está automatizado ainda (HTTPS/domínio na VM
+      nova)
+
+**Regras de segurança:** token nunca commitado (`TF_VAR_hcloud_token`),
+`.gitignore` cobre `.tfstate`/`.tfvars` (lock file fica versionado, é
+prática padrão Terraform).
+
+---
+
 ## Resumo executivo — ordem sugerida de execução
 
 **Sprint 1 (destrava a demo):** `GH-FDN-01` → `GH-FDN-02` → `GH-FDN-03` →
@@ -2142,3 +2358,334 @@ visitantes de verdade aparecem como avatares adicionais, sem tocar em
 > **Nota de priorização:** `GH-OPS-04` (LGPD) aparece antes de `GH-OPS-01`
 > (deploy) de propósito — não faz sentido colocar no ar um sistema que
 > coleta budget de empresário real sem política de privacidade publicada.
+
+---
+
+## Cards novos — revisão de arquitetura/DBA (2026-08-01)
+
+> Adicionados por revisão de escala e produtização, ver
+> [`docs/architecture/DBA-ARQUITETURA-ESCALA-2026.md`](architecture/DBA-ARQUITETURA-ESCALA-2026.md).
+> Migrations já escritas e validadas por parser (`0027`–`0030`); falta a
+> tela/Server Action de cada card.
+
+### GH-COM-01 — Solicitação de orçamento (fluxo "deals")
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | M |
+| Depende de | — (migration `0027` já aplicável) |
+
+**Descrição:** cliente pede orçamento de um Funcionário de IA, job de
+marketplace ou serviço avulso sem precisar falar direto com o Antonio antes
+de ter interesse real (fluxo alvo de `PRODUTO-IA-FUNCIONARIOS.md` §7). Tela
+nova (`/painel` ou `/hub` → botão "Solicitar orçamento" nos cards de
+equipe-ia/marketplace) + Server Action chamando
+`criar_solicitacao_orcamento` + painel admin (`/admin/orcamentos`, mesmo
+padrão gated de `/admin/eventos`) chamando `atualizar_status_orcamento`.
+
+**Critérios de aceitação:**
+- [ ] Cliente vê status da própria solicitação em `/painel`
+- [ ] Admin vê fila ordenada por mais antiga primeiro, filtrando por status
+- [ ] Rate-limit no formulário do cliente (mesma preocupação de
+      `solicitacoes_contato`/`0019`) — sem policy de insert direta
+
+**Regras de segurança:** escrita só via Server Action + RPC service_role;
+`orcamento_aproximado_centavos` é R$ real, nunca confundir com 🪙 na UI.
+
+**Dados trafegados:** tenantId, tipo, referenciaId, escopo (texto livre do
+cliente), urgência, orçamento aproximado opcional.
+
+### GH-COM-02 — Painel de assinatura + gateway de pagamento real
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | G |
+| Depende de | `GH-COM-01` (fluxo de orçamento gera a 1ª assinatura) |
+
+**Descrição:** liga `assinaturas` (migration `0028`, hoje só estado) a um
+gateway real — Stripe é a opção natural (skill `/stripe` disponível).
+Checkout cria a assinatura via `registrar_assinatura`; webhook do gateway
+chama `atualizar_status_assinatura`. **Não implementar cobrança real antes
+de `GH-COM-01` estar validado com clientes de verdade** — regra explícita
+de `PRODUTO-IA-FUNCIONARIOS.md` §7.
+
+**Critérios de aceitação:**
+- [ ] Cliente vê status real da própria assinatura (`/painel`)
+- [ ] Webhook do gateway atualiza `status`/`proxima_cobranca_em` sem
+      intervenção manual
+- [ ] Preço cobrado é sempre o snapshot gravado em `assinaturas`, nunca uma
+      releitura do catálogo em `features/equipe-ia/catalogo.ts`
+
+**Regras de segurança:** segredos do gateway nunca em `NEXT_PUBLIC_*`;
+webhook valida assinatura HMAC do provedor antes de aceitar qualquer payload.
+
+**Dados trafegados:** tenantId, funcionarioContratadoId, preço em centavos,
+IDs do gateway (`stripe_customer_id`/`stripe_subscription_id`).
+
+### GH-OPS-05 — Fila de denúncia/moderação de conteúdo público
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | M |
+| Depende de | — (migration `0029` já aplicável) |
+
+**Descrição:** antes de divulgar o mapa publicamente (Sebrae, redes
+sociais), precisa existir um jeito de tirar conteúdo abusivo do ar sem
+mexer direto no banco. Botão "denunciar" na vitrine pública (`ofertas`,
+`negocios_publico`) chamando `registrar_denuncia`; painel admin
+(`/admin/moderacao`) chamando `moderar_conteudo`.
+
+**Critérios de aceitação:**
+- [ ] Denúncia funciona para visitante anônimo (sem exigir cadastro)
+- [ ] Oferta oculta some da vitrine pública mas continua visível/editável
+      para o próprio dono
+- [ ] Painel admin lista pendentes mais antigas primeiro
+
+**Regras de segurança:** fila só legível por service_role/admin — nenhuma
+policy de select para `anon`/`authenticated` na tabela de denúncias.
+
+**Dados trafegados:** tabela/registro denunciado, motivo (texto livre),
+tenant denunciante opcional.
+
+### GH-OPS-06 — Consumir o ledger de progressão (analytics + suporte)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | P |
+| Depende de | — (migration `0030` já aplicável, ledger já é populado
+  automaticamente por trigger, sem depender de nenhuma tela) |
+
+**Descrição:** `progressao_eventos_log` (migration `0030`) já grava sozinho
+todo delta de xp/moeda/atributo via trigger. Este card é só a CONSUMPÇÃO:
+uma tela simples em `/painel` ("histórico de progresso") e, opcionalmente,
+um painel admin agregando por `origem` para responder "que tipo de ação
+mais engaja". Rotular `origem` com precisão (hoje cai em
+`'nao_rotulado'` por padrão) é melhoria incremental — uma linha
+`select set_config('gamehub.origem', '<nome>', true)` por Server Action,
+não bloqueia este card.
+
+**Critérios de aceitação:**
+- [ ] Jogador vê linha do tempo de ganhos recentes em `/painel`
+- [ ] Query de suporte documentada (ex.: "todo delta deste tenant nos
+      últimos 30 dias") para investigar reclamação de saldo
+
+**Regras de segurança:** leitura só do próprio tenant (RLS já aplicada em
+`0030`).
+
+**Dados trafegados:** tenantId, origem, deltas de xp/moeda/atributo,
+timestamp.
+
+---
+
+## Épico 15 — Auditoria de Prontidão (Pitch, Replicação, Monetização)
+
+> Duas validações independentes rodaram em paralelo em 2026-08-01 (uma
+> BMAD/NFR, uma validação cruzada por prova empírica em navegador) sobre o
+> que o Épico 14 entregou. As duas chegaram ao mesmo achado bloqueante por
+> caminhos diferentes. Relatórios completos:
+> [`architecture/VALIDACAO-BMAD-NFR-PITCH-2026-08-01.md`](architecture/VALIDACAO-BMAD-NFR-PITCH-2026-08-01.md)
+> e [`architecture/VALIDACAO-INDEPENDENTE-PITCH-2026-08-01.md`](architecture/VALIDACAO-INDEPENDENTE-PITCH-2026-08-01.md).
+> Sessão de 2026-08-02 fechou os itens marcados ✅ abaixo; os demais
+> continuam abertos.
+
+### GH-OPS-07 — Destravar o gate `npm run build` na VPS ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P0 |
+| Esforço | P |
+| Depende de | — |
+
+**Descrição:** `npm run build` falhava na raiz do projeto sempre que o
+`.env` local apontasse `GAMEHUB_DB=supabase` para um Supabase não-Docker-
+resolvível do host (`http://kong:8000`) — `/sitemap.xml` era prerenderizado
+em build time e chamava `listarNegociosPublicos()`, derrubando o build
+inteiro por uma rota que nunca deveria ser estática.
+
+**Critérios de aceitação:**
+- [x] `src/app/sitemap.ts` ganha `export const dynamic = "force-dynamic"`
+      — renderiza sob demanda, nunca em build time
+- [x] `npm run build` verde na VPS com o `.env` real (`GAMEHUB_DB=supabase`,
+      sem nenhum container do gamehub no ar) — verificado, 19 rotas
+- [x] `npm run typecheck` (0 erros) e `npm test` (311/311) confirmados no
+      mesmo estado do repo
+
+**Regras de segurança:** nenhuma nova.
+
+---
+
+### GH-ESC-05 — Corrigir o cloud-init "1-click" para subir de verdade (parcial ✅)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | P |
+| Depende de | — |
+
+**Descrição:** dois bloqueadores impediam `deploy/docker/cloud-init.yaml`
+de funcionar colado no User Data de uma VM Ubuntu limpa.
+
+**Critérios de aceitação:**
+- [x] `runcmd` trocado de `source` (não existe em `/bin/sh`/dash) para `.`
+      (builtin POSIX)
+- [x] `deploy/docker/setup.sh` não sai mais (`exit 0`) depois de instalar o
+      Docker — como root segue direto (grupo é irrelevante); como usuário
+      não-root reexecuta via `exec sg docker -c "..."` no mesmo processo
+- [x] `docker-compose.supabase.yml` — comentário corrigido (`--standalone`
+      não existe; a flag certa é `--with-supabase`)
+- [ ] **Não validado numa VM Ubuntu descartável real** — a correção é por
+      leitura/raciocínio (dash não tem `source`; `sg docker` é o padrão
+      documentado do próprio Docker), mas falta o teste ponta a ponta que
+      os dois relatórios de auditoria exigem antes de fechar o card de
+      verdade
+- [ ] `setup.sh --labd-cloud` ainda não avisa/recusa quando não há Traefik
+      rodando (overlay remove a porta publicada do host)
+
+---
+
+### GH-MULTI-04 — Presença ao vivo alcançável de um navegador real 🔴 (aberto)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | **P0 — bloqueia demonstrar "metaverso ao vivo" no pitch** |
+| Esforço | M |
+| Depende de | `GH-OPS-08` |
+
+**Descrição:** a exceção não-tratada do achado B1 (tela de visita quebrando
+com `Application error`) já foi corrigida em 2026-08-01/02 — `canal.ts`/
+`client.ts`/`canalUtil.ts`/`VisitaScreen.tsx`/`page.tsx` agora recebem a
+config de presença por prop de Server Component, nunca lendo
+`NEXT_PUBLIC_*` dentro de código `"use client"`, e `deploy/docker/setup.sh`
+já calcula `GAMEHUB_PUBLIC_URL`/`GAMEHUB_REALTIME_PUBLIC_URL` (prioridade:
+env explícito > domínio labd-cloud > IP público autodetectado). **O que
+ainda falta:** nenhum router Traefik existe hoje para publicar o Kong
+(`api.gamehub.labd.cloud`) — sem isso, `GAMEHUB_REALTIME_PUBLIC_URL` fica
+vazio e a presença cai no no-op limpo (não quebra mais, mas também não
+funciona). Ver `GH-OPS-08`.
+
+**Critérios de aceitação:**
+- [ ] `GH-OPS-08` fechado primeiro (Kong publicado com TLS)
+- [ ] Teste de navegador real: duas sessões distintas em
+      `/world/visitar/<id>` na mesma sede se enxergam, com screenshot
+      anexado ao card
+- [ ] Fallback confirmado: sem config válida, a tela renderiza sem
+      presença e sem erro de console
+- [ ] Nota em `docs/architecture/CARGA-1000-SIMULTANEOS.md` registrando que
+      o harness k6 conecta direto no Realtime e não cobre o caminho do
+      navegador
+
+---
+
+### GH-OPS-08 — Decidir e executar o ponto de entrada HTTPS público do Kong 🔴 (aberto)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P0 (bloqueia `GH-MULTI-04`) |
+| Esforço | M |
+| Depende de | — |
+
+**Descrição:** não há container Traefik rodando nesta VPS hoje (a rede
+`traefik-public` existe como referência órfã); `docker-compose.labd-cloud.yml`
+só tem labels Traefik para o serviço `gamehub` (app), nenhuma para `kong`.
+Decisão não tomada, **de propósito, para não ser tomada por um agente
+sozinho**: subir o Traefik do Company HQ (`/opt/company/docker-compose.yml`,
+que já serve v4mos/labdatadev/octea) e adicionar um router pro Kong deste
+projeto nele, ou terminar TLS localmente no Nginx do próprio gamehub. A
+primeira opção reaproveita infraestrutura já paga/operada; a segunda isola
+blast radius às custas de mais uma superfície de certificado para manter.
+
+**Critérios de aceitação:**
+- [ ] Decisão registrada aqui (qual caminho, por quê)
+- [ ] Router público para `api.gamehub.labd.cloud` (ou equivalente) → Kong,
+      com `Upgrade`/`Connection` e timeout alto para WebSocket sustentado
+      (mesmo padrão de `deploy/nginx-supabase.conf.template`)
+- [ ] Certificado TLS válido
+- [ ] `GH-COM-01b`/`GH-COM-03` revisados: expor `/rest/v1` publicamente
+      exige que `revoke update` da migration `0034` já esteja aplicada
+      contra o Postgres hospedado (não só commitada) antes de considerar
+      este card fechado
+
+---
+
+### GH-COM-01b — Superfície de aplicação das migrations comerciais órfãs 🟡 (aberto)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | M |
+| Depende de | — |
+
+**Descrição:** `0027_solicitacoes_orcamento`, `0028_assinaturas` e
+`0029_moderacao_conteudo` existem em SQL, com RLS e RPCs corretas, e **zero**
+código de aplicação as chama (`grep -rn "solicitacoes_orcamento\|
+moderar_conteudo\|registrar_assinatura" src/` → vazio). As rotas
+`/admin/orcamentos` e `/admin/moderacao` prometidas em
+`PRODUTIZACAO-PUNCH-LIST.md` não existem. **Isto contradiz a leitura de
+"monetizar é só conectar um meio de pagamento"** — o schema está pronto, a
+superfície de aplicação inteira não.
+
+**Critérios de aceitação:**
+- [ ] Fluxo de solicitação de orçamento visível ao jogador (`GH-COM-01`)
+- [ ] `/admin/orcamentos` e `/admin/moderacao`, gated por
+      `GAMEHUB_ADMIN_EMAILS` (mesmo padrão de `/admin/eventos`)
+- [ ] Moderação antes de qualquer divulgação pública do mapa
+
+---
+
+### GH-COM-03 — Ligar Stripe Checkout + webhook ao ciclo de assinatura 💰 (aberto)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 — card central da monetização real |
+| Esforço | G |
+| Depende de | `GH-COM-01b` (orçamento validado com cliente real antes de cobrar, regra de `PRODUTO-IA-FUNCIONARIOS.md` §7) |
+
+**Descrição:** `0028_assinaturas.sql` deixou tabela, máquina de estados,
+colunas `stripe_customer_id`/`stripe_subscription_id` e as RPCs
+(`registrar_assinatura`, `atualizar_status_assinatura`) prontas e
+restritas a `service_role` — mas nenhuma linha de aplicação as chama, e
+contratar um Funcionário de IA hoje não cria assinatura nenhuma.
+
+**Critérios de aceitação:**
+- [ ] `GameRepository` ganha `registrarAssinatura`/
+      `atualizarStatusAssinatura`/`listarAssinaturas`; `file-adapter` faz
+      no-op explícito e documentado (assinatura é Supabase-only)
+- [ ] `contratarFuncionario` cria assinatura `pendente` com **snapshot** do
+      preço em centavos (nunca releitura futura do catálogo)
+- [ ] Stripe Checkout (não Elements) a partir da assinatura `pendente`
+- [ ] Webhook valida HMAC do Stripe antes de chamar
+      `atualizar_status_assinatura`, idempotente por `event.id`
+- [ ] `FinancasScreen`/painel do cliente leem status real de `assinaturas`,
+      não o custo derivado estaticamente do catálogo
+- [ ] 🪙 e R$ continuam sem se tocar em nenhuma tela (regra 6 do
+      `AGENTS.md`)
+- [ ] Nenhuma chave secreta do Stripe em `NEXT_PUBLIC_*`
+
+---
+
+### GH-PITCH-03 — Atualizar roteiro de demo para o estado real do produto 🟡 (aberto)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | P |
+| Depende de | `GH-MULTI-04` (para o passo de presença ao vivo especificamente) |
+
+**Descrição:** `docs/pitch/ROTEIRO-DEMO.md` está desatualizado em 4 pontos:
+o passo 3 leva à tela de visita (agora degrada limpo em vez de quebrar,
+mas ainda sem presença real de ponta a ponta); a afirmação "nenhuma chamada
+de API externa" é falsa desde `GH-CEP-01` (ViaCEP); o CEP não aparece no
+passo 1 apesar de ser a beat de inovação mais barata disponível; não há
+nenhum passo de multiplayer.
+
+**Critérios de aceitação:**
+- [ ] Passo 1 menciona o CEP auto-alocando bairro
+- [ ] Correção da afirmação sobre API externa
+- [ ] Passo de presença ao vivo só entra depois que `GH-MULTI-04` fechar
+      de verdade (não anunciar recurso não demonstrável)
+- [ ] Roteiro percorrido de ponta a ponta no ambiente real da demo, com
+      evidência anexada

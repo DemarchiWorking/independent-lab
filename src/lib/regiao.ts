@@ -26,8 +26,11 @@ export const CIDADES_REGIAO: readonly CidadeRegiao[] = [
   { nome: "Outra", prioritaria: false },
 ] as const;
 
-/** Normaliza para comparação tolerante a acento/caixa. */
-function normalizar(texto: string): string {
+/** Normaliza para comparação tolerante a acento/caixa. Exportada porque a
+ *  resolução de CEP (`lib/localizacao/cep.ts`) precisa da mesma tolerância
+ *  para casar `localidade` do ViaCEP contra `CIDADES_REGIAO` — reaproveitar
+ *  evita duas implementações do mesmo normalizador divergindo. */
+export function normalizar(texto: string): string {
   return texto
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
@@ -41,4 +44,15 @@ export function ehCidadePrioritaria(cidade: string): boolean {
   return CIDADES_REGIAO.some(
     (c) => c.prioritaria && normalizar(c.nome) === alvo,
   );
+}
+
+/** Acha a entrada de `CIDADES_REGIAO` cujo nome bate com `cidade` (tolerante
+ *  a acento/caixa), ou `undefined` se for uma cidade fora do ICP conhecido —
+ *  usado pela resolução de CEP para decidir se a cidade real do ViaCEP é uma
+ *  das já modeladas ou uma cidade nova (fora do piloto). */
+export function encontrarCidadeRegiao(
+  cidade: string,
+): CidadeRegiao | undefined {
+  const alvo = normalizar(cidade);
+  return CIDADES_REGIAO.find((c) => normalizar(c.nome) === alvo);
 }

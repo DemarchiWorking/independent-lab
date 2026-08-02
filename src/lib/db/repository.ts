@@ -376,6 +376,11 @@ export interface NovoNegocio {
   perfilPublico: boolean;
   /** Versão da política de privacidade aceita no cadastro (GH-OPS-04). */
   consentimentoVersao: string;
+  /** CEP bruto (8 dígitos), quando o cadastro resolveu cidade/bairro por ele
+   *  (`lib/localizacao/cep.ts`). Dado **privado** — nunca exposto em
+   *  `negocios_publico` nem devolvido pelo adapter; serve só para auditoria/
+   *  suporte. `undefined` quando o usuário preencheu cidade/bairro manualmente. */
+  cep?: string;
 }
 
 export type { Endereco };

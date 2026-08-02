@@ -1,0 +1,33 @@
+-- ============================================================================
+-- Fecha o achado B2 da auditoria BMAD/NFR (2026-08-01, Épico 14): `0032`
+-- deu `grant select, update` de TABELA INTEIRA em `negocios`/`onboardings`
+-- para `authenticated`, sem escopo de coluna — a policy de linha
+-- (`negocios_atualiza_proprio`, `0001_init.sql`) restringe QUAL linha, não
+-- QUAIS colunas. Isso era inerte enquanto nenhum navegador alcançava o
+-- PostgREST — deixou de ser inerte quando a correção do bug do Kong
+-- (`GH-ESC-02`) + a correção do B1 (Kong público, ver
+-- `deploy/supabase/docker-compose.yml`) tornaram `/rest/v1` alcançável de
+-- fora com uma anon key + JWT de jogador legítimo.
+--
+-- Risco fechado: sem esta migration, qualquer jogador logado poderia fazer
+-- `PATCH /rest/v1/negocios?id=eq.<próprio_id>` com `{"xp": 999999, ...}` e
+-- passar em TODAS as camadas (Kong autoriza a key, GRANT autoriza o verbo,
+-- RLS autoriza porque é a própria linha) — contrariando a regra
+-- não-negociável nº5 do AGENTS.md ("Progressão só muda via
+-- `repo.aplicarProgresso`").
+--
+-- Fix: `revoke` puro, sem `grant update` de nenhuma coluna de volta.
+-- `SupabaseRepository` usa exclusivamente `supabaseAdmin()` (service_role,
+-- que já ignora GRANT/RLS por definição) para toda escrita — nenhuma tela
+-- hoje precisa de `authenticated` escrevendo direto nessas tabelas. Se um
+-- dia isso mudar (ex.: um formulário client-side editando o próprio perfil
+-- sem passar por Server Action), a migration certa é um `grant update
+-- (coluna1, coluna2, ...)` explícito, nunca a tabela inteira de novo.
+--
+-- `select` NÃO muda aqui — ler a própria linha completa via `authenticated`
+-- não é o vetor de dano (o dano é ESCREVER xp/moeda arbitrariamente), e
+-- pode ser necessário para alguma leitura futura autenticada direta.
+-- ============================================================================
+
+revoke update on public.negocios from authenticated;
+revoke update on public.onboardings from authenticated;

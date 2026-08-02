@@ -1,0 +1,35 @@
+-- GH-OPS-07 — Corrige bug crítico: `authenticated` nunca conseguia usar
+-- nenhuma policy de RLS privada.
+--
+-- COMO FOI ACHADO: `0001_init.sql` cria `private.tenant_atual()` e faz
+--   revoke execute on function private.tenant_atual()
+--     from public, anon, authenticated, service_role;
+-- sem nenhum `grant` depois — revoga de TODA role, sem exceção. A intenção
+-- (ver comentário original: "execute revogado de todos os roles públicos")
+-- era proteger a função de ser chamada diretamente de fora, mas isso não é
+-- como RLS funciona: toda policy que referencia `private.tenant_atual()`
+-- (`negocios_leitura_propria`, `membros_leitura_propria`,
+-- `onboardings_leitura_propria`, `ofertas_*`, e praticamente toda tabela
+-- privada do schema) é avaliada COM O PRIVILÉGIO DE QUEM FAZ A QUERY — não
+-- do dono da função, ainda que ela seja `security definer`. `security
+-- definer` só muda com QUE privilégio o CORPO da função roda depois de
+-- invocada; não dispensa o chamador de precisar de `EXECUTE` para invocá-la
+-- em primeiro lugar.
+--
+-- IMPACTO REAL (confirmado em Postgres real, banco de teste isolado,
+-- 2026-08-01 — ver `docs/architecture/DBA-ARQUITETURA-ESCALA-2026.md`):
+-- qualquer `authenticated` tentando ler `negocios`/`membros`/`onboardings`/
+-- `ofertas`/etc. recebe `permission denied for function tenant_atual`,
+-- não "zero linhas". Isto é, o RLS não filtra silenciosamente — ele QUEBRA
+-- a query inteira. Nunca foi pego antes porque `SupabaseRepository` usa
+-- exclusivamente `supabaseAdmin()` (service_role, que bypassa RLS por
+-- definição) — nenhuma query real de `authenticated` jamais bateu nesta
+-- função até este teste. Seria o primeiro bug a aparecer no minuto em que
+-- `GH-MULTI-01..03` (client-side com anon/authenticated) fosse ligado.
+--
+-- CORREÇÃO: conceder EXECUTE de volta só para `authenticated` (o único role
+-- que de fato precisa — toda policy que usa esta função é
+-- `for select to authenticated`; `anon` nunca avalia essas policies porque
+-- não está listado nelas, então não precisa do grant).
+
+grant execute on function private.tenant_atual() to authenticated;

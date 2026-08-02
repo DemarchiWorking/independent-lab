@@ -31,6 +31,27 @@
 # Uso — nunca direto, sempre via deploy/supabase-up.sh (aplica as migrations
 # depois de subir e checa saúde de cada serviço antes de seguir):
 #   ./deploy/supabase-up.sh
+#
+# Dimensionamento p/ 100–1000 conexões simultâneas (Épico 13 — Escala e
+# Replicação, 2026-08-01): achado real rodando pela 1ª vez (ver
+# docs/architecture/DBA-ARQUITETURA-ESCALA-2026.md) — `rest` sem
+# `PGRST_DB_POOL` explícito usa o default da imagem (10 conexões). Toda
+# leitura/escrita do app passa por aqui (via `supabaseAdmin()`), então esse
+# pool era o teto real de vazão, bem antes do Postgres. Subido para 40 +
+# `max_connections` do Postgres alinhado (200, com folga para
+# rest+auth+realtime+backup+psql manual). NÚMERO NÃO VALIDADO POR CARGA
+# AINDA — é dimensionamento por cálculo, não por medição; ver
+# `deploy/loadtest/presenca-k6.js` e
+# `docs/architecture/CARGA-1000-SIMULTANEOS.md` para o número real medido
+# nesta VPS antes de prometer 1000 em produção.
+#
+# Orçamento de RAM do stack inteiro (mem_limit somado, não o que cada um usa
+# de fato): db 3g + auth 256m + rest 384m + realtime 512m + kong 512m ≈
+# 4,7 GB. Some com o app (Fase 2b, 3 réplicas × 512m ≈ 1,5 GB) e nginx: ≈
+# 6,2 GB do total de 15 GB desta VPS — cabe com folga ao lado de
+# v4mos/octea/labdatadev/n8n (hoje ~5,7 GB em uso), mas é o motivo de cada
+# serviço abaixo ter `mem_limit`/`cpus` explícitos: sem teto, um pico de
+# carga do gamehub pode roubar recurso dos outros produtos na mesma VPS.
 # ==============================================================================
 
 name: gamehub-supabase
@@ -60,13 +81,46 @@ services:
       JWT_EXP: "3600"
     volumes:
       - supabase-db-data:/var/lib/postgresql/data
+      - ./roles.template.sql:/roles.template.sql:ro
+    # A imagem `supabase/postgres` só seta senha para `postgres`/
+    # `supabase_admin` sozinha (ver comentário em roles.template.sql) — este
+    # entrypoint gera `.../init-scripts/99-role-passwords.sql` a partir do
+    # template ANTES de chamar o entrypoint real, mesma técnica que o `kong`
+    # já usa abaixo para suas próprias chaves. `99-` garante ordem alfabética
+    # depois de `00000000000003-post-setup.sql` (roles já existem a essa
+    # altura, `ALTER ROLE` não falha por role inexistente).
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -e
+        sed "s|__POSTGRES_PASSWORD__|${POSTGRES_PASSWORD}|g" \
+          /roles.template.sql \
+          > /docker-entrypoint-initdb.d/init-scripts/99-role-passwords.sql
+        # Achado junto com o bug de senha: por padrão esta imagem sobe o
+        # Postgres final ouvindo só em `localhost` (dentro do PRÓPRIO
+        # container) — `auth`/`rest`/`realtime`, que são OUTROS containers
+        # na mesma rede, recebiam "connection refused" mesmo com senha
+        # certa. `-c listen_addresses=*` força ouvir em todas as interfaces
+        # (a rede `supabase-net` já isola isto de fora — sem `ports:`
+        # publicada, continua inalcançável do host/internet).
+        #
+        # `-c max_connections=200` (Épico 13, escala): default da imagem
+        # gira em torno de 100 — alinhado aqui com o pool maior do `rest`
+        # (`PGRST_DB_POOL=40`) + `auth` + `realtime` + margem para
+        # `docker compose exec db psql`/backup manual sem colidir.
+        exec /usr/local/bin/docker-entrypoint.sh postgres \
+          -c listen_addresses=* \
+          -c max_connections=200
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -h 127.0.0.1"]
       interval: 5s
       timeout: 5s
       retries: 20
-    mem_limit: 2g
-    cpus: 2.0
+    # 3g/2.5 cpu (era 2g/2.0): mais conexões simultâneas de Postgres = mais
+    # memória de backend por conexão — ver orçamento de RAM no cabeçalho.
+    mem_limit: 3g
+    cpus: 2.5
 
   auth:
     image: supabase/gotrue:v2.189.0
@@ -122,12 +176,23 @@ services:
       # (`aplicar_progresso`, `criar_negocio_com_lote`...), chamadas com
       # SERVICE_ROLE — mesmo padrão do app hoje (`supabase-adapter.ts:63-66`).
       PGRST_DB_MAX_ROWS: "1000"
+      # Épico 13 (escala 100–1000 simultâneos): sem isto o default da imagem
+      # é 10 conexões — TODA leitura/escrita do app passa por aqui, então
+      # era o teto real de vazão, bem antes do Postgres (`max_connections`
+      # subiu para 200 no serviço `db` acima, com folga pra este pool).
+      PGRST_DB_POOL: "40"
+      PGRST_DB_POOL_TIMEOUT: "10"
+    # Achado rodando pela 1ª vez de verdade (2026-08-01): a imagem
+    # `postgrest/postgrest` não tem `wget`, `curl` NEM `sh` — é um binário
+    # estático sozinho (`docker exec ... sh` falha com "executable file not
+    # found"). Um `healthcheck:` baseado em CMD/CMD-SHELL é literalmente
+    # impossível aqui. `kong` (único consumidor) usa `depends_on:
+    # service_started`, não `service_healthy`, por causa disto.
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    mem_limit: 256m
+      disable: true
+    # 384m (era 256m): pool de 40 conexões carrega mais buffer/metadado que
+    # o pool default de 10.
+    mem_limit: 384m
 
   realtime:
     # Nome do container SEM sufixo numérico: versões recentes do realtime
@@ -150,6 +215,13 @@ services:
       DB_AFTER_CONNECT_QUERY: "SET search_path TO _realtime"
       DB_ENC_KEY: "${REALTIME_DB_ENC_KEY}"
       API_JWT_SECRET: "${JWT_SECRET}"
+      # Exigido a partir de versões mais novas do Realtime que a época em
+      # que este compose foi escrito (achado rodando pela 1ª vez de
+      # verdade, 2026-08-01) — sem isto o container morre no boot com
+      # `System.EnvError: METRICS_JWT_SECRET`. Reaproveita o mesmo
+      # JWT_SECRET do resto do stack (mesmo default do compose oficial do
+      # Supabase quando um valor dedicado não é fornecido).
+      METRICS_JWT_SECRET: "${JWT_SECRET}"
       SECRET_KEY_BASE: "${REALTIME_SECRET_KEY_BASE}"
       APP_NAME: gamehub_realtime
       SEED_SELF_HOST: "true"
@@ -161,12 +233,20 @@ services:
         - sh
         - -c
         - >-
-          curl -sSfo /dev/null -H "Authorization: Bearer ${JWT_SECRET}"
-          http://127.0.0.1:4000/api/tenants/gamehub_realtime/health || exit 1
+          curl -sSfo /dev/null http://127.0.0.1:4000/ || exit 1
+      # Achado 2026-08-01: `/api/tenants/<nome>/health` exige um JWT
+      # ASSINADO (não o segredo cru) e devolvia 403 sempre, healthcheck
+      # nunca passava. `/` é a raiz do Phoenix, 200 sem autenticação —
+      # confirma "o processo está de pé e aceitando HTTP", que é o que um
+      # healthcheck de container precisa provar.
       interval: 5s
       timeout: 5s
       retries: 20
     mem_limit: 512m
+    # Épico 13 (escala): sem `cpus:`, um pico de presença (muitos canais
+    # abrindo/fechando junto) podia tomar CPU dos outros produtos na mesma
+    # VPS — presença por socket é leve, mas sem teto não é garantido.
+    cpus: 1.0
 
   kong:
     image: kong/kong:3.9.1
@@ -175,7 +255,9 @@ services:
     networks: [supabase-net]
     depends_on:
       auth: { condition: service_healthy }
-      rest: { condition: service_healthy }
+      # `rest` não tem healthcheck possível (ver comentário no serviço) —
+      # `service_started` é o máximo que dá pra exigir.
+      rest: { condition: service_started }
       realtime: { condition: service_healthy }
     # Kong não faz substituição de `${VAR}` dentro do YAML declarativo — o
     # entrypoint troca as chaves antes de iniciar. `sed` puro (sem `envsubst`,
@@ -189,24 +271,39 @@ services:
         sed \
           -e "s|__ANON_KEY__|${ANON_KEY}|g" \
           -e "s|__SERVICE_ROLE_KEY__|${SERVICE_ROLE_KEY}|g" \
-          /kong/kong.template.yml > /kong/kong.yml
-        exec /docker-entrypoint.sh kong docker-start
+          /kong/kong.template.yml > /tmp/kong.yml
+        # Achado 2026-08-01: nesta imagem o entrypoint real fica em
+        # `/entrypoint.sh`, não `/docker-entrypoint.sh` (esse caminho não
+        # existe — `exec` falhava com "not found" e o container reiniciava
+        # em loop silencioso, só visível no log).
+        exec /entrypoint.sh kong docker-start
     environment:
       KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_DECLARATIVE_CONFIG: /tmp/kong.yml
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_PLUGINS: request-transformer,cors,key-auth,acl
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: "64 160k"
     volumes:
       - ./kong.yml:/kong/kong.template.yml:ro
-    # Só a porta do Kong toca o host, e só em loopback — o Nginx da VPS
-    # (deploy/nginx.conf.template) é quem fala com a internet.
+    # Épico 14 (achado de auditoria BMAD/NFR, 2026-08-01): Kong publicava só
+    # em 127.0.0.1 — parecia mais seguro, mas na prática deixava a presença
+    # ao vivo INALCANÇÁVEL: o navegador do jogador precisa abrir um
+    # WebSocket direto no Kong (`/realtime/v1/websocket`), e loopback só
+    # existe dentro da própria VPS. `0.0.0.0` é necessário para o recurso
+    # principal do pitch funcionar — a defesa real já é o `key-auth`+`acl`
+    # do Kong (só `anon`/`service_role` passam), não a restrição de host.
+    # Configurável via `KONG_HTTP_PORT`; ideal em produção é ficar atrás de
+    # HTTPS/Traefik (ver `docker-compose.labd-cloud.yml` deste diretório),
+    # mas mesmo HTTP direto por IP:porta já resolve o bloqueio B1.
     ports:
-      - "127.0.0.1:${KONG_HTTP_PORT:-8000}:8000"
+      - "0.0.0.0:${KONG_HTTP_PORT:-8000}:8000"
     healthcheck:
       test: ["CMD", "kong", "health"]
       interval: 5s
       timeout: 5s
       retries: 20
     mem_limit: 512m
+    # Kong é o único ponto público do Supabase (via Nginx da VPS) — mesmo
+    # raciocínio do `realtime` acima, teto explícito de CPU.
+    cpus: 1.0

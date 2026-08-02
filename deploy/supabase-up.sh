@@ -14,13 +14,36 @@
 # Uso:
 #   ./deploy/supabase-up.sh                                    # loopback (dev)
 #   ./deploy/supabase-up.sh api.seudominio.com.br app.seudominio.com.br
+#   ./deploy/supabase-up.sh --labd-cloud                        # + overlay Traefik do Kong (api.gamehub.labd.cloud)
+#
+# `GAMEHUB_PUBLIC_URL` (env, opcional): sobrescreve `SUPABASE_PUBLIC_URL`
+# com QUALQUER URL (http ou https, IP:porta ou domínio) — usado por
+# `deploy/docker/setup.sh` quando não há domínio/HTTPS ainda, só IP público
+# (Épico 14: sem isto, a presença ao vivo não tinha como saber que URL usar
+# no navegador — ver achado B1 da auditoria BMAD/NFR, 2026-08-01).
 # ==============================================================================
 set -euo pipefail
 
-API_DOMAIN="${1:-}"
-APP_DOMAIN="${2:-}"
+LABD_CLOUD=0
+API_DOMAIN=""
+APP_DOMAIN=""
+for arg in "$@"; do
+  case "$arg" in
+    --labd-cloud) LABD_CLOUD=1 ;;
+    *)
+      if [ -z "$API_DOMAIN" ]; then API_DOMAIN="$arg";
+      elif [ -z "$APP_DOMAIN" ]; then APP_DOMAIN="$arg";
+      fi
+      ;;
+  esac
+done
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SUPA_DIR="$ROOT_DIR/deploy/supabase"
+
+COMPOSE_FILES=(-f docker-compose.yml)
+if [ "$LABD_CLOUD" = "1" ]; then
+  COMPOSE_FILES+=(-f docker-compose.labd-cloud.yml)
+fi
 
 log() { echo; echo "==> $1"; }
 
@@ -60,10 +83,16 @@ else
   log "deploy/supabase/.env já existe — preservando segredos."
 fi
 
-# URLs: só sobrescreve se um domínio foi passado (senão mantém o que já
-# estava — permite rodar `./deploy/supabase-up.sh` sem argumento pra só
-# aplicar migrations novas, sem mexer em config de rede).
-if [ -n "$API_DOMAIN" ]; then
+# URLs: só sobrescreve se um domínio/GAMEHUB_PUBLIC_URL foi passado (senão
+# mantém o que já estava — permite rodar `./deploy/supabase-up.sh` sem
+# argumento pra só aplicar migrations novas, sem mexer em config de rede).
+# `GAMEHUB_PUBLIC_URL` tem prioridade sobre `API_DOMAIN` — é mais específico
+# (URL completa, qualquer esquema) contra um domínio que sempre vira https.
+if [ -n "${GAMEHUB_PUBLIC_URL:-}" ]; then
+  escapado="$(printf '%s' "$GAMEHUB_PUBLIC_URL" | sed 's/[&|]/\\&/g')"
+  sed -i.bak "s|^SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=$escapado|" .env
+  rm -f .env.bak
+elif [ -n "$API_DOMAIN" ]; then
   sed -i.bak "s|^SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=https://$API_DOMAIN|" .env
   rm -f .env.bak
 fi
@@ -76,11 +105,11 @@ fi
 # 2. Sobe o stack e ESPERA de verdade (não `sleep` chutado) — `--wait` do
 #    Docker Compose v2 bloqueia até todo `healthcheck:` do compose passar.
 # ---------------------------------------------------------------------------
-log "Subindo containers do Supabase..."
-docker compose up -d --wait --wait-timeout 180
+log "Subindo containers do Supabase (${COMPOSE_FILES[*]})..."
+docker compose "${COMPOSE_FILES[@]}" up -d --wait --wait-timeout 180
 
 log "Status dos containers:"
-docker compose ps
+docker compose "${COMPOSE_FILES[@]}" ps
 
 # ---------------------------------------------------------------------------
 # 3. Migrations — aplicadas em ordem, uma vez cada, dentro de transação.
@@ -123,12 +152,14 @@ docker compose exec -T db psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
   < "$ROOT_DIR/supabase/seed.sql"
 
 # lido de volta do .env (não do ambiente do shell) — é a fonte real que o
-# docker compose usou para publicar a porta.
+# docker compose usou para publicar a porta/URL.
 PORTA_KONG="$(grep '^KONG_HTTP_PORT=' .env | cut -d= -f2)"
+URL_PUBLICA="$(grep '^SUPABASE_PUBLIC_URL=' .env | cut -d= -f2-)"
 
 echo
 echo "============================================================"
 echo " Supabase self-hosted no ar."
-echo " Kong (API gateway): http://127.0.0.1:${PORTA_KONG:-8000}"
-echo " Verifique: docker compose -f deploy/supabase/docker-compose.yml ps"
+echo " Kong (API gateway): ${URL_PUBLICA:-http://127.0.0.1:${PORTA_KONG:-8000}}"
+echo " Kong (rede interna Docker, sempre): http://kong:8000"
+echo " Verifique: cd deploy/supabase && docker compose ${COMPOSE_FILES[*]} ps"
 echo "============================================================"

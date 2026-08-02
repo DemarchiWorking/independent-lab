@@ -1,0 +1,48 @@
+# ============================================================================
+# labdatadev-gamehub — overlay PORTÁTIL: liga o app ao Supabase self-hosted
+# que o próprio repo vendoriza (deploy/supabase/), para uma VPS/cloud do
+# zero, sem depender de nada pré-existente no host.
+#
+# Pré-requisito: `./deploy/supabase-up.sh` já rodou pelo menos uma vez
+# (sobe os 5 containers do Supabase, aplica as migrations, e cria a rede
+# externa `gamehub-supabase_supabase-net` que este overlay referencia).
+# `deploy/docker/setup.sh --with-supabase` faz isso na ordem certa sozinho —
+# ver esse script antes de rodar os comandos abaixo manualmente.
+#
+# Uso:
+#   ./deploy/supabase-up.sh
+#   docker compose -f docker-compose.yml -f docker-compose.supabase.yml \
+#     up -d --wait
+#
+# Nota de arquitetura (documentada, não escondida): NEXT_PUBLIC_SUPABASE_URL
+# aponta para o nome de serviço DENTRO da rede Docker (`http://kong:8000`) —
+# e é assim DE PROPÓSITO, permanentemente, não só "por enquanto". Só o
+# SERVIDOR usa esta variável (`supabaseAdmin()`/`supabaseAnon()` em
+# `lib/supabase/client.ts`, chamados de dentro do container).
+#
+# ⚠️ Achado de auditoria BMAD/NFR (2026-08-01, Épico 14): esta variável
+# JAMAIS deve ser usada para o cliente Supabase do BROWSER — `NEXT_PUBLIC_*`
+# é inlinado pelo Next.js em BUILD TIME, então uma imagem Docker construída
+# uma vez (pra rodar em qualquer VPS) congelaria ou este hostname interno
+# (irresolvível por um navegador) ou um placeholder de build, dependendo de
+# quando o valor foi lido — os dois quebram a presença ao vivo. A presença
+# (`GH-MULTI-02/03`) usa uma variável SEPARADA e sem prefixo `NEXT_PUBLIC_`
+# (`GAMEHUB_REALTIME_PUBLIC_URL`, calculada por `deploy/docker/setup.sh`),
+# lida só no SERVIDOR (`app/world/visitar/[tenantId]/page.tsx`) e repassada
+# como prop até `entrarNaSala` — nunca lida de dentro de código
+# `"use client"`. Ver `docs/architecture/VALIDACAO-BMAD-NFR-PITCH-2026-08-01.md`
+# (achado B1) para o relato completo do bug que esta separação corrige.
+# ============================================================================
+
+services:
+  app:
+    networks:
+      - gamehub-internal
+      - supabase-net
+    environment:
+      - NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
+
+networks:
+  supabase-net:
+    name: gamehub-supabase_supabase-net
+    external: true

@@ -167,6 +167,16 @@ export async function cadastrar(
 
   const resultado = calcular(respostas);
 
+  // CEP (GH-CEP-01): campo oculto que o Wizard preenche quando resolve
+  // cidade/bairro via `lib/localizacao/cep.ts` — puramente informativo aqui,
+  // `cidade`/`bairro` acima já são a fonte que o cadastro usa de qualquer
+  // forma (dropdown manual ou autofill por CEP passam pelos MESMOS dois
+  // campos). Só 8 dígitos numéricos viram um CEP salvo; qualquer outra coisa
+  // (campo ausente, digitação incompleta) vira `undefined`, nunca erro de
+  // cadastro — CEP nunca é obrigatório.
+  const cepBruto = texto(fd, "cep").replace(/\D/g, "");
+  const cep = /^\d{8}$/.test(cepBruto) ? cepBruto : undefined;
+
   const negocio = await repo.criarNegocio({
     nome: respostas.nomeNegocio,
     segmento: respostas.segmento,
@@ -179,6 +189,7 @@ export async function cadastrar(
     atributosIniciais: resultado.atributosIniciais,
     perfilPublico,
     consentimentoVersao: POLITICA_PRIVACIDADE_VERSAO,
+    cep,
   });
 
   await repo.salvarOnboarding({

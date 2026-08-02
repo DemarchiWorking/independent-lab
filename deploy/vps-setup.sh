@@ -1,6 +1,35 @@
 #!/usr/bin/env bash
 # ============================================================================
-# labdatadev-gamehub — provisionamento ÚNICO da VPS (Ubuntu/Debian).
+# ⚠️  LEGADO/DEPRECADO (Épico 13, 2026-08-01) — leia antes de rodar.
+#
+# O caminho CANÔNICO de deploy deste projeto agora é
+# `deploy/docker/setup.sh` (Docker Compose) — ver `docs/deploy/README.md`.
+# Este script (PM2 bare-metal) fica mantido só para quem tiver uma VPS
+# DEDICADA de verdade e preferir não usar Docker para o app (o
+# `deploy/docker/setup.sh` ainda usa Docker para o Supabase de qualquer
+# forma). Motivos concretos de não ser mais o padrão:
+#
+#   1. Este script instala Nginx do SISTEMA e assume as portas 80/443 —
+#      quebra em qualquer VPS que já tenha outro Nginx/proxy nessas portas
+#      (é exatamente o caso desta VPS, labd.cloud — decisão já registrada
+#      em `docs/architecture/DBA-ARQUITETURA-ESCALA-2026.md` §2: "nunca
+#      seguir vps-setup.sh literalmente" aqui).
+#   2. `deploy/docker/setup.sh` cobre o mesmo resultado (app + Nginx +
+#      Supabase self-hosted) isolado em containers, com overlay próprio
+#      para VPS compartilhada (`docker-compose.labd-cloud.yml`, Traefik em
+#      porta livre) e para replicar em qualquer VPS/cloud nova via
+#      `deploy/docker/cloud-init.yaml` (1-click) — sem tocar porta 80/443
+#      do sistema em nenhum dos dois casos.
+#   3. O CI/CD (`.github/workflows/deploy.yml`) já usa o caminho Docker.
+#
+# Continua funcional e testado (idempotente) — só não é mais onde investe
+# trabalho novo de escala (Épico 13: réplicas de app, pool de conexão,
+# harness de carga — ver `docs/architecture/CARGA-1000-SIMULTANEOS.md` —
+# foram todos feitos no lado Docker, não aqui).
+# ============================================================================
+#
+# labdatadev-gamehub — provisionamento ÚNICO da VPS (Ubuntu/Debian), modo
+# PM2 bare-metal.
 #
 # Roda UMA vez, de dentro da pasta do projeto já copiada/clonada na VPS.
 # Idempotente: pode rodar de novo sem quebrar nada (checa antes de instalar,

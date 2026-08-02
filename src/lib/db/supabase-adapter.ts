@@ -64,6 +64,7 @@ interface LinhaNegocio {
   perfil_publico: boolean;
   consentimento_em: string;
   consentimento_versao: string | null;
+  cep: string | null;
 }
 
 interface LinhaLocal {
@@ -138,6 +139,7 @@ export class SupabaseRepository implements GameRepository {
       perfilPublico: linha.perfil_publico,
       consentimentoEm: linha.consentimento_em,
       consentimentoVersao: linha.consentimento_versao ?? "",
+      cep: linha.cep ?? undefined,
     };
   }
 
@@ -380,6 +382,7 @@ export class SupabaseRepository implements GameRepository {
         p_capacidade: dados.atributosIniciais.capacidade.valor,
         p_perfil_publico: dados.perfilPublico,
         p_consentimento_versao: dados.consentimentoVersao,
+        p_cep: dados.cep ?? null,
       })
       .single();
 

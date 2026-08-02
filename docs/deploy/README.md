@@ -1,5 +1,19 @@
 # Deploy do labdatadev gamehub — instalar, configurar, executar
 
+> **Atualização 2026-08-01 (Épico 13 — Escala e Replicação):** o caminho
+> CANÔNICO de deploy agora é **Docker Compose**
+> (`deploy/docker/setup.sh`) — substitui o modo PM2 bare-metal
+> (`deploy/vps-setup.sh`) descrito nas seções 3–10 abaixo, que fica mantido
+> só como referência legada (cabeçalho do próprio script explica por quê).
+> Ver a seção **"1-bis"**, logo após a próxima, para o guia atualizado.
+> Capacidade real medida (100/500/1000 conexões simultâneas de presença):
+> [`architecture/CARGA-1000-SIMULTANEOS.md`](../architecture/CARGA-1000-SIMULTANEOS.md).
+> Réplica em VPS/cloud nova com poucos cliques:
+> [`../../deploy/docker/cloud-init.yaml`](../../deploy/docker/cloud-init.yaml)
+> (1-click, qualquer provedor) ou
+> [`../../deploy/terraform/`](../../deploy/terraform/) (IaC declarativo,
+> Terraform).
+
 > Documento mestre de operação. Escrito para três leitores: (1) você, na
 > véspera do pitch; (2) um investidor/parceiro técnico avaliando o produto;
 > (3) o **Claude Code rodando dentro da própria VPS**, a quem você pode colar
@@ -53,6 +67,48 @@ sem Studio (GUI de admin — desnecessária numa VPS pequena; use `docker compos
 exec db psql`), sem Storage/imgproxy, sem Edge Functions (Server Actions do
 Next.js já cobrem toda mutação). Ver `deploy/supabase/docker-compose.yml`
 para o porquê de cada corte.
+
+---
+
+## 1-bis. Caminho canônico atual — Docker Compose (Épico 13, 2026-08-01)
+
+Tudo abaixo (seções 3–10) descreve o modo PM2 bare-metal, que funciona e
+continua documentado, mas **não é mais o caminho recomendado**. O caminho
+canônico — usado por esta VPS (labd.cloud) e pelo CI/CD
+(`.github/workflows/deploy.yml`) — é `deploy/docker/setup.sh`:
+
+```bash
+cd ~/labdatadev-gamehub
+chmod +x deploy/*.sh deploy/docker/*.sh
+
+# 1ª vez OU atualização (idempotente, --build sempre pega código novo):
+./deploy/docker/setup.sh --with-supabase --labd-cloud
+
+# Numa VPS/cloud NOVA, sem nada pré-existente (sem Traefik, domínio próprio):
+./deploy/docker/setup.sh --with-supabase
+```
+
+O que muda em relação ao modo PM2:
+
+| | PM2 bare-metal (`vps-setup.sh`) | Docker Compose (`docker/setup.sh`) |
+|---|---|---|
+| App roda em | processo Node direto (PM2 cluster) | container(s), `deploy.replicas` (default 3) |
+| Nginx | do sistema, portas 80/443 | container próprio, porta livre (labd.cloud) ou Traefik existente |
+| Réplicas do app | fixo em 3 (`ecosystem.config.js`) | ajustável via `--replicas N` sem editar arquivo |
+| Atualização | `deploy/deploy.sh` (script separado) | mesmo `setup.sh --build`, idempotente |
+| Replicar em VPS nova | copiar/adaptar o script manualmente | `deploy/docker/cloud-init.yaml` (1-click, cole no provisionamento da VM) ou `deploy/terraform/` (IaC) |
+
+**Dimensionado para 100–1000 conexões simultâneas de presença** (não só o
+piloto atual) — pool de conexão do PostgREST, `max_connections` do Postgres,
+réplicas do app, `ulimits` de file descriptor e `worker_connections` do
+Nginx foram todos ajustados e **medidos de verdade** (não só calculados) em
+[`../architecture/CARGA-1000-SIMULTANEOS.md`](../architecture/CARGA-1000-SIMULTANEOS.md)
+— inclui um bug real de infraestrutura encontrado e corrigido nessa mesma
+rodada (`deploy/supabase/kong.yml`, `hide_credentials` da rota do Realtime),
+sem o qual a presença ao vivo nunca teria funcionado em nenhum deploy real.
+
+Harness de carga reutilizável para medir de novo depois de qualquer mudança
+grande: [`../../deploy/loadtest/presenca-k6.js`](../../deploy/loadtest/presenca-k6.js).
 
 ---
 

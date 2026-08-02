@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { screenVariants, springSnappy, pressable } from "@/lib/motion";
@@ -49,6 +49,52 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
 
   const definir = (campo: string, valor: string | string[]) =>
     setValores((v) => ({ ...v, [campo]: valor }));
+
+  // CEP (GH-CEP-01): autofill de cidade/bairro na pergunta "cidade" — o
+  // dropdown/texto manual continuam funcionando normalmente por baixo, isto
+  // é só um atalho. Debounce de 400ms evita bater na rota a cada tecla;
+  // dispara só com os 8 dígitos completos.
+  const [cepInput, setCepInput] = useState("");
+  const [statusCep, setStatusCep] = useState<
+    "idle" | "buscando" | "encontrado" | "fora-do-piloto" | "nao-encontrado"
+  >("idle");
+
+  useEffect(() => {
+    const digitos = cepInput.replace(/\D/g, "");
+    if (digitos.length !== 8) {
+      setStatusCep("idle");
+      return;
+    }
+    const controlador = new AbortController();
+    setStatusCep("buscando");
+
+    const id = setTimeout(async () => {
+      try {
+        const resposta = await fetch(`/api/localizacao/cep/${digitos}`, {
+          signal: controlador.signal,
+        });
+        const dados = await resposta.json();
+        if (dados.encontrado) {
+          setValores((v) => ({
+            ...v,
+            cidade: dados.cidade,
+            bairro: dados.bairro,
+            cep: dados.cep,
+          }));
+          setStatusCep(dados.cidadeReconhecida ? "encontrado" : "fora-do-piloto");
+        } else {
+          setStatusCep("nao-encontrado");
+        }
+      } catch {
+        if (!controlador.signal.aborted) setStatusCep("nao-encontrado");
+      }
+    }, 400);
+
+    return () => {
+      clearTimeout(id);
+      controlador.abort();
+    };
+  }, [cepInput]);
 
   const alternar = (campo: string, valor: string) => {
     const atual = Array.isArray(valores[campo])
@@ -106,6 +152,40 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
                 <h2 className="text-lg font-extrabold">{pergunta.titulo}</h2>
                 {pergunta.ajuda ? (
                   <p className="mt-1 text-xs text-[#5b6b86]">{pergunta.ajuda}</p>
+                ) : null}
+
+                {pergunta.campo === "cidade" ? (
+                  <div className="mt-3">
+                    <input
+                      inputMode="numeric"
+                      value={cepInput}
+                      onChange={(e) => setCepInput(e.target.value)}
+                      placeholder="Seu CEP (opcional) — preenche cidade e bairro sozinho"
+                      maxLength={9}
+                      className="w-full rounded-md border-2 border-[#dbe3f0] bg-[#f7f9fc] px-3 py-2.5 text-sm outline-none focus:border-teal"
+                    />
+                    {statusCep === "buscando" ? (
+                      <p className="mt-1.5 text-[11px] font-bold text-muted">
+                        Buscando endereço…
+                      </p>
+                    ) : null}
+                    {statusCep === "encontrado" ? (
+                      <p className="mt-1.5 text-[11px] font-bold text-teal">
+                        ✓ {valores.bairro}, {valores.cidade}
+                      </p>
+                    ) : null}
+                    {statusCep === "fora-do-piloto" ? (
+                      <p className="mt-1.5 text-[11px] font-bold text-orange">
+                        ✓ {valores.bairro}, {valores.cidade} — fora da área
+                        piloto, mas seu negócio entra mesmo assim.
+                      </p>
+                    ) : null}
+                    {statusCep === "nao-encontrado" ? (
+                      <p className="mt-1.5 text-[11px] font-bold text-coral-dark">
+                        CEP não encontrado — escolha a cidade abaixo.
+                      </p>
+                    ) : null}
+                  </div>
                 ) : null}
 
                 <div className="mt-4">
