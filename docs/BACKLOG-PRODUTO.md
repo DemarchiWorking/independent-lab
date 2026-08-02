@@ -1073,6 +1073,12 @@ trafegado no zoom alto.
 
 ### GH-MAPA-02 — Navegação por zoom em 3 camadas (Região → Cidade → Quarteirão)
 
+> **Nota 2026-08-02:** este card é executado como parte do escopo maior de
+> `GH-MAPA-05` (Mapa Vivo) — a spine de UX já especifica 4 níveis (Região→
+> Cidade→Bairro→Quarteirão, não 3) e zoom por clique. Os critérios abaixo
+> continuam válidos, só a fonte de verdade do COMO passou a ser
+> `docs/mapa-vivo/` em vez deste card sozinho.
+
 | Campo | Valor |
 |---|---|
 | Prioridade | P1 |
@@ -1098,6 +1104,11 @@ Cidade, Z3 Quarteirão (a vista isométrica atual).
 
 ### GH-MAPA-03 — Identidade visual do pin por status do negócio
 
+> **Nota 2026-08-02:** idem `GH-MAPA-02` — executado dentro de `GH-MAPA-05`.
+> O critério "altura/porte por nível da sede" já está especificado em
+> `docs/mapa-vivo/` (`DESIGN.md.Components.MapaPin`), com a dependência de
+> arquitetura já flagada (`negocios_publico` precisa expor `sede.nivel`).
+
 | Campo | Valor |
 |---|---|
 | Prioridade | P2 |
@@ -1118,6 +1129,61 @@ escada de valor** (dado já existe), pulso no próprio negócio (já existe).
 pública" — nunca onboarding/budget.
 
 **Dados trafegados:** nome, segmento, nível, degrau (fachada pública).
+
+---
+
+### GH-MAPA-05 — Mapa Vivo: redesign UX/visual game-enterprise (Mapa + Sede) 🟡 (spec pronta, aguardando arquitetura)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | **P0 — prioridade #1 do projeto (pedido explícito do usuário, 2026-08-02)** |
+| Esforço | G |
+| Depende de | `GH-MAPA-01` (agregação por cidade/bairro); absorve o escopo de `GH-MAPA-02`/`GH-MAPA-03` (executados DENTRO deste card, não separadamente) |
+
+**Descrição:** Redesign completo de UX/visual do Mapa (navegação Região→
+Cidade→Bairro→Quarteirão, zoom por clique) E da Sede (interior Pixi.js,
+`World`) como uma iniciativa só — a exigência central é que as duas telas
+pareçam **um mundo só**, não produtos colados: cor de tier e anel de
+presença ao vivo são os MESMOS tokens no pin do Mapa e no interior da
+Sede. Referência visual: MMO social (Clash of Clans/Habbo) aplicado a um
+mapa geograficamente real (CEP → cidade/bairro reais), tipo "Pokémon GO
+encontra Clash of Clans". Conduzido via `bmad-ux` (Sally), com Reviewer
+Gate (completude + acessibilidade) já rodada e achados críticos/altos já
+corrigidos nas spines.
+
+**Onde está o trabalho:** `docs/mapa-vivo/` neste repositório é o ponto de
+entrada — `CONTEXTO-E-DECISOES.md` (o porquê, decisões capturadas do
+usuário) e `STATUS-BMAD-UX.md` (o estado técnico exato, path dos arquivos
+de verdade, mantido atualizado a cada marco). As spines de verdade
+(`DESIGN.md`/`EXPERIENCE.md`) vivem no workspace BMAD da VPS — path
+completo em `STATUS-BMAD-UX.md`.
+
+**Critérios de aceitação:**
+- [x] `DESIGN.md` (paleta, tipografia, componentes) e `EXPERIENCE.md` (IA,
+      fluxos, estados, acessibilidade) escritos, cobrindo Mapa + Sede
+- [x] Reviewer Gate (completude + acessibilidade) rodada, achados
+      críticos/altos corrigidos nas spines
+- [x] 3 mockups HTML das telas-chave (`mapa-quarteirao.html`,
+      `sheet-detalhe-pin.html`, `sede-continuidade.html`)
+- [ ] Usuário revisou os mockups e confirmou a direção (não feito ainda
+      nesta sessão — próximo passo real)
+- [ ] Verificação de daltonismo com ferramenta real (não só leitura
+      manual) — achado medium/low ainda aberto
+- [ ] Spines marcadas `status: final`
+- [ ] `bmad-create-architecture` (Winston): como migrar `features/mapa/`
+      e a camada de render de `features/world/` sem quebrar geometria já
+      testada; resolve a dependência de `sede.nivel` não exposto em
+      `negocios_publico`; orçamento de performance (pins simultâneos que
+      o Pixi aguenta)
+- [ ] `bmad-create-epics-and-stories` (John): quebra em cards executáveis
+- [ ] Implementação faseada (uma fase por vez: Quarteirão+pins primeiro,
+      depois zoom Bairro/Cidade/Região, depois Sede), gates verdes, deploy
+
+**Regras de segurança:** nenhuma nova — `MapaPin` só expõe dados já
+públicos via `negocios_publico` (nome, segmento, degrau; `sede.nivel`
+precisa de nova coluna/join, ver dependência de arquitetura acima).
+
+**Dados trafegados:** proporcional ao zoom, mesmo princípio de `GH-MAPA-01`.
 
 ---
 

@@ -1,7 +1,26 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
-> **🚨 Atualização 2026-08-02 (mais recente — leia ESTA primeiro, antes de
-> tudo abaixo):** dois bugs CRÍTICOS foram achados e corrigidos —
+> **🎯 PRIORIDADE #1 — 2026-08-02 (leia ESTA primeiro, antes de tudo
+> abaixo, inclusive antes do bloco de bugs críticos logo abaixo):**
+> "Mapa Vivo" — redesign completo de UX/visual do Mapa + Sede, nível
+> "game enterprise", é a prioridade atual do projeto, por pedido explícito
+> do usuário. Qualquer outra tarefa de produto deve ser sequenciada depois
+> desta, salvo instrução em contrário. Onde continuar:
+> [`CHECKPOINT-2026-08-02-mapa-vivo-ux-design.md`](CHECKPOINT-2026-08-02-mapa-vivo-ux-design.md)
+> → aponta pro contexto completo
+> ([`mapa-vivo/CONTEXTO-E-DECISOES.md`](mapa-vivo/CONTEXTO-E-DECISOES.md))
+> e pro status técnico exato
+> ([`mapa-vivo/STATUS-BMAD-UX.md`](mapa-vivo/STATUS-BMAD-UX.md), mantido
+> atualizado a cada marco — sempre confira a última seção de lá antes de
+> perguntar "onde eu parei"). Estado nesta atualização: as duas spines de
+> UX (`DESIGN.md`/`EXPERIENCE.md`) estão escritas, passaram por uma
+> Reviewer Gate (completude + acessibilidade) com achados críticos/altos
+> já corrigidos, e há 3 mockups HTML prontos — falta o usuário revisar os
+> mockups antes do handoff pra arquitetura.
+
+> **🚨 Atualização 2026-08-02 (bugs críticos de produção — ainda
+> relevante, leia depois do bloco acima):** dois bugs CRÍTICOS foram
+> achados e corrigidos —
 > (1) login sempre falhava depois do cadastro (`d1ae454`); (2) bypass de
 > RLS exposto à internet que permitia qualquer pessoa com a anon key
 > escrever/apagar qualquer negócio, sem estar logada (`45effc7`,
