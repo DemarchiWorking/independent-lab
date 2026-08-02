@@ -28,7 +28,17 @@ export class SupabaseAuthProvider implements AuthProvider {
     const { data, error } = await supabaseAdmin().auth.admin.createUser({
       email,
       password: senha,
-      email_confirm: false,
+      // `email_confirm: true` (era `false`): este produto não tem NENHUM
+      // fluxo de confirmação por e-mail (sem página `/confirmar`, sem SMTP
+      // configurado no self-hosted) — com `false`, o GoTrue marca a conta
+      // como não confirmada e `signInWithPassword` sempre recusa com
+      // `email_not_confirmed`, mesmo com a senha certa. Bug ao vivo
+      // 2026-08-02: TODO cadastro ficava permanentemente impossibilitado de
+      // logar. `GOTRUE_MAILER_AUTOCONFIRM=true` do container não cobre
+      // este caso — só afeta o fluxo público `/signup`, não
+      // `admin.createUser`. Reproduzido e confirmado via API bruta do
+      // GoTrue antes deste fix (Kong :8010) — ver commit.
+      email_confirm: true,
       user_metadata: { nome },
     });
     if (error || !data.user) {
