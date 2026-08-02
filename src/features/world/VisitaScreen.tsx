@@ -8,6 +8,7 @@ import { RibbonPanel } from "@/components/ui/RibbonPanel";
 import { itemMobilia } from "@/features/sede/catalogo";
 import { nivelSede } from "@/features/sede/niveis";
 import { cargoPorId } from "@/features/equipe-ia/catalogo";
+import { classeTier, nomeArvoreTier } from "@/lib/tier";
 import { PitchPanel } from "@/features/vendas/PitchPanel";
 import { bloqueiosDeMobilia, chaveCelula } from "./engine/caminho";
 import {
@@ -18,7 +19,7 @@ import {
 } from "./engine/sala";
 import type { Celula } from "./engine/iso";
 import type { EstadoCena } from "./render/cena";
-import { corDoAtributo, corDoItem } from "./render/cores";
+import { corDoAtributo, corDoItem, corDePresenca } from "./render/cores";
 import type { WorldCanvasHandle } from "./render/WorldCanvas";
 import { InteracaoNpc } from "./InteracaoNpc";
 import { avataresProximos, type AvatarProximo } from "./engine/proximidade";
@@ -202,14 +203,16 @@ export function VisitaScreen({
           nome: "Você",
           dono: false,
         },
-        // gente de verdade, ao vivo, na mesma sala (GH-MULTI-03)
+        // gente de verdade, ao vivo, na mesma sala (GH-MULTI-03). Cor
+        // sempre presença (teal) — mesmo token que o Mapa usa pra "gente
+        // aqui agora" (Mapa Vivo, GH-MAPA-05), nunca uma cor de atributo.
         ...outrosPresentes.map((p, i) => {
           const pos = posicoesPresentes[i] ?? posicaoVisitante ?? inicioDono;
           return {
             id: `presenca:${p.tenantId}`,
             cx: pos.cx,
             cy: pos.cy,
-            cor: corDoAtributo("processo"),
+            cor: corDePresenca(),
             nome: p.nome,
             dono: false,
           };
@@ -246,6 +249,16 @@ export function VisitaScreen({
         </span>
         <span className="rounded-pill bg-card2 px-2.5 py-1 text-[11px] font-bold text-muted">
           {negocioVisitado.nome}
+        </span>
+        {/* SedeNameplate (Mapa Vivo, GH-MAPA-05): mesma cor de tier que o
+            pin deste negócio já tem no Mapa — continuidade visual. Ponto
+            colorido + texto em `text-muted`, nunca texto direto sobre o
+            preenchimento de tier (achado da Reviewer Gate de
+            acessibilidade: contraste varia demais entre os 5 tiers —
+            mesma disciplina de `DESIGN.md.mapa-badge-fundo`). */}
+        <span className="flex items-center gap-1.5 rounded-pill bg-card2 px-2.5 py-1 text-[11px] font-bold text-muted">
+          <i className={`inline-block h-2 w-2 rounded-full ${classeTier(negocioVisitado.degrauAtual)}`} />
+          {nomeArvoreTier(negocioVisitado.degrauAtual)}
         </span>
         <span className="rounded-pill bg-card2 px-2.5 py-1 text-[11px] font-bold text-muted">
           {nivel.nome}

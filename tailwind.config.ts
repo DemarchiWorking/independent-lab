@@ -26,6 +26,7 @@ const config: Config = {
         alert: color.alert.bannerBg,
         cat: color.category,
         attr: color.attribute,
+        tier: color.tier,
       },
       borderRadius: {
         sm: `${radius.sm}px`,

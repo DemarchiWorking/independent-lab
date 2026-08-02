@@ -53,6 +53,25 @@ export const color = {
     aquisicao: "#16A34A", // verde
     capacidade: "#DC2626", // vermelho
   },
+  /**
+   * Mapa Vivo (docs/mapa-vivo/, GH-MAPA-05) — cor por degrau na escada de
+   * valor (`degrauAtual`, 1-5, `DEGRAUS` em `features/onboarding/scoring.ts`
+   * — já público via `negocios_publico`). Metáfora de árvore: semente →
+   * broto → raiz → tronco → copa. `tier[2]`/`tier[3]` espelham
+   * `attribute.processo`/`attribute.tecnologia` de propósito (mesmo hex,
+   * cor já existente e sem conflito); `tier[5]` espelha `category.growth`.
+   * Nunca usa `brand.teal` nem `category.social` — são os tokens de
+   * presença ao vivo/vizinhança no Mapa, e um pin não pode ficar
+   * indistinguível do próprio estado de presença/vizinhança (achado da
+   * Reviewer Gate de acessibilidade, 2026-08-02).
+   */
+  tier: {
+    1: "#B0BEC5", // semente — prata neutro
+    2: "#3B82F6", // broto — = attribute.processo
+    3: "#8B5CF6", // raiz — = attribute.tecnologia
+    4: "#B45309", // tronco — bronze/cobre
+    5: "#F4C430", // copa — = category.growth
+  },
 } as const;
 
 export const font = {
@@ -86,3 +105,4 @@ export const currency = {
 
 export type CategoryKey = keyof typeof color.category;
 export type AtributoChave = keyof typeof color.attribute;
+export type TierChave = keyof typeof color.tier;

@@ -68,3 +68,29 @@ export const CENARIO = {
 export function corDoAtributo(chave: keyof typeof color.attribute): number {
   return hexNumero(color.attribute[chave]);
 }
+
+/**
+ * Cor de presença ao vivo (Mapa Vivo, GH-MAPA-05 — `docs/mapa-vivo/`) —
+ * SEMPRE `brand.teal`, nunca uma cor de atributo. Antes deste fix,
+ * `SedeAnelPresenca` usava `corDoAtributo("processo")` (azul, sem relação
+ * semântica com "gente aqui agora") só porque era uma cor de avatar
+ * disponível — corrigido pra usar o mesmo token que o Mapa usa pra
+ * presença, fechando a continuidade visual Mapa↔Sede que é o requisito
+ * central desta iniciativa.
+ */
+export function corDePresenca(): number {
+  return hexNumero(color.brand.teal);
+}
+
+/**
+ * Cor de tier (degrau na escada de valor, 1–5) — mesma paleta usada no
+ * `MapaPin` do Mapa (`design-system/tokens.ts.color.tier`). Usada no
+ * `SedeNameplate` pra a Sede herdar a mesma cor que o pin do negócio já
+ * tinha no Mapa. `degrau` fora de 1–5 cai no tier 1 (defensivo, nunca
+ * deveria acontecer — `degrau_atual` é sempre 1–5 por constraint do
+ * banco).
+ */
+export function corDoTier(degrau: number): number {
+  const chave = (degrau >= 1 && degrau <= 5 ? degrau : 1) as keyof typeof color.tier;
+  return hexNumero(color.tier[chave]);
+}
