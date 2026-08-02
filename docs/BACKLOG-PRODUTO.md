@@ -2879,7 +2879,7 @@ rodou num Windows real; o runbook de VPS nova nunca rodou numa VPS real
 
 ---
 
-### GH-SEC-03 — Fluxo de recuperação de senha 🔴 (aberto)
+### GH-SEC-03 — Fluxo de recuperação de senha 🟡 (código pronto, falta a chave do Resend)
 
 | Campo | Valor |
 |---|---|
@@ -2887,14 +2887,26 @@ rodou num Windows real; o runbook de VPS nova nunca rodou numa VPS real
 | Esforço | M |
 | Depende de | — |
 
-**Descrição:** não existe "esqueci minha senha" — sem SMTP, sem página de
-reset. Hoje, senha esquecida = conta perdida em definitivo (recadastro com
-o mesmo e-mail é bloqueado por `emailExiste()`). Único remédio atual é
-intervenção manual via `service_role`.
+**Descrição:** não existia "esqueci minha senha" — sem SMTP, sem página de
+reset. Resolvido em 2026-08-02 (`b8b77b8`): `/recuperar-senha`, código de 6
+dígitos via `admin.generateLink({type:"recovery"})` (GoTrue gera, nunca
+manda e-mail sozinho — não há SMTP no self-hosted), envio por Resend
+(`lib/email/resend.ts`), validação via `verifyOtp` do próprio GoTrue
+(expiração/uso único não reimplementados). Modo arquivo (dev) loga o código
+no console em vez de mandar e-mail. Deployado e no ar.
+
+**Pendente — não é código, é uma chave:** sem `RESEND_API_KEY` no `.env` da
+VPS, o código é gerado mas o e-mail não sai (fica só logado, com aviso) —
+`enviarEmail()` degrada em silêncio de propósito, nunca trava o fluxo.
+Decidir: reusar a `RESEND_API_KEY` já usada em `/opt/labdatadev`, ou gerar
+uma nova só para o gamehub.
 
 **Critérios de aceitação:**
-- [ ] Decidir: configurar SMTP + `resetPasswordForEmail` real, OU
-      documentar explicitamente como limitação conhecida do MVP com um
+- [x] Fluxo completo implementado (solicitar código → confirmar código +
+      nova senha), Supabase e modo arquivo
+- [x] `typecheck`/`test` verdes (319/319), deployado em produção
+- [ ] `RESEND_API_KEY` configurada na VPS e um envio real confirmado de
+      ponta a ponta (**precisa do usuário** — decisão de qual conta usar)
       runbook de reset manual
 - [ ] Corrigir a afirmação falsa em `supabase-provider.ts` ("reset já
       resolvido")
