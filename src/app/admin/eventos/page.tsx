@@ -30,11 +30,11 @@ export default async function AdminEventosPage() {
       <p className="mb-1 font-pixel text-[11px] uppercase tracking-[3px] text-teal">
         labdatadev · gamehub · admin
       </p>
-      <h1 className="mb-4 text-xl font-extrabold text-ink">Eventos globais</h1>
+      <h1 className="mb-4 text-xl font-extrabold text-white">Eventos globais</h1>
 
       <AdminEventoForm />
 
-      <h2 className="mb-2 mt-8 text-sm font-extrabold uppercase tracking-wide text-ink">
+      <h2 className="mb-2 mt-8 text-sm font-extrabold uppercase tracking-wide text-white">
         Já criados ({eventos.length})
       </h2>
       {eventos.length === 0 ? (

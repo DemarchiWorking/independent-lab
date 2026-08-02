@@ -32,7 +32,7 @@ export default async function LabdatadevClientePage() {
         <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-md bg-panel text-2xl">
           🔒
         </div>
-        <h1 className="mb-2 text-xl font-extrabold text-ink">
+        <h1 className="mb-2 text-xl font-extrabold text-white">
           O computador do escritório chega no degrau {DEGRAU_MINIMO_LABDATADEV}
         </h1>
         <p className="mb-6 text-sm text-muted">
@@ -53,12 +53,12 @@ export default async function LabdatadevClientePage() {
       <p className="mb-1 font-pixel text-[11px] uppercase tracking-[3px] text-teal">
         labdatadev · estúdio
       </p>
-      <h1 className="mb-1 text-xl font-extrabold text-ink">
+      <h1 className="mb-1 text-xl font-extrabold text-white">
         Construa com a gente
       </h1>
       <p className="mb-6 text-sm text-muted">
         Site, aplicativo, automação — peça aqui e acompanhe cada etapa. Já
-        entregamos algo? Peça uma <b className="text-ink">nova funcionalidade</b>{" "}
+        entregamos algo? Peça uma <b className="text-white">nova funcionalidade</b>{" "}
         pelo mesmo lugar.
       </p>
 

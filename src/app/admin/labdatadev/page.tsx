@@ -30,7 +30,7 @@ export default async function AdminLabdatadevPage() {
       <p className="mb-1 font-pixel text-[11px] uppercase tracking-[3px] text-teal">
         labdatadev · gamehub · admin
       </p>
-      <h1 className="mb-1 text-xl font-extrabold text-ink">
+      <h1 className="mb-1 text-xl font-extrabold text-white">
         Gestão de plataformas
       </h1>
       <p className="mb-6 text-sm text-muted">

@@ -10,7 +10,7 @@ export function MinhasSolicitacoes({ solicitacoes }: { solicitacoes: Solicitacao
 
   return (
     <section>
-      <h2 className="mb-2 text-sm font-extrabold text-ink">
+      <h2 className="mb-2 text-sm font-extrabold text-white">
         Meus pedidos ({lista.length})
       </h2>
 
