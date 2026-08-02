@@ -2742,7 +2742,7 @@ contratar um Funcionário de IA hoje não cria assinatura nenhuma.
 
 ---
 
-### GH-PITCH-03 — Atualizar roteiro de demo para o estado real do produto 🟡 (aberto)
+### GH-PITCH-03 — Atualizar roteiro de demo para o estado real do produto 🟡 (parcial)
 
 | Campo | Valor |
 |---|---|
@@ -2758,12 +2758,13 @@ passo 1 apesar de ser a beat de inovação mais barata disponível; não há
 nenhum passo de multiplayer.
 
 **Critérios de aceitação:**
-- [ ] Passo 1 menciona o CEP auto-alocando bairro
-- [ ] Correção da afirmação sobre API externa
-- [ ] Passo de presença ao vivo só entra depois que `GH-MULTI-04` fechar
-      de verdade (não anunciar recurso não demonstrável)
+- [x] Passo 1 menciona o CEP auto-alocando bairro
+- [x] Correção da afirmação sobre API externa
+- [x] Passo de presença ao vivo só entra depois que `GH-MULTI-04` fechar
+      de verdade (não anunciar recurso não demonstrável) — banner e item em
+      "O que NÃO mostrar" registram o motivo explicitamente
 - [ ] Roteiro percorrido de ponta a ponta no ambiente real da demo, com
-      evidência anexada
+      evidência anexada — ainda não feito, precisa de navegador real
 
 ---
 
@@ -2878,7 +2879,7 @@ intervenção manual via `service_role`.
 
 ---
 
-### GH-SEC-04 — Tornar `cadastrar()` atômico 🟡 (aberto)
+### GH-SEC-04 — Tornar `cadastrar()` atômico ✅
 
 | Campo | Valor |
 |---|---|
@@ -2893,5 +2894,11 @@ pra sempre). Sem incidente hoje (verificado, zero órfãos no banco), risco
 latente.
 
 **Critérios de aceitação:**
-- [ ] RPC transacional, ou `try/catch` com rollback compensatório nos dois
-      pontos de falha possíveis
+- [x] `try/catch` com rollback compensatório nos pontos de falha possíveis
+      (não dá pra ser uma transação de verdade — Supabase Auth é um serviço
+      HTTP à parte do Postgres onde `negocios` vive): `GameRepository` ganha
+      `excluirNegocio()` (Postgres com cascade nas FKs relacionadas; arquivo
+      libera o lote + apaga a pasta do tenant) e `AuthProvider` ganha
+      `removerConta()` (Supabase `admin.deleteUser`; arquivo remove do JSON
+      de credenciais). `typecheck`/`test` verdes (319/319), deployado em
+      produção (`:3006`, commit `aa29c0e`).
