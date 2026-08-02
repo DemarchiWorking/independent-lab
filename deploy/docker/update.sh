@@ -39,6 +39,18 @@ npm run typecheck
 log "testes (gate)"
 npm test
 
+# Achado de auditoria (2026-08-02, GH-SEC-01): este script nunca aplicava
+# migrations novas — só `deploy/docker/setup.sh` chamava
+# `deploy/supabase-up.sh`. Resultado: uma migration de segurança podia ficar
+# no repo, passar no gate acima, subir pro ar via `--build`, e o BANCO NUNCA
+# MUDAR — silenciosamente, sem erro nenhum. Só roda quando o overlay do
+# Supabase está em uso (este script também serve deploys `GAMEHUB_DB=file`,
+# sem Postgres nenhum).
+if [[ "${COMPOSE_FILES[*]}" == *docker-compose.supabase.yml* ]]; then
+  log "aplicando migrations novas (deploy/supabase-up.sh)"
+  ./deploy/supabase-up.sh
+fi
+
 # Guarda a imagem que está rodando AGORA como ":previous" antes de buildar a
 # nova — é o que torna o rollback instantâneo (sem rebuild) possível.
 if docker image inspect labdatadev-gamehub:latest >/dev/null 2>&1; then

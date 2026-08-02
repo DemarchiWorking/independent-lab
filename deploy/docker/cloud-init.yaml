@@ -18,8 +18,18 @@
 #                 embutido na URL: https://<token>@github.com/...)
 #   REPO_BRANCH — branch com a camada de deploy (hoje: integracao-deploy-vps
 #                 — ver docs/PROXIMA-TAREFA.md, ainda não fundida na main)
-#   REPO_DIR    — onde clonar (padrão: home do usuário `ubuntu`, ajuste se
-#                 a imagem do provedor usar outro usuário default)
+#   REPO_DIR    — onde clonar (padrão: /root/labdatadev-gamehub)
+#
+# Roda inteiro como root (`runcmd` do cloud-init já executa como root em
+# toda imagem cloud padrão) — de propósito, acabou com uma classe inteira de
+# bug (achado DevOps, 2026-08-02, F6): a versão anterior assumia um usuário
+# `ubuntu` fixo (`chown -R ubuntu:ubuntu ... || true`, `sudo -u ubuntu`), que
+# não existe em toda imagem (Debian usa `debian`, algumas imagens só têm
+# `root`), e o `|| true` engolia o erro do chown silenciosamente — a falha
+# real só aparecia depois, no `sudo -u ubuntu`, sem pista do motivo.
+# `deploy/docker/setup.sh` já lida com rodar como root explicitamente (ver
+# comentário "GH-ESC-05" no próprio script), então não há motivo pra sair
+# do papel de root aqui.
 # ============================================================================
 
 package_update: true
@@ -29,6 +39,7 @@ packages:
   - git
   - ca-certificates
   - curl
+  - ufw
 
 write_files:
   - path: /etc/labdatadev-gamehub-cloud-init.env
@@ -36,7 +47,7 @@ write_files:
     content: |
       REPO_URL=https://github.com/DemarchiWorking/independent-lab.git
       REPO_BRANCH=integracao-deploy-vps
-      REPO_DIR=/home/ubuntu/labdatadev-gamehub
+      REPO_DIR=/root/labdatadev-gamehub
       # Flags passadas pro setup.sh — troque para "" (vazio) se quiser só
       # GAMEHUB_DB=file (sem Postgres), ou pra "--with-supabase --labd-cloud"
       # só se esta VM for especificamente a VPS labd.cloud (ver nota em
@@ -47,7 +58,7 @@ runcmd:
   # GH-ESC-05 (achado de auditoria, 2026-08-01): `source` não existe no
   # `/bin/sh` (dash) que o cloud-init usa para rodar `runcmd` — precisa ser
   # o builtin POSIX `.`, senão as 3 variáveis abaixo ficam vazias e o clone
-  # falha silenciosamente (mascarado pelo `|| true` do `chown`).
+  # falha silenciosamente.
   - . /etc/labdatadev-gamehub-cloud-init.env
   - |
     if [ ! -d "$REPO_DIR" ]; then
@@ -55,8 +66,17 @@ runcmd:
     else
       echo "Repo já existe em $REPO_DIR — pulando clone (rode git pull manualmente se quiser atualizar)."
     fi
-  - chown -R ubuntu:ubuntu "$REPO_DIR" || true
-  - cd "$REPO_DIR" && sudo -u ubuntu bash -lc "./deploy/docker/setup.sh $SETUP_FLAGS" 2>&1 | tee /var/log/labdatadev-gamehub-setup.log
+  - cd "$REPO_DIR" && bash "./deploy/docker/setup.sh" $SETUP_FLAGS 2>&1 | tee /var/log/labdatadev-gamehub-setup.log
+  # Firewall (achado DevOps, F7): sem isto, só a porta 22 do provedor
+  # protege a VM — 3006 (app) e 8010 (Kong) ficam em 0.0.0.0 sem defesa
+  # de rede nenhuma além do `key-auth`/`acl` do próprio Kong. `ufw` some
+  # dentro do container/imagens minimalistas às vezes; `|| true` aqui é
+  # aceitável porque não mascara o setup em si (já rodou e logou acima) —
+  # só a camada extra de firewall.
+  - ufw allow 22/tcp || true
+  - ufw allow 3006/tcp || true
+  - ufw allow 8010/tcp || true
+  - ufw --force enable || true
 
 final_message: |
   labdatadev-gamehub provisionado em $UPTIME segundos.

@@ -143,14 +143,27 @@ if [ "$WITH_SUPABASE" = "1" ]; then
         case "$HOST_PUBLICO" in
           *:*) HOST_PUBLICO="[${HOST_PUBLICO}]" ;; # IPv6 — precisa de colchetes numa URL
         esac
-        export GAMEHUB_PUBLIC_URL="http://${HOST_PUBLICO}:${KONG_HTTP_PORT:-8000}"
+        export GAMEHUB_PUBLIC_URL="http://${HOST_PUBLICO}:${KONG_HTTP_PORT}"
         echo "    Detectado: $GAMEHUB_PUBLIC_URL"
       else
         echo "[aviso] Não consegui detectar IP público — presença ao vivo pode não" >&2
         echo "        alcançar o Kong de fora. Defina GAMEHUB_PUBLIC_URL manualmente" >&2
-        echo "        e rode de novo, ex.: GAMEHUB_PUBLIC_URL=http://1.2.3.4:8000 $0 $*" >&2
+        echo "        e rode de novo, ex.: GAMEHUB_PUBLIC_URL=http://1.2.3.4:8010 $0 $*" >&2
       fi
     fi
+  fi
+
+  # Achado DevOps (2026-08-02, B4): `deploy/supabase-up.sh` precisa de
+  # `node` (`gerar-chaves.mjs`, gera os segredos do stack), mas nem
+  # `cloud-init.yaml` nem este script instalavam nada além de Docker — numa
+  # VPS Ubuntu/Debian limpa o 1-click falhava aqui com "node: command not
+  # found". NodeSource porque o `nodejs` do apt em versões antigas do
+  # Ubuntu é velho demais (12.x); só roda em distros apt-based, como o
+  # resto deste script já assume.
+  if ! command -v node >/dev/null 2>&1; then
+    log "Instalando Node.js (necessário para gerar segredos do Supabase)..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt-get install -y nodejs
   fi
 
   log "Subindo Supabase self-hosted (deploy/supabase-up.sh)..."

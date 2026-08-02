@@ -144,9 +144,18 @@ services:
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_EXP: "3600"
       GOTRUE_JWT_SECRET: "${JWT_SECRET}"
-      # Sem SMTP configurado de propósito: o cadastro roda com
-      # `email_confirm: false` (`src/lib/auth/supabase-provider.ts`) — o
-      # produto não depende de e-mail transacional para o pitch.
+      # Sem SMTP configurado de propósito — mas isto NÃO é uma rede de
+      # segurança para o cadastro: o produto usa exclusivamente
+      # `admin.createUser` (`src/lib/auth/supabase-provider.ts`), e esse
+      # caminho não consulta `MAILER_AUTOCONFIRM` — só o parâmetro explícito
+      # `email_confirm` do próprio chamador decide. Bug ao vivo 2026-08-02
+      # (commit `d1ae454`): esta env var estava `true` desde o primeiro
+      # `up`, e mesmo assim toda conta nascia não-confirmada e sem
+      # conseguir logar, porque o código passava `email_confirm: false`
+      # explicitamente. `MAILER_AUTOCONFIRM` só afeta o signup público
+      # (`POST /auth/v1/signup`), que este produto nunca usa — mantido
+      # `true` por consistência/documentação, não porque seja o que protege
+      # o fluxo real.
       GOTRUE_MAILER_AUTOCONFIRM: "true"
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
@@ -297,7 +306,12 @@ services:
     # HTTPS/Traefik (ver `docker-compose.labd-cloud.yml` deste diretório),
     # mas mesmo HTTP direto por IP:porta já resolve o bloqueio B1.
     ports:
-      - "0.0.0.0:${KONG_HTTP_PORT:-8000}:8000"
+      # Default 8010, não 8000: numa VPS com outro Supabase self-hosted já
+      # rodando (ex. Company HQ nesta VPS), 8000 colide — achado ao vivo
+      # 2026-08-02 (F4, auditoria DevOps). `deploy/supabase-up.sh` e
+      # `deploy/docker/setup.sh` já fixam isso via `KONG_HTTP_PORT`
+      # exportado — este default só protege quem rodar o compose direto.
+      - "0.0.0.0:${KONG_HTTP_PORT:-8010}:8000"
     healthcheck:
       test: ["CMD", "kong", "health"]
       interval: 5s

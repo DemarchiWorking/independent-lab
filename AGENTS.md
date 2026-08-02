@@ -71,8 +71,17 @@ npm test            # vitest — gate obrigatório
 npm run build       # gate obrigatório antes de qualquer deploy
 ```
 
-Início rápido: duplo-clique em `iniciar.bat` (Windows) ou `./iniciar.sh`
-(Linux/Mac) — instalam dependências se faltar e sobem o app sozinhos.
+**Stack real (Docker, com Supabase — paridade com produção):**
+duplo-clique em `start.bat` (Windows, abre o WSL sozinho) ou `./start.sh`
+(Linux/Mac/VPS) — chamam `deploy/docker/setup.sh --with-supabase`. É o
+caminho recomendado pra ver o produto de verdade (cadastro persiste,
+login funciona, mapa/vizinhos reais).
+
+**Modo dev leve (sem Docker, sem Postgres):** duplo-clique em
+`iniciar.bat` (Windows) ou `./iniciar.sh` (Linux/Mac) — só `npm run dev`
+com `GAMEHUB_DB=file`. Bom pra mexer em UI rápido; cadastro/login não
+persistem de verdade entre reinícios (arquivo local) e multiplayer/
+Supabase não existem nesse modo.
 
 ## Validação sem infra (truques úteis neste projeto)
 

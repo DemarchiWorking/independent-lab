@@ -64,7 +64,16 @@ fi
 # ---------------------------------------------------------------------------
 if [ ! -f ".env" ]; then
   log "Gerando segredos do Supabase (primeira vez)..."
-  node gerar-chaves.mjs > .env
+  # Achado DevOps (2026-08-02): se `node` faltar ou `gerar-chaves.mjs`
+  # falhar, `> .env` já criou/truncou o arquivo ANTES do node rodar — com
+  # `set -euo pipefail` o script morre, mas `.env` fica escrito (0 bytes).
+  # Na PRÓXIMA execução `[ ! -f ".env" ]` é falso, o script imprime
+  # "já existe — preservando" e nunca regenera — o compose morre depois com
+  # `POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD`, sem pista do motivo real.
+  # Gerar num arquivo temporário e só mover em caso de sucesso evita esse
+  # estado envenenado.
+  node gerar-chaves.mjs > .env.tmp
+  mv .env.tmp .env
   # Linhas de URL/porta SEMPRE presentes a partir daqui — é o que garante que
   # o bloco de `sed` abaixo (que só SUBSTITUI, nunca insere) tenha o que
   # substituir mesmo numa primeira execução com domínio já informado. Sem
@@ -73,7 +82,12 @@ if [ ! -f ".env" ]; then
   # entraria DEPOIS e gravaria o loopback por cima da intenção do operador.
   {
     echo "SUPABASE_PUBLIC_URL=http://127.0.0.1:8010"
-    echo "SITE_URL=http://127.0.0.1:8081"
+    # 8081 (porta do modo PM2 legado) era o valor antigo aqui — trocado pra
+    # 3006 (porta real do caminho Docker canônico). Hoje é inofensivo
+    # (login roda com autoconfirm, sem magic link/OAuth), mas alimenta
+    # `GOTRUE_SITE_URL`/`GOTRUE_URI_ALLOW_LIST`, então importa no dia que
+    # confirmação por e-mail ou OAuth entrar (achado DevOps, F2).
+    echo "SITE_URL=http://127.0.0.1:${GAMEHUB_HTTP_PORT:-3006}"
     # 8000 é o default de qualquer Supabase self-hosted, mas nesta VPS (e em
     # qualquer VPS que já rode outro stack Supabase, ex. Company HQ em
     # /opt/company/supabase) 127.0.0.1:8000 já está ocupado — achado ao vivo

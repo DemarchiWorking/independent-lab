@@ -49,7 +49,18 @@ ENV HOSTNAME="0.0.0.0"
 
 RUN apk add --no-cache wget \
  && addgroup --system --gid 1001 nodejs \
- && adduser  --system --uid 1001 nextjs
+ && adduser  --system --uid 1001 nextjs \
+ && mkdir -p /app/data && chown nextjs:nodejs /app/data
+
+# `/app/data` (achado DevOps, 2026-08-02): modo `GAMEHUB_DB=file` escreve em
+# `path.join(process.cwd(), "data")` = `/app/data` — sem este `chown`, o
+# diretório nasce `root:root` e todo write falha com `EACCES` sob o usuário
+# `nextjs` (uid 1001), com `/api/health` respondendo OK mesmo assim (ele só
+# testa leitura), mascarando um app que não persiste um único cadastro.
+# `GAMEHUB_DB=file` continua sendo só smoke-test de HTTP no Docker (nunca
+# use com mais de 1 réplica — sem volume compartilhado, cada réplica tem seu
+# próprio `/app/data` e usuários "somem" trocando de réplica); `--with-supabase`
+# é o caminho real.
 
 # Saída standalone (server.js + node_modules mínimo de produção)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
