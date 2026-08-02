@@ -45,13 +45,25 @@ export async function lerSessao(): Promise<Sessao | null> {
   if (esperada.length !== recebida.length) return null;
   if (!timingSafeEqual(esperada, recebida)) return null;
 
+  let sessao: Sessao;
   try {
-    return JSON.parse(
+    sessao = JSON.parse(
       Buffer.from(payload, "base64url").toString("utf8"),
     ) as Sessao;
   } catch {
     return null;
   }
+
+  // `tenantId` vira `negocios.id` (bigint) em toda leitura do repositório
+  // Supabase. Um cookie assinado mas com `tenantId` não-numérico — sobra de
+  // uma sessão criada em modo `GAMEHUB_DB=file` (onde o id é hex, ver
+  // `novoId()`) e ainda válida pela mesma `GAMEHUB_SECRET` — não é
+  // falsificação, mas também não é utilizável: sem esta checagem, cada
+  // página autenticada quebra com "invalid input syntax for type bigint:
+  // NaN" em vez de simplesmente mandar logar de novo.
+  if (!/^\d+$/.test(sessao.tenantId)) return null;
+
+  return sessao;
 }
 
 export async function encerrarSessao(): Promise<void> {
