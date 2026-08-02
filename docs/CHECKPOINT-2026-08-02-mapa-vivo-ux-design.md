@@ -27,14 +27,17 @@ uma Reviewer Gate (completude + acessibilidade) em andamento.
 
 ## Próxima ação concreta
 
-Ver a última seção de `mapa-vivo/STATUS-BMAD-UX.md` — mantida atualizada a
-cada marco. **Atualizado 2026-08-02, fim de sessão:** Reviewer Gate feita,
-mockups validados por screenshot real (2 bugs corrigidos), Fase 1 REAL
-implementada e deployada em produção (commit `0e8a184`, cor de tier +
-presença na Sede), validada com login real via Playwright contra `:3006`.
-Próximo: usuário confirmar o Artifact, depois `bmad-create-architecture`
-(Winston) pra decidir como renderizar o Mapa/terreno de verdade (a parte
-mais visível do pedido original ainda não foi implementada — só a Sede).
+**Leia [`mapa-vivo/TAREFAS-PENDENTES.md`](mapa-vivo/TAREFAS-PENDENTES.md)
+primeiro — lista única e atual de tudo que falta, em ordem sugerida.**
+
+Resumo do fim desta sessão (2026-08-02): em produção de verdade hoje há
+só duas coisas pequenas — anel de cor por tier nos lotes do Mapa
+(`0c2c0f2`) e badge de tier + presença corrigida na tela de visitar sede
+(`0e8a184`, só em `VisitaScreen.tsx`, não em `WorldScreen.tsx`). O
+terreno estilizado e o zoom animado — a parte mais visível do pedido
+original — continuam só como spec/mockup, não implementados. Balanço
+honesto do custo/benefício desta sessão também está em
+`TAREFAS-PENDENTES.md` — vale ler antes de repetir o mesmo processo.
 
 ## Regra não-negociável desta iniciativa
 
