@@ -56,6 +56,22 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      # `/app/data` — só é USADO no modo `GAMEHUB_DB=file`; no modo
+      # `supabase` (produção) fica vazio e inerte, sem custo.
+      #
+      # Achado DevOps 2026-08-02 (B3): sem este volume, `GAMEHUB_DB=file`
+      # grava na camada de escrita do PRÓPRIO container — e `setup.sh`/
+      # `update.sh` rodam `up -d --build`, que RECRIA o container. Ou seja:
+      # todo cadastro sumia a cada deploy, sem erro, sem aviso. O volume
+      # nomeado sobrevive a `up --build`, a `down` e a reboot da VPS (só
+      # `down -v` apaga de propósito).
+      #
+      # ⚠️ O volume é COMPARTILHADO entre réplicas, e o adapter de arquivo
+      # é de escritor único (ver `src/lib/db/file-adapter.ts`) — por isso
+      # `deploy/docker/setup.sh` força `GAMEHUB_APP_REPLICAS=1` quando
+      # `GAMEHUB_DB=file`. Não remova uma coisa sem a outra.
+      - gamehub-data:/app/data
     networks:
       - gamehub-internal
     healthcheck:
@@ -138,3 +154,20 @@ services:
 networks:
   gamehub-internal:
     driver: bridge
+
+volumes:
+  # Dados do modo `GAMEHUB_DB=file` (ver comentário no serviço `app`).
+  #
+  # SEM `name:` fixo de propósito — o Compose prefixa com o nome do projeto
+  # (`labdatadev-gamehub_gamehub-data`), então dois stacks na mesma máquina
+  # (`-p outro-nome`) não disputam o mesmo volume. É o oposto da escolha
+  # feita nos `container_name` fixos deste repo, e é deliberado: nome fixo
+  # em container só atrapalha subir um segundo stack; nome fixo em VOLUME
+  # faria dois stacks gravarem no MESMO arquivo JSON de escritor único —
+  # corrupção silenciosa, não erro de porta ocupada.
+  #
+  # Descobrir o nome real e fazer backup:
+  #   docker volume ls | grep gamehub-data
+  #   docker run --rm -v <nome>:/d -v "$PWD":/b alpine \
+  #     tar czf /b/gamehub-data.tar.gz -C /d .
+  gamehub-data:

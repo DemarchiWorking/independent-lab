@@ -3,8 +3,12 @@
 # Gerado por deploy/vps-setup.sh a partir deste template (substitui
 # {{API_DOMAIN}}). Não edite o arquivo final na VPS — edite este template.
 #
-# Kong escuta em 127.0.0.1:8000 (nunca exposto direto — ver
-# deploy/supabase/docker-compose.yml). Este bloco é a ÚNICA porta de entrada
+# Kong escuta em 127.0.0.1:8010 (nunca exposto direto — ver
+# deploy/supabase/docker-compose.yml). 8010 e não 8000: numa VPS que já roda
+# outro Supabase self-hosted (ex.: Company HQ nesta VPS) o 8000 colide —
+# achado ao vivo 2026-08-02, mesma correção de `deploy/supabase-up.sh` e
+# `deploy/docker/setup.sh`. Este template tinha ficado pra trás naquele
+# commit (achado DevOps, F3). Este bloco é a ÚNICA porta de entrada
 # pública do Supabase, e é o mesmo motivo de `Upgrade`/`Connection: upgrade`
 # do template do app: o Realtime (presença ao vivo, Bloco 5) é WebSocket.
 # ==============================================================================
@@ -18,7 +22,7 @@ server {
 
     location / {
         limit_req zone=gamehub_geral burst=40 nodelay;
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:8010;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";

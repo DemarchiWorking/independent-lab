@@ -104,6 +104,28 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 2b. Guarda de réplicas no modo `file` (achado DevOps 2026-08-02, B3).
+#
+# `GAMEHUB_DB=file` grava JSON em `/app/data` via um adapter de ESCRITOR
+# ÚNICO (`src/lib/db/file-adapter.ts`). Com as 3 réplicas default, o Nginx
+# distribui as requisições entre elas (o `resolver 127.0.0.11` do
+# nginx.conf faz round-robin de verdade — verificado ao vivo), e duas
+# réplicas escrevendo no mesmo JSON se sobrescrevem: cadastro feito numa
+# some na outra, e o dado corrompe sem erro nenhum. Health continua verde.
+#
+# Só se aplica a `file`. No modo `supabase` o Postgres é o árbitro de
+# concorrência e as 3 réplicas são o comportamento desejado (Épico 13).
+# ---------------------------------------------------------------------------
+DB_EFETIVO="$(grep -E '^GAMEHUB_DB=' .env | tail -1 | cut -d= -f2- | tr -d '[:space:]')"
+if [ "$WITH_SUPABASE" != "1" ] && [ "${DB_EFETIVO:-file}" = "file" ] && [ "$GAMEHUB_APP_REPLICAS" != "1" ]; then
+  echo
+  echo "[aviso] GAMEHUB_DB=file + ${GAMEHUB_APP_REPLICAS} réplicas é uma combinação que CORROMPE dado."
+  echo "        O adapter de arquivo é de escritor único; forçando 1 réplica."
+  echo "        Para rodar com N réplicas de verdade, use: $0 --with-supabase"
+  export GAMEHUB_APP_REPLICAS=1
+fi
+
+# ---------------------------------------------------------------------------
 # 3. Supabase self-hosted (opcional) — sobe e aplica migrations, depois
 #    alinha o .env do APP com as chaves que acabou de gerar (mesma lógica
 #    de deploy/vps-setup.sh passo 4, adaptada pra apontar pro nome de
