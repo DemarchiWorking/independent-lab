@@ -8,7 +8,8 @@
 ## Estado no fim desta sessão — tudo commitado e no ar
 
 Branch `integracao-deploy-vps`, **publicada no GitHub** (`git push` feito,
-`origin/integracao-deploy-vps` = `HEAD`). Commits desta sessão, em ordem:
+`origin/integracao-deploy-vps` = `HEAD` = `1b5fb94`). Commits desta sessão,
+em ordem:
 
 | Commit | O quê |
 |---|---|
@@ -16,6 +17,11 @@ Branch `integracao-deploy-vps`, **publicada no GitHub** (`git push` feito,
 | `a26716c` | `update.sh` commitado sem `+x` — corrigido |
 | `d1ae454` | **Bug crítico: login sempre falhava após cadastro** (`email_confirm: false` sem fluxo de confirmação) |
 | `45effc7` | **Bypass crítico de RLS fechado** (view `negocios_publico` escrevível por `anon`) + robustece deploy pra clone limpo |
+| `e024026` | Fix de porta do Kong também no `update.sh` (mesmo achado do `setup.sh`, faltava lá) |
+| `1b5fb94` | Modo `GAMEHUB_DB=file`: volume nomeado pra `/app/data` (dado sumia a cada deploy) + guarda que força 1 réplica nesse modo (3 réplicas corrompiam o JSON); porta 8010 no template Nginx legado |
+
+Pacote portátil regenerado no HEAD atual:
+`/root/labdatadev-gamehub-2026-08-02.bundle` (928 KB) e `.tar.gz` (625 KB).
 
 Deploy real rodando nesta VPS: `docker compose -f docker-compose.yml -f
 docker-compose.supabase.yml`, app em `:3006` (3 réplicas + nginx), Supabase
@@ -118,17 +124,27 @@ foi gerado). Auditado sem segredo nenhum dentro.
    conta real cadastrada (`admin@gmail.com`, `moderador@gmail.com`) — o
    painel `/admin/eventos` está inacessível pra qualquer um hoje.
 
+**Da segunda passada do DevOps (achados menores, registrados por completude):**
+
+4. **`pingDb()` do adapter de arquivo (`src/lib/db/file-adapter.ts`) é
+   `return true` fixo** — nunca testa escrita real em disco. É por isso que
+   o bug do `EACCES` (já corrigido) ficou invisível por tanto tempo:
+   `/api/health` respondia OK com zero escritas funcionando. Só afeta o
+   modo `file` (smoke-test), não a produção real (`--with-supabase`). Vale
+   trocar por um ping que grave e leia um arquivo de verdade, se algum dia
+   o modo `file` for usado pra algo além de smoke-test.
+
 **Da auditoria do DevOps (não testado em hardware real):**
 
-4. **`start.bat` nunca rodou num Windows de verdade.** Antes de prometer
+5. **`start.bat` nunca rodou num Windows de verdade.** Antes de prometer
    "1 clique" pro usuário final, validar numa máquina Windows 11 real com
    Docker Desktop + WSL2.
-5. **O runbook de VPS nova (`docs/CHECKPOINT-...md` → ver seção abaixo)
+6. **O runbook de VPS nova (`docs/CHECKPOINT-...md` → ver seção abaixo)
    nunca rodou numa VPS Hostinger de verdade** — a validação foi um
    clean-room isolado NA MESMA máquina (clone fresco, portas diferentes),
    não uma segunda VPS real. É a prova mais rigorosa possível sem
    provisionar infraestrutura nova, mas não substitui o teste real.
-6. **Herdado, não desta sessão, mas registrado em `docs/PROXIMA-TAREFA.md`
+7. **Herdado, não desta sessão, mas registrado em `docs/PROXIMA-TAREFA.md`
    (Épico 15):** a presença ao vivo (multiplayer) não conecta de verdade no
    deploy `labd-cloud` porque o Kong não está publicado por nenhum router
    Traefik. Não anunciar "metaverso ao vivo" no pitch até isso fechar —
