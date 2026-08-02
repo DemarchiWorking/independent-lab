@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Icon } from "@/components/ui/Icon";
+import { ActionButton } from "@/components/ui/ActionButton";
+import { RibbonPanel } from "@/components/ui/RibbonPanel";
 import { itemMobilia } from "@/features/sede/catalogo";
 import { nivelSede } from "@/features/sede/niveis";
 import { cargoPorId } from "@/features/equipe-ia/catalogo";
@@ -37,6 +39,14 @@ import type { ItemMobiliaColocado, Negocio, Sede } from "@/lib/db/types";
  * não precisaram de nenhuma mudança para suportar isso — `avatarDonoId`
  * resolve qualquer id presente em `avatares`, por construção.
  */
+
+/**
+ * "Ligar para o escritório": o produto ainda não tem telefonia real —
+ * confirmar aqui abre o Discord da comunidade (canal de voz) numa aba nova,
+ * que é onde o contato ao vivo acontece hoje. O aviso existe para não
+ * surpreender quem clica esperando um telefone tocando de verdade.
+ */
+const DISCORD_URL = "https://discord.gg/fWt2Nf4nkp";
 
 const WorldCanvas = dynamic(
   () => import("./render/WorldCanvas").then((m) => m.WorldCanvas),
@@ -78,6 +88,12 @@ export function VisitaScreen({
   const [aviso, setAviso] = useState<string | null>(null);
   const [proximos, setProximos] = useState<AvatarProximo[]>([]);
   const [presentes, setPresentes] = useState<VisitantePresente[]>([]);
+  const [confirmandoLigacao, setConfirmandoLigacao] = useState(false);
+
+  const confirmarLigacao = () => {
+    setConfirmandoLigacao(false);
+    window.open(DISCORD_URL, "_blank", "noopener,noreferrer");
+  };
 
   /**
    * Presença ao vivo na sala (GH-MULTI-03). `entrarNaSala` é no-op
@@ -222,7 +238,7 @@ export function VisitaScreen({
   };
 
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div className="relative flex w-full flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex items-center gap-1.5 rounded-pill bg-teal px-2.5 py-1 text-[11px] font-extrabold text-ink">
           <Icon name="home" size={13} />
@@ -277,8 +293,43 @@ export function VisitaScreen({
           <div className="border-t border-[#e6ebf3] pt-3">
             <PitchPanel negocioVisitado={negocioVisitado} />
           </div>
+          <div className="border-t border-[#e6ebf3] pt-3">
+            <ActionButton
+              variant="ghost"
+              icon="globe"
+              onClick={() => setConfirmandoLigacao(true)}
+            >
+              Ligar para o escritório
+            </ActionButton>
+          </div>
         </aside>
       </div>
+
+      <RibbonPanel
+        title="Ligar para o escritório"
+        open={confirmandoLigacao}
+        onClose={() => setConfirmandoLigacao(false)}
+      >
+        <div className="space-y-3 text-ink">
+          <p className="text-[11px] leading-relaxed text-[#33415c]">
+            Isto vai tentar uma ligação com o escritório de{" "}
+            <b>{negocioVisitado.nome}</b> abrindo o canal de voz da nossa
+            comunidade no Discord, numa aba nova.
+          </p>
+          <div className="flex justify-end gap-2 pt-1">
+            <ActionButton
+              variant="ghost"
+              fullWidth={false}
+              onClick={() => setConfirmandoLigacao(false)}
+            >
+              Cancelar
+            </ActionButton>
+            <ActionButton fullWidth={false} onClick={confirmarLigacao}>
+              Confirmar
+            </ActionButton>
+          </div>
+        </div>
+      </RibbonPanel>
     </div>
   );
 }
