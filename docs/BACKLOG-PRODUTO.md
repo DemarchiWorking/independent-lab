@@ -2764,3 +2764,134 @@ nenhum passo de multiplayer.
       de verdade (não anunciar recurso não demonstrável)
 - [ ] Roteiro percorrido de ponta a ponta no ambiente real da demo, com
       evidência anexada
+
+---
+
+## Épico 16 — Segurança e Portabilidade de Deploy (2026-08-02)
+
+> Duas auditorias independentes (DBA Sênior e DevOps Sênior, agentes Opus
+> 5) rodaram em paralelo sobre o deploy Docker real desta VPS, a pedido do
+> usuário, depois de um bug crítico de login ter sido achado e corrigido
+> (`d1ae454`). Relato completo, evidências e runbooks:
+> [`CHECKPOINT-2026-08-02-seguranca-e-deploy-portatil.md`](CHECKPOINT-2026-08-02-seguranca-e-deploy-portatil.md).
+
+### GH-SEC-01 — Fechar bypass crítico de RLS na view `negocios_publico` ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P0 |
+| Esforço | P |
+| Depende de | — |
+
+**Descrição:** `negocios_publico` (view de vitrine pública, `0026`) não
+tinha `security_invoker`, era dona de `postgres` (`BYPASSRLS`) e era
+auto-updatable. Com o `GRANT` de fábrica desta imagem Postgres
+(INSERT/UPDATE/DELETE pra `anon`/`authenticated` em toda tabela — mais
+largo do que `0033` testou/documentou), qualquer portador da anon key
+(pública por design) escrevia/apagava QUALQUER negócio direto pelo Kong
+público, pré-autenticação. Anulava a `0035` inteira.
+
+**Critérios de aceitação:**
+- [x] Migration `0036`: revoga o excesso de fábrica em todas as
+      tabelas/views, reabre só as 2 exceções intencionais de `0033`, fixa
+      `ALTER DEFAULT PRIVILEGES`
+- [x] Confirmado ao vivo, antes/depois: `PATCH` na view recusado com
+      `42501 permission denied` depois do fix (aceito antes)
+- [x] Leitura pública da vitrine continua funcionando (verificado)
+- [x] `deploy/docker/update.sh` corrigido para aplicar migrations (não
+      aplicava nenhuma antes — só `setup.sh`)
+
+**Regras de segurança:** fecha o vetor mais crítico achado nesta sessão —
+escrita/deleção arbitrária pré-autenticação, exposta à internet.
+
+---
+
+### GH-SEC-02 — FORCE RLS + índices de FK faltando ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P3 |
+| Esforço | PP |
+| Depende de | `GH-SEC-01` (mesma migration `0036`) |
+
+**Critérios de aceitação:**
+- [x] `bairros`/`cidades`/`quarteiroes` ganham `FORCE ROW LEVEL SECURITY`
+      (não explorável hoje, mas violava o padrão documentado)
+- [x] Índices em `parcerias_formadas(vizinho_tenant_id)` e
+      `denuncias_conteudo(tenant_denunciante_id)`
+
+---
+
+### GH-OPS-09 — Corrigir bloqueadores de portabilidade (clone limpo → VPS nova) ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | M |
+| Depende de | — |
+
+**Descrição:** auditoria DevOps encontrou 5 bloqueadores reais (B1-B5) que
+impediam "só `git clone` + poucos comandos" numa VPS nova de verdade — ver
+checkpoint linkado acima para evidência de cada um.
+
+**Critérios de aceitação:**
+- [x] GitHub atualizado (`git push`) — estava 3 commits atrás, o 1-click
+      clonava a versão com o login quebrado
+- [x] `Dockerfile`: `/app/data` com dono certo (`EACCES` mascarado por
+      `/api/health` só testar leitura)
+- [x] `deploy/supabase-up.sh`: gera `.env` em arquivo temporário (evita
+      estado envenenado se `node` faltar/falhar)
+- [x] `deploy/docker/setup.sh`: instala Node (faltava — `supabase-up.sh`
+      precisa dele)
+- [x] `deploy/docker/cloud-init.yaml`: roda como root (não mais usuário
+      `ubuntu` fixo com erro engolido); UFW automático
+- [x] Portas 8000 residuais → 8010 (mais 2 lugares)
+- [x] `start.sh`/`start.bat` — launcher único pro stack real
+- [x] Pacote portátil gerado e testado: `.bundle` (histórico completo) +
+      `.tar.gz` (snapshot), sem segredo nenhum dentro, restore verificado
+
+**Pendente (não bloqueia, registrado no checkpoint):** `start.bat` nunca
+rodou num Windows real; o runbook de VPS nova nunca rodou numa VPS real
+(só clean-room isolado na mesma máquina).
+
+---
+
+### GH-SEC-03 — Fluxo de recuperação de senha 🔴 (aberto)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | M |
+| Depende de | — |
+
+**Descrição:** não existe "esqueci minha senha" — sem SMTP, sem página de
+reset. Hoje, senha esquecida = conta perdida em definitivo (recadastro com
+o mesmo e-mail é bloqueado por `emailExiste()`). Único remédio atual é
+intervenção manual via `service_role`.
+
+**Critérios de aceitação:**
+- [ ] Decidir: configurar SMTP + `resetPasswordForEmail` real, OU
+      documentar explicitamente como limitação conhecida do MVP com um
+      runbook de reset manual
+- [ ] Corrigir a afirmação falsa em `supabase-provider.ts` ("reset já
+      resolvido")
+
+---
+
+### GH-SEC-04 — Tornar `cadastrar()` atômico 🟡 (aberto)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | M |
+| Depende de | — |
+
+**Descrição:** `cadastrar()` (`src/features/auth/actions.ts`) cria negócio
+e depois usuário/membro sem transação — falha no meio pode deixar negócio
+órfão (sem dono) ou conta sem negócio vinculado (sem `GH-SEC-03`, perdida
+pra sempre). Sem incidente hoje (verificado, zero órfãos no banco), risco
+latente.
+
+**Critérios de aceitação:**
+- [ ] RPC transacional, ou `try/catch` com rollback compensatório nos dois
+      pontos de falha possíveis

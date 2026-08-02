@@ -47,6 +47,12 @@ npm test
 # Supabase está em uso (este script também serve deploys `GAMEHUB_DB=file`,
 # sem Postgres nenhum).
 if [[ "${COMPOSE_FILES[*]}" == *docker-compose.supabase.yml* ]]; then
+  # Mesmo achado do `setup.sh` (2026-08-02): `deploy/supabase/.env` desta
+  # VPS já tem `KONG_HTTP_PORT=8000` gravado de antes da correção — o
+  # default novo do compose (8010) só vale pra `.env` que ainda não existe.
+  # Exportar aqui (shell env vence sobre o `.env` do stack na resolução do
+  # Compose) garante 8010 mesmo sem editar o arquivo já gravado.
+  export KONG_HTTP_PORT="${KONG_HTTP_PORT:-8010}"
   log "aplicando migrations novas (deploy/supabase-up.sh)"
   ./deploy/supabase-up.sh
 fi

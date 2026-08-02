@@ -1,5 +1,20 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
+> **🚨 Atualização 2026-08-02 (mais recente — leia ESTA primeiro, antes de
+> tudo abaixo):** dois bugs CRÍTICOS foram achados e corrigidos —
+> (1) login sempre falhava depois do cadastro (`d1ae454`); (2) bypass de
+> RLS exposto à internet que permitia qualquer pessoa com a anon key
+> escrever/apagar qualquer negócio, sem estar logada (`45effc7`,
+> migration `0036`). Deploy Docker real está de pé em `:3006`, publicado
+> no GitHub (`integracao-deploy-vps`), com launcher único
+> (`start.sh`/`start.bat`) e pacote portátil pronto. Relato completo,
+> pendências reais (sem fluxo de "esqueci senha", `start.bat` não testado
+> em Windows real, runbook de VPS não testado numa VPS real) e runbooks
+> em
+> [`CHECKPOINT-2026-08-02-seguranca-e-deploy-portatil.md`](CHECKPOINT-2026-08-02-seguranca-e-deploy-portatil.md)
+> — leia esse arquivo INTEIRO antes de considerar qualquer coisa abaixo
+> "estado atual".
+
 > **Atualização 2026-08-02 (Épico 15 — Auditoria de Prontidão, leia
 > primeiro):** duas validações independentes rodaram em 2026-08-01 sobre o
 > que o Épico 14 entregou e chegaram, por caminhos diferentes, ao mesmo
