@@ -4,12 +4,12 @@
 > Nenhuma das tabelas abaixo (`partners`, `services`, `deals`,
 > `partnerships`, `game_state`, `improvement_logs`) foi implementada como
 > descrito aqui. O schema efetivamente aplicado (`supabase/migrations/0001`
-> a `0030`) usa `negocios`/`membros`/`onboardings`/etc., com `bigint
+> a `0031`) usa `negocios`/`membros`/`onboardings`/etc., com `bigint
 > identity` em vez de `uuid` e nomenclatura diferente — ver
 > [`docs/architecture/DBA-ARQUITETURA-ESCALA-2026.md`](../architecture/DBA-ARQUITETURA-ESCALA-2026.md)
 > para o estado real e o roadmap atual. O conceito de `deals` (§ desta
 > página) foi implementado com outro nome e forma em
-> `solicitacoes_orcamento` (migration `0027`, card `GH-COM-01`). Mantido
+> `solicitacoes_orcamento` (migration `0028`, card `GH-COM-01`). Mantido
 > abaixo por valor histórico — não usar como referência de schema atual.
 
 > Base **regional** (Vale do Café / mercado imobiliário) com informações dos

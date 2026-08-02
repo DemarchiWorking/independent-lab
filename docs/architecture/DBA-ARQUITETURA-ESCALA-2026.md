@@ -13,11 +13,11 @@
 > o que decidir mais tarde. Esta continua sendo a decisão certa — foi
 > reafirmada, não revisitada, na segunda parte desta revisão (§1.1 abaixo).
 >
-> Migrations desta revisão: `0027_solicitacoes_orcamento.sql`,
-> `0028_assinaturas.sql`, `0029_moderacao_conteudo.sql`,
-> `0030_progressao_auditoria.sql` (parte 1, mesmo dia), mais
-> `0031_fix_tenant_atual_execute.sql` e
-> `0032_grant_base_privileges_authenticated.sql` (parte 2, mesmo dia — a
+> Migrations desta revisão: `0028_solicitacoes_orcamento.sql`,
+> `0029_assinaturas.sql`, `0030_moderacao_conteudo.sql`,
+> `0031_progressao_auditoria.sql` (parte 1, mesmo dia), mais
+> `0032_fix_tenant_atual_execute.sql` e
+> `0033_grant_base_privileges_authenticated.sql` (parte 2, mesmo dia — a
 > Fase 0 finalmente executada, ver §1.1). Cards de backlog correspondentes:
 > `GH-COM-01`, `GH-COM-02`, `GH-OPS-05`, `GH-OPS-06`, `GH-OPS-03` (fechado),
 > `GH-OPS-08` (novo, ver §1.1) — ver `docs/BACKLOG-PRODUTO.md`.
@@ -72,7 +72,7 @@ init` + `supabase start` (stack local isolada, prefixo de container
 produção do Company HQ nem no do V4MOS, que continuaram rodando ao lado sem
 interrupção). Resultado:
 
-1. **As 32 migrations (`0001`–`0032`) aplicam limpo contra Postgres 17
+1. **As 32 migrations (`0001`–`0033`) aplicam limpo contra Postgres 17
    real**, do zero, via `supabase db reset`.
 2. `SEED_DEMO=1 npx vitest run src/scripts/seed-demo.test.ts` — o fluxo
    mais integrador do repo (cadastro de 6 negócios, onboarding, sede
@@ -94,11 +94,11 @@ interrupção). Resultado:
 **Dois bugs P0 reais foram encontrados — nenhum visível por parsing
 estático, os dois só existem quando o Postgres real avalia privilégio:**
 
-- **`0031` (já existia, escrito numa sessão anterior no mesmo dia):**
+- **`0032` (já existia, escrito numa sessão anterior no mesmo dia):**
   `private.tenant_atual()` tinha `execute` revogado de TODOS os roles, sem
   nenhum `grant` de volta — toda policy que a referencia quebrava com
   `permission denied for function`, não filtrava silenciosamente.
-- **`0032` (novo, escrito e verificado nesta revisão):** achado mais
+- **`0033` (novo, escrito e verificado nesta revisão):** achado mais
   fundamental — **nenhuma tabela real do schema tinha `GRANT`
   `select`/`insert`/`update`/`delete` para `anon`, `authenticated` OU
   `service_role`**, só a view `negocios_publico` (`0026`). Causa raiz:
@@ -117,7 +117,7 @@ estático, os dois só existem quando o Postgres real avalia privilégio:**
   mais que isso) e grant amplo + `ALTER DEFAULT PRIVILEGES` para
   `service_role` (que já ignora RLS por design; não há defesa em
   restringir verbo para ele). Ver o comentário completo em
-  `supabase/migrations/0032_grant_base_privileges_authenticated.sql`.
+  `supabase/migrations/0033_grant_base_privileges_authenticated.sql`.
 
 **Conclusão prática:** o modo `GAMEHUB_DB=supabase` **nunca teria
 funcionado**, nem para o app rodando sozinho, até esta revisão — não só
@@ -149,7 +149,7 @@ errado numa Server Action, a RLS não pega, porque quem lê é sempre
 service_role.
 
 **🟠 P1 — zero rastro de auditoria em progressão até esta revisão.**
-Antes de `0030`, não havia como responder "por que este negócio tem 40.000
+Antes de `0031`, não havia como responder "por que este negócio tem 40.000
 🪙" sem reconstruir manualmente por 9 tabelas. Fechado nesta revisão via
 ledger (ver §3).
 
@@ -158,14 +158,14 @@ ledger (ver §3).
 qualquer tenant a qualquer visitante, sem mecanismo de denúncia/ocultação.
 Aceitável em modo demo fechado; vira risco real assim que o mapa for
 divulgado (pitch Sebrae, redes sociais) — que é o próximo passo natural do
-produto. Fechado nesta revisão via `0029`.
+produto. Fechado nesta revisão via `0030`.
 
 **🟡 P2 — nenhuma tabela sustenta o modelo de receita real.** O produto
 central documentado (`PRODUTO-IA-FUNCIONARIOS.md`) é **assinatura mensal em
 R$** — mas o banco só modela a contratação DENTRO do jogo (moeda virtual,
 `funcionarios_contratados`). Não existe onde registrar "este tenant pediu
 orçamento" nem "esta assinatura está ativa/inadimplente". Fechado
-parcialmente nesta revisão via `0027`/`0028` (ver §4 para o que ainda falta
+parcialmente nesta revisão via `0028`/`0029` (ver §4 para o que ainda falta
 — gateway de pagamento real).
 
 **🟢 P3 — leituras agregadas (`mapa_resumo`, `bairro_resumo`,
@@ -206,14 +206,14 @@ dedicado. **Recomendação: NÃO subir um terceiro Postgres.** Em vez disso:
 
 ---
 
-## 3. O que esta revisão adicionou (migrations `0027`–`0030`)
+## 3. O que esta revisão adicionou (migrations `0028`–`0031`)
 
 | Migration | Card | O que resolve |
 |---|---|---|
-| `0027_solicitacoes_orcamento.sql` | `GH-COM-01` | Fluxo "pedir orçamento" (documentado desde 2026-07-26 em `PRODUTO-IA-FUNCIONARIOS.md` §7, nunca implementado) — status `orcamento→aceito→entrega→concluido→cancelado`, painel admin trabalha a partir daqui. |
-| `0028_assinaturas.sql` | `GH-COM-02` | Estado de assinatura real (R$, em centavos) 1:1 com `funcionarios_contratados` — pendente/ativa/inadimplente/cancelada, com campos `stripe_*` prontos e vazios até o gateway ser ligado. **Não processa pagamento** — só estado. |
-| `0029_moderacao_conteudo.sql` | `GH-OPS-05` | Flag `moderado_oculto` em `ofertas` + fila `denuncias_conteudo` — pré-requisito de bom senso antes de divulgar o mapa publicamente. |
-| `0030_progressao_auditoria.sql` | `GH-OPS-06` | Ledger append-only de toda mudança de xp/moeda/atributo em `negocios`, via trigger — não exige tocar nenhuma das 11 funções existentes. |
+| `0028_solicitacoes_orcamento.sql` | `GH-COM-01` | Fluxo "pedir orçamento" (documentado desde 2026-07-26 em `PRODUTO-IA-FUNCIONARIOS.md` §7, nunca implementado) — status `orcamento→aceito→entrega→concluido→cancelado`, painel admin trabalha a partir daqui. |
+| `0029_assinaturas.sql` | `GH-COM-02` | Estado de assinatura real (R$, em centavos) 1:1 com `funcionarios_contratados` — pendente/ativa/inadimplente/cancelada, com campos `stripe_*` prontos e vazios até o gateway ser ligado. **Não processa pagamento** — só estado. |
+| `0030_moderacao_conteudo.sql` | `GH-OPS-05` | Flag `moderado_oculto` em `ofertas` + fila `denuncias_conteudo` — pré-requisito de bom senso antes de divulgar o mapa publicamente. |
+| `0031_progressao_auditoria.sql` | `GH-OPS-06` | Ledger append-only de toda mudança de xp/moeda/atributo em `negocios`, via trigger — não exige tocar nenhuma das 11 funções existentes. |
 
 Todas seguem exatamente as convenções já estabelecidas: `bigint generated
 always as identity`, RLS forçada, funções `security definer` com
@@ -231,12 +231,12 @@ Em ordem de dependência real:
 1. **Rodar o Phase 0 (§1)** — sem isso, nada abaixo tem chão.
 2. **Ligar um gateway de pagamento real** a `assinaturas` (Stripe é a
    opção natural — já existe skill `/stripe` disponível neste ambiente).
-   `0028` deixou os campos `stripe_customer_id`/`stripe_subscription_id`
+   `0029` deixou os campos `stripe_customer_id`/`stripe_subscription_id`
    prontos para isso; falta o webhook handler (`atualizar_status_assinatura`
    já existe para ele chamar) e o checkout. **Antes disso, nenhuma cobrança
    real deve sair do papel** — regra já registrada em
    `PRODUTO-IA-FUNCIONARIOS.md` §7, mantida aqui.
-3. **Painel admin para a fila de orçamento e moderação** — `0027`/`0029`
+3. **Painel admin para a fila de orçamento e moderação** — `0028`/`0030`
    dão a tabela; falta a tela (`/admin/orcamentos`, `/admin/moderacao`,
    mesmo padrão de `/admin/eventos` que já existe e é gated por
    `GAMEHUB_ADMIN_EMAILS`).
@@ -269,8 +269,8 @@ Em ordem de dependência real:
 | Gatilho | Ação recomendada |
 |---|---|
 | ~~**Agora** — Rodar Fase 0~~ | ✅ Feito nesta revisão (§1.1). Próximo gatilho real é o primeiro deploy contra um Postgres hospedado (não só local), para confirmar que o `ALTER DEFAULT PRIVILEGES` observado localmente se repete lá. |
-| **Antes de divulgar o mapa publicamente** | `0029` já aplicado + painel de moderação (item 3 do §4). |
-| **Antes do primeiro cliente pagante real** | Gateway de pagamento ligado a `0028` (item 2 do §4) + decisão de isolamento de infra revisitada (§2). |
+| **Antes de divulgar o mapa publicamente** | `0030` já aplicado + painel de moderação (item 3 do §4). |
+| **Antes do primeiro cliente pagante real** | Gateway de pagamento ligado a `0029` (item 2 do §4) + decisão de isolamento de infra revisitada (§2). |
 | **`progressao_eventos_log` passando de ~5-10 milhões de linhas** | Converter para `partition by range (criado_em)` mensal — criar a tabela particionada nova, copiar dado, trocar nome, mesmo padrão de qualquer migração de partição Postgres. Não fazer antes disso: é complexidade real por um problema que ainda não existe. |
 | **Contagem de negócios por bairro passando de ~1.000-5.000** | Trocar `mapa_resumo`/`bairro_resumo`/`benchmark_bairro`/`destaque_bairro` de função `stable` (calculada ao vivo) para **materialized view** com `refresh` agendado (ex.: a cada 5-15 min via cron/n8n, que já existe na VPS) — mesma lógica, só troca de "calcular toda vez" para "calcular periodicamente e servir cache". Índices já existem nas tabelas-base; a mudança é só na camada de leitura. |
 | **Mais de 1 região/país com fuso horário diferente** | Hoje `agoraGlobal()` (relógio de história) assume um relógio único — revisitar antes de expandir geografia para fora do Vale do Café/Brasil. |
@@ -288,10 +288,10 @@ Em ordem de dependência real:
    mais grave, `GRANT` de tabela ausente para todo role incluindo
    `service_role`) que nenhum parser de sintaxe pegaria e que teriam
    quebrado o primeiro deploy real na primeira query. Ambos corrigidos
-   (`0031`, `0032`) e reverificados — ver §1.1.
+   (`0032`, `0033`) e reverificados — ver §1.1.
 3. **Para produtizar de verdade** (cobrar de cliente real), falta: gateway
-   de pagamento (schema já pronto em `0028`), painel admin para orçamento e
-   moderação (schema já pronto em `0027`/`0029`), e uma decisão de produto
+   de pagamento (schema já pronto em `0029`), painel admin para orçamento e
+   moderação (schema já pronto em `0028`/`0030`), e uma decisão de produto
    sobre a ponte onboarding→CRM real (maior alavancagem, menor esforço
    técnico). Ver `docs/PRODUTIZACAO-PUNCH-LIST.md` para a versão acionável,
    com ordem de execução.
@@ -300,5 +300,5 @@ Em ordem de dependência real:
    complexidade que o volume atual não pede.
 5. **Próximo passo real de infraestrutura:** o primeiro deploy contra um
    Postgres hospedado de verdade (não só local) — para confirmar que a
-   causa raiz do bug do `0032` (`ALTER DEFAULT PRIVILEGES` por role que
+   causa raiz do bug do `0033` (`ALTER DEFAULT PRIVILEGES` por role que
    cria o objeto) se comporta igual fora do ambiente local do CLI.

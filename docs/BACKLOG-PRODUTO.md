@@ -1601,7 +1601,7 @@ está isolado" de "provei que está isolado".
 
 **Critérios de aceitação:**
 - [x] `supabase start && supabase db reset` roda sem erro — as 32 migrations
-      (`0001`–`0032`) aplicam limpo contra Postgres 17 real (stack local
+      (`0001`–`0033`) aplicam limpo contra Postgres 17 real (stack local
       isolada via `supabase` CLI, 2026-08-01)
 - [x] Teste provando que tenant A **não consegue** ler `negocios`/
       `membros`/`onboardings` de tenant B — confirmado via API REST real
@@ -1616,8 +1616,8 @@ está isolado" de "provei que está isolado".
       IA, parceria, nó, lição, oferta, login de demo via GoTrue real)
 
 **Achado no processo (2 bugs P0 reais, nunca antes detectáveis por parsing
-estático):** `0031` (execute da função `tenant_atual()` nunca liberado para
-`authenticated`) e `0032`, escrito nesta revisão (nenhuma tabela tinha
+estático):** `0032` (execute da função `tenant_atual()` nunca liberado para
+`authenticated`) e `0033`, escrito nesta revisão (nenhuma tabela tinha
 `GRANT` de base para `anon`/`authenticated`/`service_role` — RLS sem GRANT
 de tabela é letra morta no Postgres). Ver
 [`docs/architecture/DBA-ARQUITETURA-ESCALA-2026.md`](architecture/DBA-ARQUITETURA-ESCALA-2026.md)
@@ -2173,7 +2173,7 @@ presença organicamente, sem sharding técnico separado.
 - [x] CEP é dado **privado** — coluna `cep` em `negocios`, nunca em
       `negocios_publico`, `NovoNegocio.cep` opcional nos dois adapters
       (file + supabase)
-- [x] Migration `0033_localizacao_cep.sql` — `criar_negocio_com_lote`
+- [x] Migration `0034_localizacao_cep.sql` — `criar_negocio_com_lote`
       ganha `p_cep default null` (sobrecarga, não substitui — mesmo
       padrão de `0005/0012/0015/0018`)
 - [x] Validado contra Postgres real: as 33 migrations aplicam limpo,
@@ -2361,11 +2361,86 @@ prática padrão Terraform).
 
 ---
 
+## Épico LAB — Ecossistema no computador do escritório (P1)
+
+O computador/celular do escritório vira o "SO do negócio": cada projeto real
+do Laboratório Demarchi (site, app, automação, consultoria) entra como um app.
+Estudo e modelo de integração (N1 atalho / N2 iframe / N3 mini-app nativo) em
+[`documentos/ecossistema/`](../documentos/ecossistema/README.md).
+
+### GH-LAB-01 — Estúdio labdatadev: solicitar serviço + painel admin ✅
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | M |
+| Depende de | `GH-ATR-01` (degrau), `GH-OPS-04` (LGPD já publicada) |
+
+**Descrição:** O cliente pede site/app/automação/nova funcionalidade pelo
+computador do escritório (`/labdatadev`); o fundador gere tudo em
+`/admin/labdatadev`. Primeiro app do ecossistema dentro do jogo.
+
+**Critérios de aceitação:**
+- [x] Migration `0028_solicitacoes_servico` (RLS: cliente vê só o próprio;
+      escrita/admin via service_role) + `GameRepository` nos 2 adapters
+- [x] Domínio puro testado (`features/labdatadev/motor.ts`, 10 casos: funil de
+      status, resumo/KPIs)
+- [x] Server Actions gated (`souAdmin` para o painel; degrau mínimo para criar)
+- [x] Gate por degrau espelhado em menu + rota + Server Action (degrau ≥ 2)
+- [x] XP anti-farm só na 1ª solicitação (via `aplicarProgresso`)
+- [x] Entrada no menu lateral do World (ícone `monitor` → `/labdatadev`)
+- [x] Gates: typecheck, testes, build
+
+**Boas práticas:** união estreita fora de `lib/`; cor só por token; progressão
+só via `aplicarProgresso`; 🪙 do jogo nunca sugere pagamento real do serviço.
+
+---
+
+### GH-LAB-02 — Primeiro app externo no desktop: Portfólio (N1)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | P |
+| Depende de | `GH-LAB-01` |
+
+**Descrição:** Adicionar o Portfólio Demarchi como ícone do computador que
+abre `portfoliodemarchi.com.br` (atalho externo, nível N1 do modelo de
+integração). Ver [`documentos/ecossistema/01-portfolio-demarchi.md`](../documentos/ecossistema/01-portfolio-demarchi.md).
+
+**Critérios de aceitação:**
+- [ ] Catálogo genérico de "apps do computador" (id, nome, ícone, href, gate)
+      — o labdatadev e o Portfólio viram entradas, não código hardcodado
+- [ ] Confirmar se o site permite `<iframe>`; se não, manter N1 (nova aba)
+- [ ] Nenhum dado do jogador enviado ao site externo sem ação explícita
+
+---
+
+### GH-LAB-03 — "Comprar o computador" como gate real (evolução do degrau)
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P2 |
+| Esforço | M |
+| Depende de | `GH-LAB-01`, catálogo de móveis (`features/sede`) |
+
+**Descrição:** Hoje o estúdio libera por degrau (≥ 2). Evoluir para o modelo
+do produto: o desktop abre depois de **comprar o computador** (móvel da sede),
+e cada app "instala" conforme degrau/nível — com evento de gamificação
+(toast "Novo app instalado") ao liberar.
+
+**Critérios de aceitação:**
+- [ ] Comprar o móvel "computador" libera o desktop (além do gate de degrau)
+- [ ] Liberar um app dispara evento de gamificação (XP + toast), uma vez
+- [ ] Anti-farm: instalar/reinstalar não repaga
+
+---
+
 ## Cards novos — revisão de arquitetura/DBA (2026-08-01)
 
 > Adicionados por revisão de escala e produtização, ver
 > [`docs/architecture/DBA-ARQUITETURA-ESCALA-2026.md`](architecture/DBA-ARQUITETURA-ESCALA-2026.md).
-> Migrations já escritas e validadas por parser (`0027`–`0030`); falta a
+> Migrations já escritas e validadas por parser (`0028`–`0031`); falta a
 > tela/Server Action de cada card.
 
 ### GH-COM-01 — Solicitação de orçamento (fluxo "deals")
@@ -2374,7 +2449,7 @@ prática padrão Terraform).
 |---|---|
 | Prioridade | P1 |
 | Esforço | M |
-| Depende de | — (migration `0027` já aplicável) |
+| Depende de | — (migration `0028` já aplicável) |
 
 **Descrição:** cliente pede orçamento de um Funcionário de IA, job de
 marketplace ou serviço avulso sem precisar falar direto com o Antonio antes
@@ -2404,7 +2479,7 @@ cliente), urgência, orçamento aproximado opcional.
 | Esforço | G |
 | Depende de | `GH-COM-01` (fluxo de orçamento gera a 1ª assinatura) |
 
-**Descrição:** liga `assinaturas` (migration `0028`, hoje só estado) a um
+**Descrição:** liga `assinaturas` (migration `0029`, hoje só estado) a um
 gateway real — Stripe é a opção natural (skill `/stripe` disponível).
 Checkout cria a assinatura via `registrar_assinatura`; webhook do gateway
 chama `atualizar_status_assinatura`. **Não implementar cobrança real antes
@@ -2430,7 +2505,7 @@ IDs do gateway (`stripe_customer_id`/`stripe_subscription_id`).
 |---|---|
 | Prioridade | P1 |
 | Esforço | M |
-| Depende de | — (migration `0029` já aplicável) |
+| Depende de | — (migration `0030` já aplicável) |
 
 **Descrição:** antes de divulgar o mapa publicamente (Sebrae, redes
 sociais), precisa existir um jeito de tirar conteúdo abusivo do ar sem
@@ -2456,10 +2531,10 @@ tenant denunciante opcional.
 |---|---|
 | Prioridade | P2 |
 | Esforço | P |
-| Depende de | — (migration `0030` já aplicável, ledger já é populado
+| Depende de | — (migration `0031` já aplicável, ledger já é populado
   automaticamente por trigger, sem depender de nenhuma tela) |
 
-**Descrição:** `progressao_eventos_log` (migration `0030`) já grava sozinho
+**Descrição:** `progressao_eventos_log` (migration `0031`) já grava sozinho
 todo delta de xp/moeda/atributo via trigger. Este card é só a CONSUMPÇÃO:
 uma tela simples em `/painel` ("histórico de progresso") e, opcionalmente,
 um painel admin agregando por `origem` para responder "que tipo de ação
@@ -2474,7 +2549,7 @@ não bloqueia este card.
       últimos 30 dias") para investigar reclamação de saldo
 
 **Regras de segurança:** leitura só do próprio tenant (RLS já aplicada em
-`0030`).
+`0031`).
 
 **Dados trafegados:** tenantId, origem, deltas de xp/moeda/atributo,
 timestamp.
@@ -2605,7 +2680,7 @@ blast radius às custas de mais uma superfície de certificado para manter.
       (mesmo padrão de `deploy/nginx-supabase.conf.template`)
 - [ ] Certificado TLS válido
 - [ ] `GH-COM-01b`/`GH-COM-03` revisados: expor `/rest/v1` publicamente
-      exige que `revoke update` da migration `0034` já esteja aplicada
+      exige que `revoke update` da migration `0035` já esteja aplicada
       contra o Postgres hospedado (não só commitada) antes de considerar
       este card fechado
 
@@ -2619,8 +2694,8 @@ blast radius às custas de mais uma superfície de certificado para manter.
 | Esforço | M |
 | Depende de | — |
 
-**Descrição:** `0027_solicitacoes_orcamento`, `0028_assinaturas` e
-`0029_moderacao_conteudo` existem em SQL, com RLS e RPCs corretas, e **zero**
+**Descrição:** `0028_solicitacoes_orcamento`, `0029_assinaturas` e
+`0030_moderacao_conteudo` existem em SQL, com RLS e RPCs corretas, e **zero**
 código de aplicação as chama (`grep -rn "solicitacoes_orcamento\|
 moderar_conteudo\|registrar_assinatura" src/` → vazio). As rotas
 `/admin/orcamentos` e `/admin/moderacao` prometidas em
@@ -2644,7 +2719,7 @@ superfície de aplicação inteira não.
 | Esforço | G |
 | Depende de | `GH-COM-01b` (orçamento validado com cliente real antes de cobrar, regra de `PRODUTO-IA-FUNCIONARIOS.md` §7) |
 
-**Descrição:** `0028_assinaturas.sql` deixou tabela, máquina de estados,
+**Descrição:** `0029_assinaturas.sql` deixou tabela, máquina de estados,
 colunas `stripe_customer_id`/`stripe_subscription_id` e as RPCs
 (`registrar_assinatura`, `atualizar_status_assinatura`) prontas e
 restritas a `service_role` — mas nenhuma linha de aplicação as chama, e

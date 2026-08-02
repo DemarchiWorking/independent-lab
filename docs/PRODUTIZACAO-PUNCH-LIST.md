@@ -11,12 +11,12 @@
 ## Onde estamos (2026-08-01)
 
 - ✅ Schema pronto para os 3 fluxos de receita/confiança que faltavam:
-  orçamento (`0027`), assinatura (`0028`), moderação (`0029`), auditoria de
-  progressão (`0030`).
+  orçamento (`0028`), assinatura (`0029`), moderação (`0030`), auditoria de
+  progressão (`0031`).
 - ✅ **Fase 0 fechada de verdade** (`GH-OPS-03`): 32 migrations rodam limpo
   contra Postgres real, RLS comprovadamente isola tenant, o fluxo completo
   de cadastro→jogo→equipe de IA passa via `GAMEHUB_DB=supabase`. Dois bugs
-  P0 achados e corrigidos no processo (`0031`, `0032`) — sem isso, o modo
+  P0 achados e corrigidos no processo (`0032`, `0033`) — sem isso, o modo
   produção nunca teria funcionado, nem para o próprio app.
 - ⛔ Zero deploy real feito ainda (nenhuma VPS/Supabase hospedado recebeu
   este schema fora do ambiente de teste local desta revisão).
@@ -38,11 +38,11 @@ em porta livre (padrão `v4mos-nginx`/`labdatadev-nginx`), nunca tocar
 porta 80/443 do sistema.
 
 **Verificação obrigatória no primeiro deploy:** confirmar que o `GRANT`
-para `service_role` (causa raiz do bug do `0032`) se comporta igual num
+para `service_role` (causa raiz do bug do `0033`) se comporta igual num
 projeto hospedado — rodar `SEED_DEMO=1` contra ele antes de considerar o
 deploy "pronto", mesmo teste que validou o ambiente local.
 
-### 2. Painéis admin — desbloqueiam 0027/0029 (schema já existe, falta tela)
+### 2. Painéis admin — desbloqueiam 0028/0030 (schema já existe, falta tela)
 
 | Painel | Rota sugerida | RPC que já existe |
 |---|---|---|
@@ -63,7 +63,7 @@ estar testado com clientes reais pedindo orçamento — cobrar antes disso é
 construir a parte mais arriscada tecnicamente (dinheiro real, webhook,
 conciliação) para um fluxo de produto ainda não validado.
 
-**Quando chegar a hora:** `0028` já deixou `stripe_customer_id`/
+**Quando chegar a hora:** `0029` já deixou `stripe_customer_id`/
 `stripe_subscription_id` prontos e vazios. Falta: checkout (Stripe
 Checkout, não Elements — menor superfície de PCI compliance para o estágio
 atual) chamando `registrar_assinatura`, e um webhook handler validando HMAC

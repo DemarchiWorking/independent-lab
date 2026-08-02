@@ -1,5 +1,5 @@
 -- ============================================================================
--- Fecha o achado B2 da auditoria BMAD/NFR (2026-08-01, Épico 14): `0032`
+-- Fecha o achado B2 da auditoria BMAD/NFR (2026-08-01, Épico 14): `0033`
 -- deu `grant select, update` de TABELA INTEIRA em `negocios`/`onboardings`
 -- para `authenticated`, sem escopo de coluna — a policy de linha
 -- (`negocios_atualiza_proprio`, `0001_init.sql`) restringe QUAL linha, não

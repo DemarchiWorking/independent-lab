@@ -1,4 +1,4 @@
--- GH-OPS-08 — Corrige bug crítico P0 (mais fundamental que o de `0031`):
+-- GH-OPS-08 — Corrige bug crítico P0 (mais fundamental que o de `0032`):
 -- nenhuma tabela real do jogo tinha GRANT de privilégio básico para
 -- `anon`/`authenticated` — só a view `negocios_publico` (`0026`) tinha
 -- (`grant select on public.negocios_publico to anon, authenticated`).
@@ -21,7 +21,7 @@
 -- IMPACTO REAL: qualquer código client-side usando `supabaseAnon()` (que é
 -- exatamente o que `GH-MULTI-02/03` liga) falharia em TODA leitura/escrita
 -- de tabela privada, não só nas que a policy pretendia bloquear. Nunca foi
--- pego antes pelo mesmo motivo do `0031`: `SupabaseRepository` usa
+-- pego antes pelo mesmo motivo do `0032`: `SupabaseRepository` usa
 -- exclusivamente `supabaseAdmin()` (service_role, que ignora tanto GRANT
 -- quanto RLS por padrão do Supabase).
 --
@@ -71,7 +71,7 @@ grant select, insert on public.funcionarios_contratados to authenticated;
 -- pública já coberta pelo grant conjunto acima
 grant insert, update, delete on public.ofertas to authenticated;
 
--- Nota: `denuncias_conteudo` (`0029`) e `assinaturas`/`solicitacoes_*`
+-- Nota: `denuncias_conteudo` (`0030`) e `assinaturas`/`solicitacoes_*`
 -- (escrita) permanecem SEM grant de insert/update/delete para
 -- anon/authenticated de propósito — fila de moderação e escrita financeira
 -- só entram via RPC `security definer` como `service_role`, nunca direto
@@ -117,7 +117,7 @@ grant insert, update, delete on public.ofertas to authenticated;
 -- restringir verbo por tabela para ele, ao contrário de `anon`/
 -- `authenticated` acima. Concede-se tudo, de uma vez, nas tabelas que já
 -- existem, e fixa-se `ALTER DEFAULT PRIVILEGES` para que toda migration
--- FUTURA (`0033` em diante) herde o grant automaticamente — ninguém precisa
+-- FUTURA (`0034` em diante) herde o grant automaticamente — ninguém precisa
 -- lembrar de repetir isto de novo.
 grant all privileges on all tables in schema public to service_role;
 grant all privileges on all sequences in schema public to service_role;

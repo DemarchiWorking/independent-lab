@@ -369,7 +369,7 @@ Arestas:
 **Veredito: ⚠️ não. A afirmação subestima o que falta — mas o schema é bom e
 o gateway é, de fato, o item central.**
 
-Sendo justo com o que existe: `supabase/migrations/0028_assinaturas.sql` é
+Sendo justo com o que existe: `supabase/migrations/0029_assinaturas.sql` é
 uma peça madura. Tabela `assinaturas` com `preco_centavos` (snapshot, não FK
 para catálogo — raciocínio correto e documentado em `:13-19`), máquina de
 estados `pendente/ativa/inadimplente/cancelada`, `stripe_customer_id` e
@@ -393,8 +393,8 @@ tenant antes de inserir (`:76-81`). Isso não precisa mudar para o Stripe entrar
    `supabase-adapter.ts`, nem nada no `file-adapter.ts`.
 2. **Contratar um Funcionário de IA não cria assinatura nenhuma.**
    `repo.contratarFuncionario` (`repository.ts:120-123`) grava em
-   `funcionarios_contratados` e pronto. Nenhuma migration além da 0028
-   referencia `assinaturas` (só a 0032, para conceder `select`). Ou seja:
+   `funcionarios_contratados` e pronto. Nenhuma migration além da 0029
+   referencia `assinaturas` (só a 0033, para conceder `select`). Ou seja:
    mesmo com o Stripe pronto, **não há hoje o evento de domínio que
    originaria uma linha de assinatura** — falta ligar contratação →
    `registrar_assinatura`.
@@ -407,14 +407,14 @@ tenant antes de inserir (`:76-81`). Isso não precisa mudar para o Stripe entrar
 5. **O pré-requisito que a própria punch-list declara ainda não foi
    construído.** `docs/PRODUTIZACAO-PUNCH-LIST.md:58` é explícito: Stripe
    "só depois de validar o fluxo de orçamento com gente de verdade
-   (`GH-COM-01`)". Mas `0027_solicitacoes_orcamento.sql` também **não tem
+   (`GH-COM-01`)". Mas `0028_solicitacoes_orcamento.sql` também **não tem
    uma linha de código de aplicação** (`grep -rn "solicitacoes_orcamento\|
    solicitar_orcamento" src/` → vazio) e as rotas `/admin/orcamentos` e
    `/admin/moderacao` da §2 da punch-list não existem. O mesmo vale para
-   `0029_moderacao_conteudo.sql`.
+   `0030_moderacao_conteudo.sql`.
 
 **Tradução honesta:** existem hoje **três migrations comerciais órfãs**
-(0027 orçamento, 0028 assinaturas, 0029 moderação) — SQL de boa qualidade,
+(0028 orçamento, 0029 assinaturas, 0030 moderação) — SQL de boa qualidade,
 com RLS e RPCs corretas, e **zero** superfície de aplicação. O gateway
 (Stripe Checkout + webhook HMAC) é sim o item central e o mais arriscado,
 mas ele sozinho não fecha o ciclo: falta o método de repositório, o gancho na
@@ -522,7 +522,7 @@ instalado, app nenhum, e `final_message` anunciando sucesso.
 | Esforço | G |
 | Depende de | GH-COM-01 (orçamento) validado com cliente real, conforme `PRODUTO-IA-FUNCIONARIOS.md` §7 |
 
-**Descrição:** `0028_assinaturas.sql` deixou tabela, máquina de estados,
+**Descrição:** `0029_assinaturas.sql` deixou tabela, máquina de estados,
 colunas `stripe_*` e as duas RPCs (`registrar_assinatura`,
 `atualizar_status_assinatura`) prontas e restritas a `service_role` — mas
 **nenhuma linha de aplicação as chama**, e contratar um Funcionário de IA não
@@ -548,7 +548,7 @@ inteira.
 - [ ] Nenhuma chave secreta do Stripe em `NEXT_PUBLIC_*`
 
 **Regras de segurança:** escrita em `assinaturas` só por `service_role` via
-RPC (já garantido pela 0028); webhook rejeita payload sem assinatura válida
+RPC (já garantido pela 0029); webhook rejeita payload sem assinatura válida
 antes de qualquer efeito colateral.
 
 ---
@@ -561,8 +561,8 @@ antes de qualquer efeito colateral.
 | Esforço | M |
 | Depende de | — |
 
-**Descrição:** `0027_solicitacoes_orcamento`, `0028_assinaturas` e
-`0029_moderacao_conteudo` existem em SQL, com RLS e RPCs corretas, e **zero**
+**Descrição:** `0028_solicitacoes_orcamento`, `0029_assinaturas` e
+`0030_moderacao_conteudo` existem em SQL, com RLS e RPCs corretas, e **zero**
 código de aplicação (`grep -rn "solicitacoes_orcamento\|moderar_conteudo\|
 registrar_assinatura" src/` → vazio). As rotas `/admin/orcamentos` e
 `/admin/moderacao` prometidas em `PRODUTIZACAO-PUNCH-LIST.md:45-56` não

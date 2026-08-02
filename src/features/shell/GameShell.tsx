@@ -18,6 +18,7 @@ import { MapaScreen } from "@/features/mapa/MapaScreen";
 import { EquipeIaScreen } from "@/features/equipe-ia/EquipeIaScreen";
 import { SedeScreen } from "@/features/sede/SedeScreen";
 import { MercadoScreen } from "@/features/mercado/MercadoScreen";
+import { DEGRAU_MINIMO_LABDATADEV } from "@/features/labdatadev/tipos";
 import { FinancasScreen } from "@/features/financas/FinancasScreen";
 import { CelularPanel } from "./CelularPanel";
 import { InventarioPanel } from "./InventarioPanel";
@@ -51,8 +52,9 @@ type CoreView =
 export type View = CoreView | ModuleKey;
 
 /** Chaves do menu lateral: as views do shell + entradas que só navegam para
- *  uma rota própria (o World). "world" nunca vira `view` — tem href. */
-type LateralKey = View | "world";
+ *  uma rota própria (o World, o estúdio labdatadev). Essas nunca viram
+ *  `view` — têm href. */
+type LateralKey = View | "world" | "labdatadev";
 
 const NAV_BASE: ReadonlyArray<NavItem<CoreView>> = [
   { key: "hub", label: "Hub", icon: "grid" },
@@ -180,6 +182,11 @@ export function GameShell({
     moedaVirtual !== undefined &&
     atributos !== undefined;
   const temMercado = Boolean(benchmark && atributos && endereco);
+  // Computador do escritório (labdatadev): liberado a partir do degrau mínimo
+  // — "depois do diagnóstico, você começa a construir". Gate espelhado na rota
+  // e na Server Action (fonte de verdade).
+  const temLabdatadev =
+    degrauAtual !== undefined && degrauAtual >= DEGRAU_MINIMO_LABDATADEV;
   const navItems = [
     NAV_BASE[0],
     ...(temSede ? [NAV_SEDE] : []),
@@ -205,6 +212,15 @@ export function GameShell({
       destaque: true,
     },
     { key: "sede", label: "Sede (resumo)", icon: "cube", disponivel: temSede },
+    // Computador do escritório: o estúdio labdatadev, onde o cliente pede
+    // site/app/automação e novas funcionalidades (rota própria /labdatadev).
+    {
+      key: "labdatadev",
+      label: "labdatadev · Estúdio",
+      icon: "monitor",
+      href: "/labdatadev",
+      disponivel: temLabdatadev,
+    },
     { key: "parcerias", label: "Parcerias", icon: "network" },
     { key: "eventos", label: "Eventos", icon: "calendar" },
     { key: "mapa", label: "Mapa da região", icon: "globe", disponivel: temMapa },
@@ -337,7 +353,8 @@ export function GameShell({
           items={lateralItems}
           current={view}
           onSelect={(k) => {
-            if (k !== "world") go(k); // "world" navega por href, não troca de aba
+            // "world" e "labdatadev" navegam por href (rota própria), não trocam de aba
+            if (k !== "world" && k !== "labdatadev") go(k);
           }}
         />
 

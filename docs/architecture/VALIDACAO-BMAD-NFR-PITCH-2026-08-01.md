@@ -190,7 +190,7 @@ imprecisão de medição** — exatamente o mesmo padrão do bug do Kong.
 **Severidade:** ALTA (bloqueante **condicional** — acoplado a B1)
 **Domínio:** Segurança / Integridade de dados
 
-`0032_grant_base_privileges_authenticated.sql:60`:
+`0033_grant_base_privileges_authenticated.sql:60`:
 
 ```sql
 grant select, update on public.negocios to authenticated;
@@ -222,12 +222,12 @@ está no bundle por design), o GRANT permite, a RLS permite (é a própria linha
 Isso contraria diretamente a regra não-negociável nº 5 do `AGENTS.md`
 ("Progressão só muda via `repo.aplicarProgresso`") e a nº 4 (regra de negócio
 server-side é a fonte de verdade). O trigger `negocios_registrar_progresso_log`
-(`0030`) **registra** a alteração como `nao_rotulado` — detecta, não previne.
+(`0031`) **registra** a alteração como `nao_rotulado` — detecta, não previne.
 
 **Escopo real do dano:** trapaça na própria linha. **Não** há vazamento
 cross-tenant — `0026` (view de fachada com colunas explícitas, sem
-`security_invoker`) e `0032` estão corretos nesse ponto, e a coluna `cep` de
-`0033` de fato não vaza. A auditoria confirma que a disciplina de RLS deste
+`security_invoker`) e `0033` estão corretos nesse ponto, e a coluna `cep` de
+`0034` de fato não vaza. A auditoria confirma que a disciplina de RLS deste
 projeto é boa; este é um buraco pontual, não sistêmico.
 
 **Correção sugerida (uma migration, ~15 min):** trocar por GRANT de coluna —
@@ -412,13 +412,13 @@ corretos — não mexer neles em nome das correções acima:
   correto. Foi um achado de alto valor.
 - **Disciplina de RLS** — `0026` (view de fachada com colunas explícitas, sem
   `security_invoker`, com a justificativa escrita para ninguém "consertar"
-  depois) e `0032` (GRANT ≠ RLS; verbo mínimo por tabela; `alter default
+  depois) e `0033` (GRANT ≠ RLS; verbo mínimo por tabela; `alter default
   privileges` para migrations futuras) são trabalho de qualidade acima da
   média. B2 é a exceção pontual, não o padrão.
 - **`GH-CEP-01`** — `cep.ts` valida `^\d{8}$` **antes** de qualquer requisição
   de rede (sem SSRF), tem `AbortController` com timeout de 3s, degrada para
   `null` em toda falha, e a rota `api/localizacao/cep/[cep]` herda o rate
-  limit `gamehub_geral` (20r/s) do `nginx.conf`. A coluna `cep` de `0033` é
+  limit `gamehub_geral` (20r/s) do `nginx.conf`. A coluna `cep` de `0034` é
   privada de fato — `negocios_publico` lista colunas explicitamente e não a
   inclui. Nenhuma ressalva.
 - **Segredos** — `.env` e `deploy/supabase/.env` com `chmod 600` e cobertos
@@ -464,7 +464,7 @@ corretos — não mexer neles em nome das correções acima:
    (WebSocket + `read_timeout` longo) e `supabase-up.sh` chamado **com** os
    domínios a partir do `setup.sh --labd-cloud`. *Validação:* `curl -i` de
    handshake retornando 101 **pelo domínio público**, não por loopback.
-3. **B2** — migration `0034` trocando o `grant update` de tabela por GRANT de
+3. **B2** — migration `0035` trocando o `grant update` de tabela por GRANT de
    coluna (ou `revoke` puro) em `negocios` e `onboardings`. *Validação:*
    `PATCH` de `xp` com JWT `authenticated` real retornando erro de permissão.
 4. **Teste de aceitação do pitch, feito uma vez de ponta a ponta:** dois
@@ -553,7 +553,7 @@ nfr_assessment:
   `src/features/world/presenca/canalUtil.ts`, `src/features/world/VisitaScreen.tsx`,
   `src/lib/localizacao/cep.ts`, `src/app/api/localizacao/cep/[cep]/route.ts`,
   `src/lib/db/file-adapter.ts`, `src/lib/auth/sessao.ts`,
-  `supabase/migrations/0001`, `0026`, `0030`, `0032`, `0033`
+  `supabase/migrations/0001`, `0026`, `0031`, `0033`, `0034`
 - Evidência empírica: bundle cliente extraído da imagem
   `labdatadev-gamehub:latest`; `docker ps`/`free`/`nproc`/`ss` na VPS
 

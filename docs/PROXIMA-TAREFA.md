@@ -18,7 +18,7 @@
 >   presença agora vem por prop de Server Component, nunca lida de
 >   `process.env` em código `"use client"` — ver `GH-MULTI-04` no backlog);
 >   o buraco de segurança B2 (`grant update` sem escopo de coluna em
->   `negocios`/`onboardings`, migration `0034`); o gate `npm run build`
+>   `negocios`/`onboardings`, migration `0035`); o gate `npm run build`
 >   (estava RED na VPS com o `.env` real, `GH-OPS-07`, agora GREEN —
 >   verificado de novo agora: `typecheck` 0 erros, `test` 311/311,
 >   `build` verde); os dois bugs do cloud-init "1-click" (`GH-ESC-05`).
@@ -29,7 +29,7 @@
 >   propósito por um agente sozinho — ver o card). Não anunciar "metaverso
 >   ao vivo" no pitch até isso fechar (`GH-MULTI-04`).
 > - ⚠️ **Monetização não é "só conectar o meio de pagamento":** o schema
->   (`0027`/`0028`/`0029`) é bom, mas **zero linha de código de aplicação**
+>   (`0028`/`0029`/`0030`) é bom, mas **zero linha de código de aplicação**
 >   chama essas migrations hoje — falta a superfície inteira
 >   (`GH-COM-01b`, `GH-COM-03`). Tratar como semanas de trabalho, não
 >   horas, ao comunicar prazo de monetização.
@@ -63,7 +63,7 @@
 > (linha `⛔ precisa do usuário — Docker/Supabase local`) **foi executada e
 > fechada** — as 32 migrations rodam limpo contra Postgres real, RLS
 > comprovadamente isola tenant, `SEED_DEMO` passa via `GAMEHUB_DB=supabase`.
-> Dois bugs P0 achados e corrigidos (`0031`, `0032` — este último é o mais
+> Dois bugs P0 achados e corrigidos (`0032`, `0033` — este último é o mais
 > importante: nenhuma tabela tinha `GRANT` de base para `anon`/
 > `authenticated`/`service_role`, o que teria quebrado até o próprio app em
 > produção, não só multiplayer). Ver
