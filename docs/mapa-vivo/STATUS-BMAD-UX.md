@@ -191,6 +191,35 @@ pedido original) — isso depende da fase de arquitetura (Winston) que
 ainda não rodou. Fase 1 só tocou a Sede (cor de presença + badge), que
 era segura de fazer sem essa decisão.
 
+## Fase 1.5 — descoberta importante + anel de tier no Mapa real (commit `0c2c0f2`)
+
+**Correção de uma suposição errada da spec:** `DESIGN.md`/`EXPERIENCE.md`
+assumiam que o Mapa (`features/mapa/`) usa Pixi.js, igual à Sede. **Não
+usa** — `QuarteiraoIso.tsx`/`IsoLot.tsx` são DOM/CSS puro (divs
+posicionados com matemática isométrica, `<motion.button>` de verdade).
+Isso é uma BOA notícia: elimina o achado crítico de acessibilidade "lista
+DOM espelhada pra navegar por teclado num canvas" — o Mapa já é DOM, `Tab`
+nativo já funciona, `IsoLot` já tem `aria-label`. `docs/mapa-vivo/`
+precisa de uma atualização formal desse ponto na próxima sessão (não deu
+tempo nesta, contexto ficou curto) — por ora, este parágrafo é a fonte da
+verdade.
+
+**Implementado e em produção:** `IsoLot` ganhou prop `tier` (usa
+`degrauAtual`, já disponível em `NegocioResumo` — zero query nova) — anel
+de cor ao redor do prédio da sede no lote, eixo visual independente do
+ícone/cor de segmento que já existia. `lib/tier.ts` ganhou
+`classeAnelTier()` (lookup estático `ring-tier-N`, nunca string
+interpolada — Tailwind não geraria o CSS senão). Gates verdes
+(typecheck+test+build), deployado, sem erro nos logs.
+
+**Não validado visualmente ainda** (diferente da Sede): a screenshot de
+produção desta sessão caiu no `/hub` em vez do Mapa (o seletor usado no
+script não encontrou a aba certa) — contexto acabou antes de eu
+reformular o script. **Próxima sessão: primeira coisa a fazer** é abrir
+`/hub` de verdade (login `demarchiworking@gmail.com`), clicar na aba
+Mapa (ícone de rede, 2ª posição na nav inferior esquerda pela screenshot
+de `/hub`), e confirmar visualmente o anel de tier num lote ocupado.
+
 ## Próxima ação concreta (sempre manter esta linha atualizada)
 
 Mockups validados (2 bugs corrigidos), Fase 1 real implementada e em
