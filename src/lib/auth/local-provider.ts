@@ -15,7 +15,10 @@ interface Credencial {
   email: string;
   usuarioId: string;
   hash: string;
+  recuperacao?: { codigo: string; expiraEm: string };
 }
+
+const RECUPERACAO_VALIDADE_MS = 15 * 60 * 1000; // 15 min
 
 async function ler(): Promise<Credencial[]> {
   try {
@@ -67,5 +70,49 @@ export class LocalAuthProvider implements AuthProvider {
   async removerConta(usuarioId: string): Promise<void> {
     const lista = await ler();
     await escrever(lista.filter((c) => c.usuarioId !== usuarioId));
+  }
+
+  /**
+   * Modo arquivo não tem infraestrutura de e-mail (é smoke-test local, ver
+   * `AGENTS.md`) — o código vai pro log do servidor em vez de uma caixa de
+   * entrada real, pra quem estiver testando localmente conseguir seguir o
+   * fluxo inteiro sem depender de Resend/SMTP.
+   */
+  async solicitarRecuperacaoSenha(email: string): Promise<void> {
+    const lista = await ler();
+    const normalizado = email.toLowerCase();
+    const idx = lista.findIndex((c) => c.email === normalizado);
+    if (idx === -1) return; // silencioso — nunca revela se o e-mail existe
+
+    const codigo = String(Math.floor(100000 + Math.random() * 900000));
+    lista[idx] = {
+      ...lista[idx],
+      recuperacao: {
+        codigo,
+        expiraEm: new Date(Date.now() + RECUPERACAO_VALIDADE_MS).toISOString(),
+      },
+    };
+    await escrever(lista);
+    console.log(`[recuperação-senha DEV] código para ${email}: ${codigo}`);
+  }
+
+  async confirmarRecuperacaoSenha(
+    email: string,
+    codigo: string,
+    novaSenha: string,
+  ): Promise<boolean> {
+    const lista = await ler();
+    const normalizado = email.toLowerCase();
+    const idx = lista.findIndex((c) => c.email === normalizado);
+    if (idx === -1) return false;
+
+    const rec = lista[idx].recuperacao;
+    if (!rec || rec.codigo !== codigo || new Date(rec.expiraEm) < new Date()) {
+      return false;
+    }
+
+    lista[idx] = { ...lista[idx], hash: await hashSenha(novaSenha), recuperacao: undefined };
+    await escrever(lista);
+    return true;
   }
 }

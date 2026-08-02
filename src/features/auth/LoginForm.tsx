@@ -43,6 +43,12 @@ export function LoginForm() {
         />
       </div>
 
+      <p className="mt-2 text-right text-[11px]">
+        <Link href="/recuperar-senha" className="font-bold text-teal underline">
+          Esqueci minha senha
+        </Link>
+      </p>
+
       {estado.erro ? (
         <p className="mt-3 rounded-sm bg-coral/15 px-3 py-2 text-xs font-bold text-coral-dark">
           {estado.erro}

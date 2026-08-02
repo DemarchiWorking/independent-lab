@@ -21,6 +21,8 @@ import type { Respostas, Segmento } from "@/lib/db/types";
 
 export interface EstadoForm {
   erro?: string;
+  /** GH-SEC-03: mensagem de sucesso sem redirect (ex.: "código enviado"). */
+  sucesso?: string;
 }
 
 /** Item que toda empresa ganha ao nascer — ver `MESA_DE_BOAS_VINDAS` abaixo. */
@@ -272,6 +274,51 @@ export async function entrar(
     email,
   });
   redirect("/painel");
+}
+
+/**
+ * GH-SEC-03, etapa 1: sempre devolve a mesma mensagem de sucesso, exista ou
+ * não conta com este e-mail — evita que o formulário vire um jeito de
+ * descobrir quais e-mails têm cadastro (mesmo princípio de `entrar`).
+ */
+export async function solicitarRecuperacao(
+  _anterior: EstadoForm,
+  fd: FormData,
+): Promise<EstadoForm> {
+  const auth = getAuthProvider();
+  const email = texto(fd, "email").toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { erro: "E-mail inválido." };
+  }
+
+  await auth.solicitarRecuperacaoSenha(email).catch((erro) => {
+    console.error("[recuperação-senha] falha ao solicitar:", erro);
+  });
+
+  return {
+    sucesso: "Se este e-mail tiver uma conta, enviamos um código de 6 dígitos. Confira sua caixa de entrada.",
+  };
+}
+
+/** GH-SEC-03, etapa 2: código + nova senha → troca e manda logar de novo. */
+export async function confirmarRecuperacao(
+  _anterior: EstadoForm,
+  fd: FormData,
+): Promise<EstadoForm> {
+  const auth = getAuthProvider();
+  const email = texto(fd, "email").toLowerCase();
+  const codigo = texto(fd, "codigo").replace(/\D/g, "");
+  const novaSenha = String(fd.get("novaSenha") ?? "");
+
+  if (!/^\d{6}$/.test(codigo)) return { erro: "O código tem 6 dígitos." };
+  if (novaSenha.length < 8) {
+    return { erro: "A nova senha precisa ter pelo menos 8 caracteres." };
+  }
+
+  const ok = await auth.confirmarRecuperacaoSenha(email, codigo, novaSenha);
+  if (!ok) return { erro: "Código incorreto ou expirado. Peça um novo." };
+
+  redirect("/entrar");
 }
 
 export async function sair(): Promise<void> {
