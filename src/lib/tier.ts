@@ -21,6 +21,23 @@ export function classeTier(degrau: number): string {
   return TIER_BG_CLASS[chave];
 }
 
+/** Variante `ring-*` (anel/contorno) — classe própria, NUNCA
+ *  `classeTier(...).replace("bg-", "ring-")`: transformação em runtime
+ *  não é uma string literal, o scanner do Tailwind não encontra a classe
+ *  em build time e o CSS nunca é gerado (fica sem efeito, silenciosamente). */
+export const TIER_RING_CLASS: Record<TierChave, string> = {
+  1: "ring-tier-1",
+  2: "ring-tier-2",
+  3: "ring-tier-3",
+  4: "ring-tier-4",
+  5: "ring-tier-5",
+};
+
+export function classeAnelTier(degrau: number): string {
+  const chave = (degrau >= 1 && degrau <= 5 ? degrau : 1) as TierChave;
+  return TIER_RING_CLASS[chave];
+}
+
 /**
  * Nome da metáfora de árvore (Mapa Vivo, `docs/mapa-vivo/DESIGN.md`) — NOVA
  * nomenclatura, criada só pra este sistema de pin/badge. Deliberadamente

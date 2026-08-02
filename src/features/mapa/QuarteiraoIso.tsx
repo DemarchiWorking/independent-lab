@@ -60,6 +60,7 @@ export function QuarteiraoIso({
               icon={seg?.icon}
               ehJogador={lote.negocio?.id === meuTenantId}
               selecionado={selecionadoLote === lote.numero}
+              tier={lote.negocio?.degrauAtual}
               onClick={() => lote.negocio && onSelecionar(lote.numero)}
             />
           );
