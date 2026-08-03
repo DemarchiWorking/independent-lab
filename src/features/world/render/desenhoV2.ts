@@ -270,15 +270,19 @@ export function desenharMovelV2({ cor, categoria, selecionado, itemId }: OpcoesM
     }
     case "quadro-metas": {
       // placa vertical numa base fina — "quadro de pé", não pendurado, pra
-      // não exigir geometria de parede nova
+      // não exigir geometria de parede nova. A base (`caixaIso` com escala
+      // 0.5, altura 3) tem seu ponto mais alto em `-(h + altura) = -11`
+      // (h = (TILE_H/2)*0.5 = 8) — o painel começa exatamente aí, senão
+      // sobra uma fresta entre o pedestal e o quadro (achado ao validar
+      // visualmente esta fase: estava em `-44`, 3px acima do pedestal).
       caixaIso(g, ajustarBrilho(cor, 0.6), 0.5, 3);
       const painel = ajustarBrilho(cor, 0.5);
-      g.rect(-11, -44, 22, 30).fill({ color: painel });
-      g.rect(-11, -44, 22, 30).stroke({ width: 1.5, color: ajustarBrilho(cor, 0.35) });
+      g.rect(-11, -41, 22, 30).fill({ color: painel });
+      g.rect(-11, -41, 22, 30).stroke({ width: 1.5, color: ajustarBrilho(cor, 0.35) });
       // barrinhas de "gráfico" dentro do quadro
       const alturas = [6, 11, 8, 14];
       alturas.forEach((h, i) => {
-        g.rect(-8 + i * 5, -16 - h, 3.2, h).fill({ color: CENARIO.realce, alpha: 0.9 });
+        g.rect(-8 + i * 5, -13 - h, 3.2, h).fill({ color: CENARIO.realce, alpha: 0.9 });
       });
       break;
     }
@@ -401,6 +405,35 @@ export function desenharAvatarV2({ cor, nome, dono, cargoId }: OpcoesAvatarV2): 
 
   return grupo;
 }
+
+/**
+ * Largura-alvo (px) da PEGADA de cada silhueta no chão — a mesma largura que
+ * `desenharMovelV2` (acima) já desenha via `caixaIso(g, cor, escala, ...)`,
+ * onde `largura = TILE_W * escala`. É a fonte de verdade para normalizar o
+ * tamanho dos sprites do Degrau B (`spritesV2.ts`): cada PNG vem num
+ * tamanho de pixel bruto diferente (o pack de origem não segue a grade
+ * 64×32 deste jogo), então sem essa normalização um sprite renderiza no
+ * tamanho nativo do arquivo — nada sobre a mesa, sofá e estante ficarem em
+ * escalas completamente diferentes entre si e maiores que a própria célula.
+ *
+ * Usar a MESMA largura do procedural (em vez de um número novo) garante que
+ * a troca sprite↔procedural do fallback (`spritesV2.ts`, "sprite falhou ao
+ * carregar") nunca faz a sala "pular de tamanho" — exigência explícita de
+ * `ARQUITETURA-VISUAL-ITENS-SEDE.md` §4, Fase 1.
+ *
+ * A escala aplicada ao sprite é sempre UNIFORME (mesmo fator em x e y) —
+ * nunca esticar só a largura ou só a altura, o que distorceria o ângulo
+ * isométrico já desenhado na própria arte.
+ */
+export const LARGURA_ALVO_PX: Record<SilhuetaMovel, number> = {
+  "mesa-trabalho": TILE_W * 0.85,
+  "estacao-dupla": TILE_W * 1.05,
+  "servidor-local": TILE_W * 0.58,
+  "sofa-recepcao": TILE_W * 1.1,
+  "estante-executiva": TILE_W * 0.66,
+  "planta-tropical": TILE_W * 0.55,
+  "quadro-metas": TILE_W * 0.5,
+};
 
 /** Mapeia `ItemMobilia.id` (catálogo) → `SilhuetaMovel` reconhecida acima.
  *  Único ponto que precisa mudar quando um item novo entrar na loja. */

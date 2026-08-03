@@ -4,6 +4,7 @@ import { sombraNoChao } from "./desenho";
 import { CENARIO } from "./cores";
 import {
   desenharMovelV2,
+  LARGURA_ALVO_PX,
   SILHUETA_POR_ITEM_ID,
   type OpcoesMovelV2,
   type SilhuetaMovel,
@@ -40,6 +41,34 @@ export const SPRITE_POR_SILHUETA: Partial<Record<SilhuetaMovel, string>> = {
 };
 
 /**
+ * Âncora horizontal (fração 0–1 da largura do PNG) do pé de apoio real de
+ * cada móvel — NÃO é sempre 0.5. Achado ao validar visualmente esta fase:
+ * `sofa-recepcao.png` e os dois compostos de mesa (`mesa-trabalho.png`,
+ * `estacao-dupla.png`) têm o pé/base bem fora do centro geométrico da
+ * imagem (ex.: 0.30 e 0.74), porque o Kenney Furniture Kit já entrega cada
+ * PNG recortado rente ao próprio desenho — o recorte apaga qualquer
+ * referência de "origem da tile" que existisse numa folha maior, e um
+ * objeto assimétrico (sofá com um braço, mesa composta com monitor
+ * deslocado) não fica com o pé no centro do retângulo resultante. Usar
+ * `anchor.x = 0.5` (padrão do Pixi) nesses casos ancora o CENTRO DA IMAGEM
+ * no centro do tile em vez do PÉ REAL — o objeto aparece deslocado do
+ * próprio tapete de sombra (`sombraNoChao`, sempre centrado em `(0,0)`).
+ *
+ * Valores medidos programaticamente (não chutados): para cada PNG, pega os
+ * últimos ~5% de linhas com pixel opaco (a banda de contato com o chão) e
+ * calcula o centro de massa horizontal dela, como fração da largura total.
+ * Itens ausentes daqui (ex. `servidor-local`, já ~0.5 por ser simétrico)
+ * usam o fallback padrão em `criarDesenhadorMovelComSprites`.
+ */
+const ANCORA_X_POR_SILHUETA: Partial<Record<SilhuetaMovel, number>> = {
+  "mesa-trabalho": 0.656,
+  "estacao-dupla": 0.297,
+  "sofa-recepcao": 0.743,
+  "estante-executiva": 0.622,
+  "planta-tropical": 0.453,
+};
+
+/**
  * Carrega as texturas uma vez. Falha de UM item nunca derruba os outros —
  * cada `Assets.load` é isolado no próprio `catch`, e o item que falhar
  * simplesmente não entra no mapa devolvido (fica undefined → procedural).
@@ -73,6 +102,18 @@ export async function carregarTexturasMovel(): Promise<
  * Âncora do sprite: `(0.5, 1)` — base centralizada, o ponto mais baixo do
  * PNG (já recortado à silhueta) encosta no chão, mesmo critério que
  * `sombraNoChao()` já assume para todo o resto da cena.
+ *
+ * Escala do sprite: cada PNG do pack de origem vem num tamanho de pixel
+ * bruto próprio (ex.: sofá 86px, servidor 17px de largura — nada relacionado
+ * à grade de 64×32 deste jogo). Sem normalizar, o sprite renderiza no
+ * tamanho nativo do arquivo — o bug real encontrado ao validar visualmente
+ * esta fase: móveis ocupando 2-3 células ou flutuando menores que a sombra.
+ * A correção aplica um fator ÚNICO (mesmo em x e y, nunca esticar só um
+ * eixo — distorceria o ângulo isométrico já desenhado na arte) que leva a
+ * largura do PNG para `LARGURA_ALVO_PX[silhueta]`, a mesma largura que o
+ * procedural (`desenharMovelV2`) já usa — ver o comentário de
+ * `LARGURA_ALVO_PX` em `desenhoV2.ts` para por que é a mesma e não um
+ * número novo.
  */
 export function criarDesenhadorMovelComSprites(
   texturas: Partial<Record<SilhuetaMovel, Texture>>,
@@ -80,13 +121,15 @@ export function criarDesenhadorMovelComSprites(
   return (opcoes: OpcoesMovelV2) => {
     const silhueta = opcoes.itemId ? SILHUETA_POR_ITEM_ID[opcoes.itemId] : undefined;
     const textura = silhueta ? texturas[silhueta] : undefined;
-    if (!textura) return desenharMovelV2(opcoes);
+    if (!textura || !silhueta) return desenharMovelV2(opcoes);
 
     const grupo = new Container();
     grupo.addChild(sombraNoChao());
 
     const sprite = new Sprite(textura);
-    sprite.anchor.set(0.5, 1);
+    sprite.anchor.set(ANCORA_X_POR_SILHUETA[silhueta] ?? 0.5, 1);
+    const escala = LARGURA_ALVO_PX[silhueta] / textura.width;
+    sprite.scale.set(escala);
     grupo.addChild(sprite);
 
     const realce = new Graphics()
