@@ -1,0 +1,21 @@
+Sprites de mobília da Sede (World) — origem e licença
+======================================================
+
+Fonte: "Furniture Kit" por Kenney (www.kenney.nl)
+Licença: CC0 (Creative Commons Zero / domínio público) — uso livre em
+projetos pessoais, educacionais e comerciais, sem atribuição obrigatória.
+http://creativecommons.org/publicdomain/zero/1.0/
+
+Arquivos originais (variante de rotação "_SW", 2D isométrico) extraídos de
+kenney_furniture-kit.zip e recombinados/recortados neste diretório:
+
+- mesa-trabalho.png       = desk_SW.png + computerScreen_SW.png (composto)
+- estacao-dupla.png       = deskCorner_SW.png + 2x computerScreen_SW.png (composto)
+- servidor-local.png      = speaker_SW.png (recortado)
+- sofa-recepcao.png       = loungeDesignSofa_SW.png (recortado)
+- estante-executiva.png   = bookcaseOpen_SW.png (recortado)
+- planta-tropical.png     = pottedPlant_SW.png (recortado)
+
+"quadro-metas" não tem sprite correspondente no pack — continua desenhado
+proceduralmente (ver render/desenhoV2.ts), demonstrando o fallback
+item-a-item descrito em docs/architecture/ARQUITETURA-VISUAL-ITENS-SEDE.md.

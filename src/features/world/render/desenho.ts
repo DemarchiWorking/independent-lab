@@ -14,15 +14,18 @@ import { ajustarBrilho, CENARIO } from "./cores";
  * média → face esquerda escura. É o que dá leitura de volume ao bloco iso.
  */
 
-const BRILHO_TOPO = 1.0;
-const BRILHO_DIREITA = 0.78;
-const BRILHO_ESQUERDA = 0.58;
+// Exportadas (só visibilidade — valores e comportamento intocados) para que
+// `render/desenhoV2.ts` reutilize a MESMA convenção de luz em vez de duplicar
+// os números e arriscar as duas camadas divergirem visualmente.
+export const BRILHO_TOPO = 1.0;
+export const BRILHO_DIREITA = 0.78;
+export const BRILHO_ESQUERDA = 0.58;
 
 /** Altura visual de uma parede, em px. */
 export const ALTURA_PAREDE = 58;
 
 /** Losango do tile centrado em (0,0) — a unidade visual de todo o palco. */
-function losango(g: Graphics, cor: number, alpha = 1): Graphics {
+export function losango(g: Graphics, cor: number, alpha = 1): Graphics {
   return g
     .poly([0, -TILE_H / 2, TILE_W / 2, 0, 0, TILE_H / 2, -TILE_W / 2, 0])
     .fill({ color: cor, alpha });
@@ -132,7 +135,7 @@ export function desenharParedes(cols: number, rows: number): Container {
 }
 
 /** Sombra elíptica no chão — cola o objeto no piso em vez de flutuar. */
-function sombraNoChao(largura = TILE_W * 0.42, altura = TILE_H * 0.38): Graphics {
+export function sombraNoChao(largura = TILE_W * 0.42, altura = TILE_H * 0.38): Graphics {
   return new Graphics()
     .ellipse(0, 0, largura, altura)
     .fill({ color: CENARIO.sombra, alpha: 0.22 });
@@ -143,30 +146,35 @@ function sombraNoChao(largura = TILE_W * 0.42, altura = TILE_H * 0.38): Graphics
  * `escala` encolhe a pegada no tile (1 = tile inteiro); `baseY` empilha uma
  * caixa em cima de outra.
  */
-function caixaIso(
+export function caixaIso(
   g: Graphics,
   cor: number,
   escala: number,
   altura: number,
   baseY = 0,
+  /** deslocamento horizontal do centro da caixa — default 0 preserva o
+   *  comportamento de sempre. Adicionado para `desenharMovelV2` compor mais
+   *  de um volume lado a lado no mesmo tile (ex.: dois monitores). */
+  offsetX = 0,
 ): void {
   const w = (TILE_W / 2) * escala;
   const h = (TILE_H / 2) * escala;
+  const dx = offsetX;
 
   // face esquerda
-  g.poly([-w, baseY, 0, baseY + h, 0, baseY + h - altura, -w, baseY - altura]).fill({
+  g.poly([dx - w, baseY, dx, baseY + h, dx, baseY + h - altura, dx - w, baseY - altura]).fill({
     color: ajustarBrilho(cor, BRILHO_ESQUERDA),
   });
   // face direita
-  g.poly([0, baseY + h, w, baseY, w, baseY - altura, 0, baseY + h - altura]).fill({
+  g.poly([dx, baseY + h, dx + w, baseY, dx + w, baseY - altura, dx, baseY + h - altura]).fill({
     color: ajustarBrilho(cor, BRILHO_DIREITA),
   });
   // topo
   g.poly([
-    0, baseY - h - altura,
-    w, baseY - altura,
-    0, baseY + h - altura,
-    -w, baseY - altura,
+    dx, baseY - h - altura,
+    dx + w, baseY - altura,
+    dx, baseY + h - altura,
+    dx - w, baseY - altura,
   ]).fill({ color: ajustarBrilho(cor, BRILHO_TOPO) });
 }
 
