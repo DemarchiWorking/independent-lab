@@ -7,9 +7,11 @@ import { slugify } from "./file-adapter";
 import type { DeltaProgresso, GameRepository, NovaSolicitacao, NovoNegocio } from "./repository";
 import type {
   Alocacao,
+  Assinatura,
   BairroResumo,
   BenchmarkBairro,
   CapituloEntregue,
+  ClienteAdmin,
   ConviteResgatado,
   DestaqueBairro,
   EscopoMapa,
@@ -1577,5 +1579,125 @@ export class SupabaseRepository implements GameRepository {
       throw new Error(error?.message ?? "atualizarStatusSolicitacao: sem retorno");
     }
     return this.paraSolicitacao(data as Parameters<typeof this.paraSolicitacao>[0]);
+  }
+
+  /**
+   * Sem N+1 (mesma regra de `vizinhos_do_tenant`/`lerMapaView`): 3 queries
+   * fixas (negócios+localização, onboardings, assinaturas) em vez de uma
+   * por tenant. `quarteiroes!inner(...)` embed vem como objeto único, não
+   * array — mesmo comportamento já usado em `local()` (FK many-to-one).
+   */
+  async listarClientesAdmin(): Promise<ClienteAdmin[]> {
+    const [negociosRes, onboardingsRes, assinaturasRes] = await Promise.all([
+      this.db
+        .from("negocios")
+        .select(
+          `id, nome, segmento, degrau_atual, degrau_alvo, nivel, xp, criado_em,
+           quarteiroes!inner ( bairros!inner ( nome, cidades!inner ( nome ) ) )`,
+        )
+        .order("nome"),
+      this.db
+        .from("onboardings")
+        .select("tenant_id, score_fit, degrau_alvo, servicos_recomendados, respondido_em"),
+      this.db.from("assinaturas").select("*"),
+    ]);
+
+    if (negociosRes.error) {
+      throw new Error(`listarClientesAdmin (negocios): ${negociosRes.error.message}`);
+    }
+    if (onboardingsRes.error) {
+      throw new Error(`listarClientesAdmin (onboardings): ${onboardingsRes.error.message}`);
+    }
+    if (assinaturasRes.error) {
+      throw new Error(`listarClientesAdmin (assinaturas): ${assinaturasRes.error.message}`);
+    }
+
+    type LinhaNegocioAdmin = {
+      id: number;
+      nome: string;
+      segmento: Segmento;
+      degrau_atual: number;
+      degrau_alvo: number;
+      nivel: number;
+      xp: number;
+      criado_em: string;
+      quarteiroes: { bairros: { nome: string; cidades: { nome: string } } };
+    };
+    type LinhaOnboardingAdmin = {
+      tenant_id: number;
+      score_fit: number;
+      degrau_alvo: number;
+      servicos_recomendados: string[];
+      respondido_em: string;
+    };
+    type LinhaAssinatura = {
+      id: number;
+      tenant_id: number;
+      funcionario_contratado_id: number;
+      preco_centavos: number;
+      periodicidade: Assinatura["periodicidade"];
+      status: Assinatura["status"];
+      stripe_customer_id: string | null;
+      stripe_subscription_id: string | null;
+      ativada_em: string | null;
+      proxima_cobranca_em: string | null;
+      cancelada_em: string | null;
+      criada_em: string;
+    };
+
+    const onboardingPorTenant = new Map(
+      ((onboardingsRes.data ?? []) as LinhaOnboardingAdmin[]).map((o) => [
+        String(o.tenant_id),
+        o,
+      ]),
+    );
+
+    const assinaturasPorTenant = new Map<string, Assinatura[]>();
+    for (const a of (assinaturasRes.data ?? []) as LinhaAssinatura[]) {
+      const tenantId = String(a.tenant_id);
+      const assinatura: Assinatura = {
+        id: String(a.id),
+        tenantId,
+        funcionarioContratadoId: String(a.funcionario_contratado_id),
+        precoCentavos: a.preco_centavos,
+        periodicidade: a.periodicidade,
+        status: a.status,
+        stripeCustomerId: a.stripe_customer_id ?? undefined,
+        stripeSubscriptionId: a.stripe_subscription_id ?? undefined,
+        ativadaEm: a.ativada_em ?? undefined,
+        proximaCobrancaEm: a.proxima_cobranca_em ?? undefined,
+        canceladaEm: a.cancelada_em ?? undefined,
+        criadaEm: a.criada_em,
+      };
+      const lista = assinaturasPorTenant.get(tenantId) ?? [];
+      lista.push(assinatura);
+      assinaturasPorTenant.set(tenantId, lista);
+    }
+
+    return ((negociosRes.data ?? []) as unknown as LinhaNegocioAdmin[]).map((n) => {
+      const tenantId = String(n.id);
+      const onboarding = onboardingPorTenant.get(tenantId);
+      return {
+        id: tenantId,
+        nome: n.nome,
+        segmento: n.segmento,
+        cidadeNome: n.quarteiroes.bairros.cidades.nome,
+        bairroNome: n.quarteiroes.bairros.nome,
+        degrauAtual: n.degrau_atual,
+        degrauAlvo: n.degrau_alvo,
+        nivel: n.nivel,
+        xp: n.xp,
+        criadoEm: n.criado_em,
+        onboarding: onboarding
+          ? {
+              scoreFit: onboarding.score_fit,
+              degrauAlvo: onboarding.degrau_alvo,
+              servicosRecomendados: onboarding.servicos_recomendados,
+              respondidoEm: onboarding.respondido_em,
+            }
+          : null,
+        assinaturas: assinaturasPorTenant.get(tenantId) ?? [],
+      };
+    });
   }
 }

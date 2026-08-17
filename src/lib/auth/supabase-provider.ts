@@ -2,6 +2,15 @@ import { supabaseAdmin, supabaseAnon } from "@/lib/supabase/client";
 import { enviarEmail } from "@/lib/email/resend";
 import type { AuthProvider, Identidade } from "./provider";
 
+/** Só `app_metadata.role === "admin"` vira `Identidade.role` — qualquer
+ *  outro valor é tratado como usuário comum. `app_metadata` só é
+ *  gravável via Admin API/service_role (nunca pelo próprio usuário,
+ *  diferente de `user_metadata`), então este campo é confiável como
+ *  origem de autorização. */
+function roleDoUsuario(appMetadata: Record<string, unknown> | undefined): Identidade["role"] {
+  return appMetadata?.role === "admin" ? "admin" : undefined;
+}
+
 /**
  * Autenticação via Supabase Auth. A senha nunca transita pela nossa camada de
  * dados: quem armazena e verifica é o próprio Supabase (bcrypt gerenciado),
@@ -45,7 +54,7 @@ export class SupabaseAuthProvider implements AuthProvider {
     if (error || !data.user) {
       throw new Error(`Supabase createUser: ${error?.message ?? "sem usuário"}`);
     }
-    return { usuarioId: data.user.id };
+    return { usuarioId: data.user.id, role: roleDoUsuario(data.user.app_metadata) };
   }
 
   async autenticar(email: string, senha: string): Promise<Identidade | null> {
@@ -54,7 +63,7 @@ export class SupabaseAuthProvider implements AuthProvider {
       password: senha,
     });
     if (error || !data.user) return null;
-    return { usuarioId: data.user.id };
+    return { usuarioId: data.user.id, role: roleDoUsuario(data.user.app_metadata) };
   }
 
   async removerConta(usuarioId: string): Promise<void> {

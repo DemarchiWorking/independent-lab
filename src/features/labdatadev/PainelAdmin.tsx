@@ -11,7 +11,7 @@ import { mudarStatusSolicitacao } from "./actions";
 /**
  * Painel de gestão do fundador (labdatadev) — os pedidos de TODOS os clientes,
  * com indicadores e o fluxo de atendimento (avançar / recusar). Gated na rota
- * e nas Server Actions (`souAdmin`), nunca só escondido aqui.
+ * e nas Server Actions (`sessao.role === "admin"`), nunca só escondido aqui.
  */
 export function PainelAdmin({ inicial }: { inicial: SolicitacaoView[] }) {
   const router = useRouter();

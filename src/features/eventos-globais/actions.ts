@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { lerSessao, novoId } from "@/lib/auth/sessao";
 import { getRepository } from "@/lib/db";
-import { souAdmin } from "@/lib/admin";
 import { EVENTOS } from "@/features/gamificacao/engine";
 import { agoraGlobal } from "@/features/historia/relogio";
 import {
@@ -23,16 +22,16 @@ export interface ResultadoCriarEvento {
 }
 
 /**
- * Cria um evento global. Gated por `souAdmin(sessao.email)` — quem não está
- * na allowlist recebe erro do servidor, nunca só um botão escondido na UI
- * (mesma regra não-negociável do AGENTS.md para toda regra de negócio).
+ * Cria um evento global. Gated por `sessao.role === "admin"` — quem não é
+ * admin recebe erro do servidor, nunca só um botão escondido na UI (mesma
+ * regra não-negociável do AGENTS.md para toda regra de negócio).
  */
 export async function criarEventoGlobal(
   input: NovoEventoGlobal,
 ): Promise<ResultadoCriarEvento> {
   const sessao = await lerSessao();
   if (!sessao) return { ok: false, erro: "Sessão expirada. Entre novamente." };
-  if (!souAdmin(sessao.email)) {
+  if (sessao.role !== "admin") {
     return { ok: false, erro: "Você não tem permissão para criar eventos." };
   }
 
@@ -107,11 +106,11 @@ export async function listarEventosAtivos(): Promise<EventoComProgresso[]> {
  *  é o "o que eu já cadastrei", sem progresso de nenhum tenant específico. */
 export async function listarTodosEventos(): Promise<EventoGlobal[]> {
   const sessao = await lerSessao();
-  if (!sessao || !souAdmin(sessao.email)) return [];
+  if (!sessao || sessao.role !== "admin") return [];
   return getRepository().listarEventosGlobais();
 }
 
 export async function souAdminLogado(): Promise<boolean> {
   const sessao = await lerSessao();
-  return Boolean(sessao && souAdmin(sessao.email));
+  return sessao?.role === "admin";
 }

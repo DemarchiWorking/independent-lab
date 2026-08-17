@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { lerSessao } from "@/lib/auth/sessao";
-import { souAdmin } from "@/lib/admin";
 import { PainelAdmin } from "@/features/labdatadev/PainelAdmin";
 import { listarTodasSolicitacoesAdmin } from "@/features/labdatadev/actions";
 
@@ -9,13 +8,13 @@ export const metadata = { title: "Admin · labdatadev" };
 /**
  * Painel admin do negócio labdatadev — o fundador gere as solicitações de
  * serviço de todos os clientes. Mesma guarda neutra de `/admin/eventos`:
- * quem não está na allowlist (`GAMEHUB_ADMIN_EMAILS`) vê "página não
- * encontrada", nunca um erro que revele que a rota existe.
+ * quem não tem `role === "admin"` (ver `lib/auth/provider.ts`) vê "página
+ * não encontrada", nunca um erro que revele que a rota existe.
  */
 export default async function AdminLabdatadevPage() {
   const sessao = await lerSessao();
   if (!sessao) redirect("/entrar");
-  if (!souAdmin(sessao.email)) {
+  if (sessao.role !== "admin") {
     return (
       <main className="mx-auto max-w-xl px-4 py-16 text-center text-sm text-muted">
         Página não encontrada.

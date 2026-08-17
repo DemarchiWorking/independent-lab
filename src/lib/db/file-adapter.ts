@@ -15,6 +15,7 @@ import type {
   BenchmarkBairro,
   CapituloEntregue,
   Cidade,
+  ClienteAdmin,
   ConviteResgatado,
   DestaqueBairro,
   Endereco,
@@ -1142,5 +1143,54 @@ export class FileRepository implements GameRepository {
     alvo.atualizadoEm = new Date().toISOString();
     await escreverJson(SOLICITACOES, atuais);
     return alvo;
+  }
+
+  async listarClientesAdmin(): Promise<ClienteAdmin[]> {
+    const raiz = path.join(ROOT, "tenants");
+    let pastas: string[];
+    try {
+      pastas = await fs.readdir(raiz);
+    } catch {
+      return [];
+    }
+
+    const mapa = await this.lerMapa();
+    const nomeCidade = new Map(mapa.cidades.map((c) => [c.slug, c.nome]));
+    const nomeBairro = new Map(
+      mapa.cidades.flatMap((c) => c.bairros.map((b) => [`${c.slug}/${b.slug}`, b.nome])),
+    );
+
+    const negocios = await Promise.all(pastas.map((id) => this.lerNegocio(id)));
+    return Promise.all(
+      negocios
+        .filter((n): n is Negocio => n !== null)
+        .map(async (n): Promise<ClienteAdmin> => {
+          const onboarding = await this.lerOnboarding(n.id);
+          return {
+            id: n.id,
+            nome: n.nome,
+            segmento: n.segmento,
+            cidadeNome: nomeCidade.get(n.endereco.cidadeSlug) ?? n.endereco.cidadeSlug,
+            bairroNome:
+              nomeBairro.get(`${n.endereco.cidadeSlug}/${n.endereco.bairroSlug}`) ??
+              n.endereco.bairroSlug,
+            degrauAtual: n.degrauAtual,
+            degrauAlvo: n.degrauAlvo,
+            nivel: n.nivel,
+            xp: n.xp,
+            criadoEm: n.criadoEm,
+            onboarding: onboarding
+              ? {
+                  scoreFit: onboarding.scoreFit,
+                  degrauAlvo: onboarding.degrauAlvo,
+                  servicosRecomendados: onboarding.servicosRecomendados,
+                  respondidoEm: onboarding.respondidoEm,
+                }
+              : null,
+            // Billing (assinaturas) só existe no driver Supabase hoje.
+            assinaturas: [],
+          };
+        }),
+    );
   }
 }

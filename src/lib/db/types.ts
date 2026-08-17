@@ -185,6 +185,30 @@ export interface FuncionarioContratado {
 }
 
 /**
+ * Estado de assinatura real (R$) de um Funcionário de IA contratado
+ * (GH-COM-02, `0029_assinaturas.sql`) — sem gateway de pagamento
+ * integrado ainda, é só o ESTADO (pendente/ativa/inadimplente/cancelada)
+ * para o painel admin e o painel do cliente mostrarem antes do Stripe
+ * existir. `precoCentavos` é snapshot do preço no momento da assinatura,
+ * nunca lido de volta do catálogo (histórico de cobrança não pode
+ * depender de um catálogo que muda com o tempo).
+ */
+export interface Assinatura {
+  id: string;
+  tenantId: string;
+  funcionarioContratadoId: string;
+  precoCentavos: number;
+  periodicidade: "mensal" | "anual";
+  status: "pendente" | "ativa" | "inadimplente" | "cancelada";
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  ativadaEm?: string;
+  proximaCobrancaEm?: string;
+  canceladaEm?: string;
+  criadaEm: string;
+}
+
+/**
  * Alocação de um recurso (Funcionário de IA hoje, humano no futuro) a um
  * job/entrega — GH-EQP-01. `funcionarioId` É a chave (não um `id` avulso):
  * existe no máximo UMA linha por funcionário, sobrescrita a cada nova
@@ -314,6 +338,9 @@ export interface Sessao {
   tenantId: string;
   nome: string;
   email: string;
+  /** Papel administrativo cross-tenant — ver `lib/auth/provider.ts`
+   *  (`Identidade.role`). Ausente = usuário comum. */
+  role?: "admin";
 }
 
 /**
@@ -473,4 +500,32 @@ export interface CapituloEntregue {
   entregueEm: string;
   escolhaId: string | null;
   resolvidoEm: string | null;
+}
+
+/**
+ * ---------- Admin cross-tenant ----------
+ * Read model do painel `/admin/clientes`: dados de vitrine do tenant +
+ * onboarding (score comercial) + assinaturas, numa única leitura. Nunca
+ * exposto ao browser (só Server Action gated por `sessao.role ===
+ * "admin"`, ver `features/admin-clientes/actions.ts`) — por isso pode
+ * juntar campos que, individualmente, são privados por tenant.
+ */
+export interface ClienteAdmin {
+  id: string;
+  nome: string;
+  segmento: Segmento;
+  cidadeNome: string;
+  bairroNome: string;
+  degrauAtual: number;
+  degrauAlvo: number;
+  nivel: number;
+  xp: number;
+  criadoEm: string;
+  onboarding: {
+    scoreFit: number;
+    degrauAlvo: number;
+    servicosRecomendados: string[];
+    respondidoEm: string;
+  } | null;
+  assinaturas: Assinatura[];
 }

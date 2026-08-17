@@ -8,6 +8,10 @@
  */
 export interface Identidade {
   usuarioId: string;
+  /** Papel administrativo, fora do escopo de tenant — ver `lib/admin.ts`
+   *  para a origem (Supabase: `app_metadata.role`; local: bootstrap por
+   *  `GAMEHUB_ADMIN_EMAILS` no cadastro). Ausente = usuário comum. */
+  role?: "admin";
 }
 
 export interface AuthProvider {

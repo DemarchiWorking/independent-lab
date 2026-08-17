@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { souAdmin } from "./admin";
+import { emailAdminBootstrapLocal } from "./admin";
 
-describe("souAdmin", () => {
+describe("emailAdminBootstrapLocal", () => {
   const original = process.env.GAMEHUB_ADMIN_EMAILS;
 
   beforeEach(() => {
@@ -13,36 +13,38 @@ describe("souAdmin", () => {
   });
 
   it("aceita e-mail exato da lista", () => {
-    expect(souAdmin("founder@labdatadev.com")).toBe(true);
+    expect(emailAdminBootstrapLocal("founder@labdatadev.com")).toBe(true);
   });
 
   it("ignora maiúsculas/minúsculas e espaços", () => {
-    expect(souAdmin("  Founder@LabDataDev.com  ")).toBe(true);
+    expect(emailAdminBootstrapLocal("  Founder@LabDataDev.com  ")).toBe(true);
   });
 
   it("rejeita e-mail fora da lista", () => {
-    expect(souAdmin("jogador@qualquer.com")).toBe(false);
+    expect(emailAdminBootstrapLocal("jogador@qualquer.com")).toBe(false);
   });
 
   it("sem variável de ambiente configurada, ninguém é admin", () => {
     process.env.GAMEHUB_ADMIN_EMAILS = "";
-    expect(souAdmin("founder@labdatadev.com")).toBe(false);
+    expect(emailAdminBootstrapLocal("founder@labdatadev.com")).toBe(false);
   });
 
   it("atalho pessoal: e-mail contendo 'demarchi' é admin mesmo fora da allowlist", () => {
     process.env.GAMEHUB_ADMIN_EMAILS = "";
-    expect(souAdmin("antonio.demarchi@gmail.com")).toBe(true);
-    expect(souAdmin("Demarchi@LabDataDev.com")).toBe(true);
+    expect(emailAdminBootstrapLocal("antonio.demarchi@gmail.com")).toBe(true);
+    expect(emailAdminBootstrapLocal("Demarchi@LabDataDev.com")).toBe(true);
   });
 
   it("atalho pessoal é comparação por substring, não só e-mail exato", () => {
     process.env.GAMEHUB_ADMIN_EMAILS = "";
-    expect(souAdmin("qualquercoisa.demarchi.qualquercoisa@dominio.com")).toBe(true);
+    expect(emailAdminBootstrapLocal("qualquercoisa.demarchi.qualquercoisa@dominio.com")).toBe(
+      true,
+    );
   });
 
   it("string vazia nunca é admin, mesmo com allowlist vazia por acaso combinar", () => {
     process.env.GAMEHUB_ADMIN_EMAILS = "";
-    expect(souAdmin("")).toBe(false);
-    expect(souAdmin("   ")).toBe(false);
+    expect(emailAdminBootstrapLocal("")).toBe(false);
+    expect(emailAdminBootstrapLocal("   ")).toBe(false);
   });
 });

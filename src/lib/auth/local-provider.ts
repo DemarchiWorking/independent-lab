@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { emailAdminBootstrapLocal } from "@/lib/admin";
 import { hashSenha, verificarSenha } from "./password";
 import { novoId } from "./sessao";
 import type { AuthProvider, Identidade } from "./provider";
@@ -15,6 +16,8 @@ interface Credencial {
   email: string;
   usuarioId: string;
   hash: string;
+  /** Bootstrap local de role — ver `lib/admin.ts` (`emailAdminBootstrapLocal`). */
+  role?: "admin";
   recuperacao?: { codigo: string; expiraEm: string };
 }
 
@@ -50,13 +53,15 @@ export class LocalAuthProvider implements AuthProvider {
       throw new Error("E-mail já cadastrado");
     }
     const usuarioId = novoId();
+    const role = emailAdminBootstrapLocal(normalizado) ? "admin" : undefined;
     lista.push({
       email: normalizado,
       usuarioId,
       hash: await hashSenha(senha),
+      ...(role ? { role } : {}),
     });
     await escrever(lista);
-    return { usuarioId };
+    return { usuarioId, ...(role ? { role } : {}) };
   }
 
   async autenticar(email: string, senha: string): Promise<Identidade | null> {
@@ -64,7 +69,7 @@ export class LocalAuthProvider implements AuthProvider {
     const cred = lista.find((c) => c.email === email.toLowerCase());
     if (!cred) return null;
     if (!(await verificarSenha(senha, cred.hash))) return null;
-    return { usuarioId: cred.usuarioId };
+    return { usuarioId: cred.usuarioId, ...(cred.role ? { role: cred.role } : {}) };
   }
 
   async removerConta(usuarioId: string): Promise<void> {

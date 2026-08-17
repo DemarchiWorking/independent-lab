@@ -231,6 +231,7 @@ export async function cadastrar(
       tenantId: negocio.id,
       nome,
       email,
+      role: identidade.role,
     });
   } catch (erro) {
     if (identidade) {
@@ -272,6 +273,7 @@ export async function entrar(
     tenantId: membro.tenantId,
     nome: membro.nome,
     email,
+    role: identidade.role,
   });
   redirect("/painel");
 }

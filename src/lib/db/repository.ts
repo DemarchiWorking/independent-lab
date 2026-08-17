@@ -4,6 +4,7 @@ import type {
   BairroResumo,
   BenchmarkBairro,
   CapituloEntregue,
+  ClienteAdmin,
   ConviteResgatado,
   DestaqueBairro,
   Endereco,
@@ -339,8 +340,8 @@ export interface GameRepository {
    *  Não é por tenant: é o mesmo "cartaz" para todo mundo. */
   listarEventosGlobais(): Promise<EventoGlobal[]>;
   /** Cria o evento. Sem validação de negócio aqui — quem chama (a Server
-   *  Action) já checou `souAdmin` e `janelaValida`; o `check` da migration é
-   *  a garantia real (fim > início, meta > 0). */
+   *  Action) já checou `sessao.role === "admin"` e `janelaValida`; o `check`
+   *  da migration é a garantia real (fim > início, meta > 0). */
   criarEventoGlobal(evento: Omit<EventoGlobal, "criadoEm">): Promise<EventoGlobal>;
   listarProgressoEventos(tenantId: string): Promise<ProgressoEventoGlobal[]>;
   /**
@@ -364,10 +365,20 @@ export interface GameRepository {
   /** Só as solicitações DESTE tenant (dado privado do cliente). */
   listarSolicitacoesDoTenant(tenantId: string): Promise<SolicitacaoServico[]>;
   /** Todas as solicitações, de todos os tenants — só para o painel admin
-   *  (a Server Action checa `souAdmin` antes de chamar). */
+   *  (a Server Action checa `sessao.role === "admin"` antes de chamar). */
   listarTodasSolicitacoes(): Promise<SolicitacaoServico[]>;
   /** Muda o status de uma solicitação (fluxo de atendimento, só admin). */
   atualizarStatusSolicitacao(id: string, status: string): Promise<SolicitacaoServico>;
+
+  /** ---- Admin cross-tenant (painel `/admin/clientes`) ---- */
+  /**
+   * Todos os negócios (empresas-clientes) com onboarding + assinaturas —
+   * uma chamada, não N+1 (mesma regra de `vizinhos_do_tenant`/
+   * `lerMapaView`). Só para o painel admin; a Server Action checa
+   * `sessao.role === "admin"` antes de chamar. No file-adapter,
+   * `assinaturas` vem sempre `[]` — billing só existe no driver Supabase.
+   */
+  listarClientesAdmin(): Promise<ClienteAdmin[]>;
 }
 
 /** Entrada de `criarSolicitacao` — o servidor deriva id/status/datas. */

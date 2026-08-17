@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { lerSessao } from "@/lib/auth/sessao";
 import { getRepository } from "@/lib/db";
-import { souAdmin } from "@/lib/admin";
 import { normalizar } from "./motor";
 import {
   DEGRAU_MINIMO_LABDATADEV,
@@ -16,8 +15,8 @@ import {
 /**
  * Server Actions da feature labdatadev. Toda regra é RE-checada aqui — a UI
  * pode esconder um botão, mas a garantia real é server-side (AGENTS.md).
- * Cliente: cria e lista as PRÓPRIAS solicitações. Admin (`souAdmin`): vê
- * todas e muda status.
+ * Cliente: cria e lista as PRÓPRIAS solicitações. Admin (`sessao.role ===
+ * "admin"`): vê todas e muda status.
  */
 
 export interface ResultadoSolicitacao {
@@ -107,7 +106,7 @@ export async function listarMinhasSolicitacoes(): Promise<SolicitacaoView[]> {
 /** Todas as solicitações — só admin (painel de gestão). */
 export async function listarTodasSolicitacoesAdmin(): Promise<SolicitacaoView[]> {
   const sessao = await lerSessao();
-  if (!sessao || !souAdmin(sessao.email)) return [];
+  if (!sessao || sessao.role !== "admin") return [];
   const lista = await getRepository().listarTodasSolicitacoes();
   return lista.map(normalizar);
 }
@@ -119,7 +118,7 @@ export async function mudarStatusSolicitacao(
 ): Promise<ResultadoSolicitacao> {
   const sessao = await lerSessao();
   if (!sessao) return { ok: false, erro: "Sessão expirada. Entre novamente." };
-  if (!souAdmin(sessao.email)) {
+  if (sessao.role !== "admin") {
     return { ok: false, erro: "Você não tem permissão para gerir solicitações." };
   }
   if (!ehStatus(status)) return { ok: false, erro: "Status inválido." };

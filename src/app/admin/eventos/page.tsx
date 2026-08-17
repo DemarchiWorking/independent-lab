@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { lerSessao } from "@/lib/auth/sessao";
-import { souAdmin } from "@/lib/admin";
 import { listarTodosEventos } from "@/features/eventos-globais/actions";
 import { statusDe } from "@/features/eventos-globais/motor";
 import { AdminEventoForm } from "@/features/eventos-globais/AdminEventoForm";
@@ -8,13 +7,13 @@ import { agoraGlobal } from "@/features/historia/relogio";
 
 export const metadata = { title: "Admin · Eventos globais" };
 
-/** Tela de admin do Épico 11 — mensagem neutra para quem não está na
- *  allowlist (`GAMEHUB_ADMIN_EMAILS`), nunca um erro técnico que revele
- *  que a rota existe/o motivo exato da recusa. */
+/** Tela de admin do Épico 11 — mensagem neutra para quem não tem
+ *  `role === "admin"` (ver `lib/auth/provider.ts`), nunca um erro técnico
+ *  que revele que a rota existe/o motivo exato da recusa. */
 export default async function AdminEventosPage() {
   const sessao = await lerSessao();
   if (!sessao) redirect("/entrar");
-  if (!souAdmin(sessao.email)) {
+  if (sessao.role !== "admin") {
     return (
       <main className="mx-auto max-w-xl px-4 py-16 text-center text-sm text-muted">
         Página não encontrada.
