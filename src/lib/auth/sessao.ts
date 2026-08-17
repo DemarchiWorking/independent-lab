@@ -72,13 +72,23 @@ export async function lerSessao(): Promise<Sessao | null> {
   }
 
   // `tenantId` vira `negocios.id` (bigint) em toda leitura do repositório
-  // Supabase. Um cookie assinado mas com `tenantId` não-numérico — sobra de
+  // Supabase. Um cookie assinado mas com `tenantId` não-numérico é sobra de
   // uma sessão criada em modo `GAMEHUB_DB=file` (onde o id é hex, ver
   // `novoId()`) e ainda válida pela mesma `GAMEHUB_SECRET` — não é
-  // falsificação, mas também não é utilizável: sem esta checagem, cada
-  // página autenticada quebra com "invalid input syntax for type bigint:
-  // NaN" em vez de simplesmente mandar logar de novo.
-  if (!/^\d+$/.test(sessao.tenantId)) return null;
+  // falsificação, mas também não é utilizável NO DRIVER ATUAL: sem esta
+  // checagem, cada página autenticada quebra com "invalid input syntax for
+  // type bigint: NaN" em vez de simplesmente mandar logar de novo.
+  //
+  // A checagem só pode valer para o driver Supabase. Um `GAMEHUB_DB=file`
+  // (o padrão de dev local, ver `lib/db/index.ts`) SEMPRE gera `tenantId`
+  // hexadecimal — rejeitar isso incondicionalmente (como uma versão
+  // anterior fazia) derrubava toda sessão de volta pro login no primeiro
+  // reload, mesmo sendo o próprio driver ativo. Achado ao tentar validar
+  // visualmente o World em `npm run dev` (ver
+  // `docs/architecture/ARQUITETURA-VISUAL-ITENS-SEDE.md`).
+  if (process.env.GAMEHUB_DB === "supabase" && !/^\d+$/.test(sessao.tenantId)) {
+    return null;
+  }
 
   return sessao;
 }
