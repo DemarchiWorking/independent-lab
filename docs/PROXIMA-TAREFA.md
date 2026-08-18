@@ -49,10 +49,17 @@
 > `features/auth/actions.ts` (`cadastrar`) e
 > `features/documentos-gerados/contexto.ts` todos atualizados. Gates verdes:
 > `npm run typecheck && npm test (326/326) && npm run build`.
-> **Ainda falta:** a validação end-to-end real com Playwright (landing → 20
-> passos → conta → `/painel` → `gerar-agora.sh` → 6 documentos) — só rodada
-> via dado/gate até agora, **nunca clicada na UI real** nesta rodada. Não
-> marcar como pronto de verdade sem isso.
+> **✅ Validado de ponta a ponta em 2026-08-18** (mesma sessão): Playwright
+> real (não emulação de DevTools) contra uma instância local apontada pro
+> MESMO Supabase de produção (`NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:8010`)
+> — as 19 perguntas + tela de conta preenchidas clicando de verdade
+> (`Passo 1 de 20` → `Passo 20 de 20`), conta criada, redirect pra
+> `/painel` confirmado, fit comercial 100/100 e degrau-alvo 5 bateram
+> exatamente com a fórmula esperada (licitação regular + engenharia +
+> faturamento alto). Zero erro de console/página. Dados de teste apagados
+> depois (negócio, onboarding, auth.users, documentos — nada ficou pra
+> trás). Ver Tarefa B abaixo pro restante do fluxo (geração dos 7
+> documentos).
 
 **Revisão 2026-08-18 (2ª passada, pedido do fundador: "garanta que as
 perguntas são as melhores pro objetivo de gerar documentação"):** auditei

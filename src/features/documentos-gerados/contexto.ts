@@ -73,7 +73,7 @@ export function construirFichaMarkdown(ctx: ContextoNegocio): string {
 
   linhas.push("## 3. Economia de atributos (0–40, eixo de maturidade operacional)");
   for (const chave of ATRIBUTO_CHAVES) {
-    linhas.push(`- ${ROTULOS_ATRIBUTO[chave]}: ${negocio.atributos[chave]}/40`);
+    linhas.push(`- ${ROTULOS_ATRIBUTO[chave]}: ${negocio.atributos[chave].valor}/40`);
   }
   linhas.push("");
 
