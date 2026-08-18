@@ -119,6 +119,10 @@ export interface Respostas {
   segmento: Segmento;
   cidade: string;
   bairro: string;
+  /** Problema que o negócio resolve para OS CLIENTES DELE — distinto de
+   *  `gargalo`, que é o problema INTERNO do próprio negócio. Alimenta o
+   *  Modelo de Negócio (pergunta #1 do corpus oficial GameHub). */
+  problemaPrincipal: string;
   equipe: "so-eu" | "2-5" | "6-15" | "16-30" | "30+";
   presencaDigital:
     | "nada"
@@ -127,6 +131,42 @@ export interface Respostas {
     | "site-desatualizado"
     | "site-portais";
   captacao: string[];
+  /** ICP real do Lab Demarchi/Siga Pregão — fornecer pro poder público via
+   *  licitação. Entra no `scoreFit` (ver `features/onboarding/scoring.ts`). */
+  licitacaoPublico:
+    | "vende-regularmente"
+    | "ja-vendeu"
+    | "tem-interesse"
+    | "nao-e-foco";
+  modeloReceita:
+    | "projeto-unico"
+    | "assinatura-recorrente"
+    | "comissao-resultado"
+    | "venda-produto"
+    | "combinacao";
+  ticketMedio:
+    | "ate-500"
+    | "500-2000"
+    | "2000-10000"
+    | "10000-50000"
+    | "acima-50000"
+    | "nao-sei";
+  clientesPagantes: "nenhum" | "1-5" | "6-20" | "21-50" | "mais-50";
+  /** Entra no `degrauAlvo` (ver `features/onboarding/scoring.ts`). */
+  faturamentoFaixa:
+    | "ate-10k"
+    | "10-30k"
+    | "30-100k"
+    | "100-300k"
+    | "acima-300k"
+    | "prefiro-nao-informar";
+  /** Texto curto — "por que um cliente escolhe você e não o concorrente". */
+  diferencial: string;
+  /** Opcional na prática — "ainda não tenho" é resposta válida. Sem isso,
+   *  a Proposta Comercial omite a seção "Prova social" inteira. */
+  provaSocial: string;
+  /** Opcional na prática — "não sei" é resposta válida. */
+  concorrentesConhecidos: string;
   objetivo:
     | "mais-leads"
     | "organizar"

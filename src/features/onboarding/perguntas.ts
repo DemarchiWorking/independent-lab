@@ -1,8 +1,9 @@
 import type { Respostas } from "@/lib/db/types";
 import { CIDADES_REGIAO } from "@/lib/regiao";
 
-/** As 10 perguntas do cadastro. Data-driven: mudar aqui muda o wizard.
- *  Doc: docs/design/ONBOARDING-10-PERGUNTAS.md */
+/** As 19 perguntas do cadastro (+ conta = 20 passos). Data-driven: mudar
+ *  aqui muda o wizard. Doc: docs/design/ONBOARDING-10-PERGUNTAS.md e a
+ *  matriz de rastreabilidade pergunta→documento em docs/PROXIMA-TAREFA.md. */
 
 export type CampoResposta = keyof Respostas;
 
@@ -69,6 +70,13 @@ export const perguntas: Pergunta[] = [
     placeholder: "Centro",
   },
   {
+    campo: "problemaPrincipal",
+    titulo: "Qual problema você resolve pros SEUS clientes?",
+    ajuda: "Em 1 frase — é a base do seu Modelo de Negócio.",
+    tipo: "texto",
+    placeholder: "Ex.: empresas perdem prazo de entrega por falta de gestão",
+  },
+  {
     campo: "equipe",
     titulo: "Quantas pessoas trabalham com você?",
     tipo: "escolha",
@@ -105,6 +113,87 @@ export const perguntas: Pergunta[] = [
       { valor: "porta-a-porta", rotulo: "Porta a porta" },
       { valor: "sem-processo", rotulo: "Não tenho processo" },
     ],
+  },
+  {
+    campo: "licitacaoPublico",
+    titulo: "Você já vendeu para o poder público (licitação)?",
+    tipo: "escolha",
+    opcoes: [
+      { valor: "vende-regularmente", rotulo: "Vendo regularmente" },
+      { valor: "ja-vendeu", rotulo: "Já vendi algumas vezes" },
+      { valor: "tem-interesse", rotulo: "Nunca vendi, mas tenho interesse" },
+      { valor: "nao-e-foco", rotulo: "Não é meu foco" },
+    ],
+  },
+  {
+    campo: "modeloReceita",
+    titulo: "Como seu negócio ganha dinheiro hoje?",
+    tipo: "escolha",
+    opcoes: [
+      { valor: "projeto-unico", rotulo: "Projeto único (venda pontual)" },
+      { valor: "assinatura-recorrente", rotulo: "Assinatura / mensalidade" },
+      { valor: "comissao-resultado", rotulo: "Comissão sobre resultado" },
+      { valor: "venda-produto", rotulo: "Venda de produto" },
+      { valor: "combinacao", rotulo: "Combinação dos anteriores" },
+    ],
+  },
+  {
+    campo: "ticketMedio",
+    titulo: "Qual seu ticket médio por venda/contrato?",
+    tipo: "escolha",
+    opcoes: [
+      { valor: "ate-500", rotulo: "Até R$ 500" },
+      { valor: "500-2000", rotulo: "R$ 500 a R$ 2.000" },
+      { valor: "2000-10000", rotulo: "R$ 2.000 a R$ 10.000" },
+      { valor: "10000-50000", rotulo: "R$ 10.000 a R$ 50.000" },
+      { valor: "acima-50000", rotulo: "Acima de R$ 50.000" },
+      { valor: "nao-sei", rotulo: "Não sei" },
+    ],
+  },
+  {
+    campo: "clientesPagantes",
+    titulo: "Quantos clientes pagantes você tem hoje?",
+    tipo: "escolha",
+    opcoes: [
+      { valor: "nenhum", rotulo: "Nenhum ainda" },
+      { valor: "1-5", rotulo: "1 a 5" },
+      { valor: "6-20", rotulo: "6 a 20" },
+      { valor: "21-50", rotulo: "21 a 50" },
+      { valor: "mais-50", rotulo: "Mais de 50" },
+    ],
+  },
+  {
+    campo: "faturamentoFaixa",
+    titulo: "Qual sua faixa de faturamento mensal?",
+    tipo: "escolha",
+    opcoes: [
+      { valor: "ate-10k", rotulo: "Até R$ 10 mil" },
+      { valor: "10-30k", rotulo: "R$ 10 a 30 mil" },
+      { valor: "30-100k", rotulo: "R$ 30 a 100 mil" },
+      { valor: "100-300k", rotulo: "R$ 100 a 300 mil" },
+      { valor: "acima-300k", rotulo: "Acima de R$ 300 mil" },
+      { valor: "prefiro-nao-informar", rotulo: "Prefiro não informar" },
+    ],
+  },
+  {
+    campo: "diferencial",
+    titulo: "Em 1 frase, por que um cliente escolhe você e não o concorrente?",
+    tipo: "texto",
+    placeholder: "Ex.: entrego em metade do prazo do mercado",
+  },
+  {
+    campo: "provaSocial",
+    titulo: "Tem algum resultado ou depoimento de cliente pra citar?",
+    ajuda: "Opcional — pode responder 'ainda não tenho'.",
+    tipo: "texto",
+    placeholder: "Ex.: aumentei em 30% as vendas do Mercado Silva",
+  },
+  {
+    campo: "concorrentesConhecidos",
+    titulo: "Você sabe quem são seus 2-3 concorrentes na região?",
+    ajuda: "Opcional — pode responder 'não sei'.",
+    tipo: "texto",
+    placeholder: "Ex.: Construtora ABC, Engenharia XYZ",
   },
   {
     campo: "objetivo",

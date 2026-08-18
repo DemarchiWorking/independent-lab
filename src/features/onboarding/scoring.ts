@@ -48,6 +48,13 @@ const PONTOS_EQUIPE: Record<Respostas["equipe"], number> = {
   "30+": 12,
 };
 
+const PONTOS_LICITACAO: Record<Respostas["licitacaoPublico"], number> = {
+  "vende-regularmente": 25,
+  "ja-vendeu": 12,
+  "tem-interesse": 5,
+  "nao-e-foco": 0,
+};
+
 /** Gargalos que indicam urgência real (BANT). */
 const GARGALOS_URGENTES: Array<Respostas["gargalo"]> = [
   "perco-leads",
@@ -141,6 +148,7 @@ export function calcular(r: Respostas): Resultado {
 
   score += PONTOS_EQUIPE[r.equipe];
   score += PONTOS_INVESTIMENTO[r.investimento];
+  score += PONTOS_LICITACAO[r.licitacaoPublico];
   if (GARGALOS_URGENTES.includes(r.gargalo)) score += 15;
 
   score = Math.max(0, Math.min(100, score));
@@ -150,6 +158,8 @@ export function calcular(r: Respostas): Resultado {
   const porteBom = r.equipe === "6-15" || r.equipe === "16-30";
   if (r.segmento === "engenharia" && porteBom) alvo += 1;
   if (r.presencaDigital === "nada") alvo -= 1; // precisa de base antes
+  if (r.faturamentoFaixa === "100-300k" || r.faturamentoFaixa === "acima-300k")
+    alvo += 1;
   alvo = Math.max(1, Math.min(5, alvo));
 
   return {

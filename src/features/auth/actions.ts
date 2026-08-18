@@ -154,10 +154,24 @@ export async function cadastrar(
     segmento: SEGMENTOS.includes(segmentoBruto) ? segmentoBruto : "outro",
     cidade: texto(fd, "cidade") || "Outra",
     bairro: texto(fd, "bairro") || "Centro",
+    problemaPrincipal: texto(fd, "problemaPrincipal"),
     equipe: (texto(fd, "equipe") || "so-eu") as Respostas["equipe"],
     presencaDigital: (texto(fd, "presencaDigital") ||
       "nada") as Respostas["presencaDigital"],
     captacao: fd.getAll("captacao").map(String),
+    licitacaoPublico: (texto(fd, "licitacaoPublico") ||
+      "nao-e-foco") as Respostas["licitacaoPublico"],
+    modeloReceita: (texto(fd, "modeloReceita") ||
+      "projeto-unico") as Respostas["modeloReceita"],
+    ticketMedio: (texto(fd, "ticketMedio") ||
+      "nao-sei") as Respostas["ticketMedio"],
+    clientesPagantes: (texto(fd, "clientesPagantes") ||
+      "nenhum") as Respostas["clientesPagantes"],
+    faturamentoFaixa: (texto(fd, "faturamentoFaixa") ||
+      "prefiro-nao-informar") as Respostas["faturamentoFaixa"],
+    diferencial: texto(fd, "diferencial"),
+    provaSocial: texto(fd, "provaSocial"),
+    concorrentesConhecidos: texto(fd, "concorrentesConhecidos"),
     objetivo: (texto(fd, "objetivo") || "mais-leads") as Respostas["objetivo"],
     gargalo: (texto(fd, "gargalo") || "perco-leads") as Respostas["gargalo"],
     investimento: (texto(fd, "investimento") ||

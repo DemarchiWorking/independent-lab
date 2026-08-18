@@ -81,9 +81,18 @@ export function construirFichaMarkdown(ctx: ContextoNegocio): string {
   if (onboarding) {
     const r = onboarding.respostas;
     linhas.push(`- Fit comercial (score): ${onboarding.scoreFit}/100`);
+    linhas.push(`- Problema que resolve pros clientes dele: ${r.problemaPrincipal || "não informado"}`);
     linhas.push(`- Tamanho da equipe: ${r.equipe}`);
     linhas.push(`- Presença digital hoje: ${r.presencaDigital}`);
     linhas.push(`- Canais de captação usados: ${r.captacao.join(", ") || "nenhum informado"}`);
+    linhas.push(`- Já vendeu para o poder público (licitação): ${r.licitacaoPublico}`);
+    linhas.push(`- Modelo de receita: ${r.modeloReceita}`);
+    linhas.push(`- Ticket médio: ${r.ticketMedio}`);
+    linhas.push(`- Clientes pagantes hoje: ${r.clientesPagantes}`);
+    linhas.push(`- Faixa de faturamento mensal: ${r.faturamentoFaixa}`);
+    linhas.push(`- Diferencial competitivo: ${r.diferencial || "não informado"}`);
+    linhas.push(`- Prova social: ${r.provaSocial || "ainda não tem"}`);
+    linhas.push(`- Concorrentes conhecidos: ${r.concorrentesConhecidos || "não sabe"}`);
     linhas.push(`- Objetivo principal: ${r.objetivo}`);
     linhas.push(`- Maior gargalo: ${r.gargalo}`);
     linhas.push(`- Faixa de investimento disponível: ${r.investimento}`);

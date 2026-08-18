@@ -8,9 +8,20 @@ function respostas(over: Partial<Respostas> = {}): Respostas {
     segmento: "engenharia",
     cidade: "Vassouras",
     bairro: "Centro",
+    problemaPrincipal: "Empresas perdem prazo por falta de gestão",
     equipe: "6-15",
     presencaDigital: "site-desatualizado",
     captacao: ["indicacao"],
+    // fixture representa "ICP ideal" — licitação regular É o ICP real
+    licitacaoPublico: "vende-regularmente",
+    modeloReceita: "projeto-unico",
+    ticketMedio: "2000-10000",
+    clientesPagantes: "6-20",
+    // faixa NEUTRA de propósito — não altera o degrauAlvo:4 já asserido abaixo
+    faturamentoFaixa: "30-100k",
+    diferencial: "Entrega no prazo com garantia",
+    provaSocial: "ainda não tenho",
+    concorrentesConhecidos: "não sei",
     objetivo: "mais-leads",
     gargalo: "perco-leads",
     investimento: "1500-3500",
@@ -24,8 +35,16 @@ describe("scoring do onboarding", () => {
   it.each(["Mendes", "Vassouras", "Barra do Piraí", "Barra do Pirai"])(
     "cidade prioritária %s pontua fit geográfico",
     (cidade) => {
-      const comCidade = calcular(respostas({ cidade }));
-      const foraDaRegiao = calcular(respostas({ cidade: "São Paulo" }));
+      // licitacaoPublico "nao-e-foco" (sem os +25 do ICP de licitação) dá
+      // headroom abaixo de 100 pro teste medir só o efeito da cidade —
+      // com o valor padrão do fixture (+25) as duas pontuações batem no
+      // teto e a diferença de 15 desaparece por clamping, não por bug.
+      const comCidade = calcular(
+        respostas({ cidade, licitacaoPublico: "nao-e-foco" }),
+      );
+      const foraDaRegiao = calcular(
+        respostas({ cidade: "São Paulo", licitacaoPublico: "nao-e-foco" }),
+      );
       expect(comCidade.scoreFit).toBe(foraDaRegiao.scoreFit + 15);
     },
   );

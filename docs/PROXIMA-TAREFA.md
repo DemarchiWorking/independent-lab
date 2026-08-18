@@ -41,6 +41,19 @@
 
 ## Tarefa A — Onboarding mais rico (perguntas + score de ICP + escada de valor)
 
+> **✅ Código implementado em 2026-08-18 (continuação da sessão anterior).**
+> As 19 perguntas revisadas (lista final da matriz de rastreabilidade abaixo,
+> não a lista de 8 da 1ª passada) estão em
+> `src/features/onboarding/perguntas.ts`; tipo `Respostas`
+> (`src/lib/db/types.ts`), `scoring.ts`/`scoring.test.ts`,
+> `features/auth/actions.ts` (`cadastrar`) e
+> `features/documentos-gerados/contexto.ts` todos atualizados. Gates verdes:
+> `npm run typecheck && npm test (326/326) && npm run build`.
+> **Ainda falta:** a validação end-to-end real com Playwright (landing → 20
+> passos → conta → `/painel` → `gerar-agora.sh` → 6 documentos) — só rodada
+> via dado/gate até agora, **nunca clicada na UI real** nesta rodada. Não
+> marcar como pronto de verdade sem isso.
+
 **Revisão 2026-08-18 (2ª passada, pedido do fundador: "garanta que as
 perguntas são as melhores pro objetivo de gerar documentação"):** auditei
 a lista de 8 perguntas novas contra os 7 documentos reais que o motor
