@@ -134,6 +134,64 @@ inventar um novo.
    - `src/features/landing/content.ts` (`DOCUMENTOS`) — 7º item (o
      `TICKER_ITEMS` deriva automaticamente do array, não precisa mexer).
 
+## Tarefa D — BUG real relatado pelo fundador: mundo/escritórios não abrem no celular (prioridade ABAIXO de A/B/C acima)
+
+**Relato direto, 2026-08-18, testando num iPhone real:** não é possível
+entrar no Mundo (`/world`) nem visitar nenhum escritório do quarteirão ou
+de outro lugar do mapa, no celular. "Múltiplos bugs, caminhos de falha,
+sem boa usabilidade nem experiência". **Isto é sobre o jogo em si
+(`/world`, `/world/visitar/[tenantId]`), NÃO sobre a landing/`/apresentacao`**
+— a sessão anterior só mexeu na landing e no QR, nunca tocou em
+`WorldCanvas.tsx`/Pixi/`/hub`/`/world`, então isto é achado novo, não
+regressão desta sessão (mas pode já existir há mais tempo e só agora foi
+testado num aparelho real).
+
+**Investigação inicial (rápida, não aprofundada — próxima sessão precisa
+ir mais fundo):**
+- `src/features/world/render/WorldCanvas.tsx` renderiza o canvas Pixi.js
+  com tamanho NATIVO fixo (`Cena.tamanhoCanvas(geo)`, linha ~132) e deixa
+  o CSS (`width:100%` + `height:auto`, comentário na linha ~199-201)
+  encolher visualmente pra caber na tela — **suspeita nº 1**: em telas
+  pequenas isso pode desalinhar a tradução de coordenada de toque
+  (`pointerdown`/tap) pro sistema de coordenadas interno do Pixi, fazendo
+  o toque cair em outra célula/hitbox que o esperado (ou em lugar nenhum).
+- `AGENTS.md` do próprio repo já documenta (seção "Validação sem infra")
+  que hit-test do Pixi é frágil e exige sequência específica de eventos
+  pra funcionar em automação — sinal de que a equipe já sabia que essa
+  área é delicada, mesmo antes deste relato.
+- `className="w-full touch-manipulation select-none"` (linha 208) já tenta
+  evitar gestos padrão do navegador atrapalharem o toque — não resolveu
+  segundo o relato, então o problema provavelmente é mais fundo
+  (coordenada errada, não gesto do navegador brigando com o app).
+
+**O que fazer na próxima sessão (nesta ordem):**
+1. Reproduzir de verdade com Playwright em viewport mobile real (390×844,
+   `hasTouch: true`, `isMobile: true`) — tentar clicar/tocar numa sede
+   vizinha em `/world` e ver se o evento chega, com screenshot antes/depois.
+   Não confiar só em relato — confirmar a causa raiz primeiro
+   (`systematic-debugging`, não corrigir no escuro).
+2. Se for mesmo desalinhamento de coordenada: comparar `event.global`/
+   `event.data.global` do Pixi com a posição real do toque na tela;
+   verificar se `resolution`/`autoDensity` (linhas 140-141) estão sendo
+   considerados corretamente pela `EventSystem` do Pixi v8 quando o CSS
+   encolhe o canvas abaixo do tamanho nativo.
+3. Verificar também a ENTRADA pro mundo a partir do celular (não só o
+   clique dentro do mundo): o item "world" do `LateralMenu`
+   (`src/features/shell/GameShell.tsx`, `LateralKey`) navega por `href`,
+   não por troca de view — conferir se esse link/botão está acessível e
+   clicável no layout mobile do `GameShell` (menu lateral pode estar fora
+   da área de toque/verticalmente cortado em telas estreitas — nunca
+   auditado em celular real, só o `/` e `/apresentacao` foram).
+4. Mesma coisa para `/world/visitar/[tenantId]` (visitar escritório de
+   outro negócio) — testar o link de entrada E a interação dentro da cena
+   visitada.
+
+**Prioridade explícita do fundador:** abaixo das Tarefas A/B/C acima
+(onboarding rico, 7º documento, responsividade de outras telas) — só
+começar esta depois de fechar aquelas, salvo instrução em contrário.
+
+---
+
 **Depois das duas tarefas:** rodar gates
 (`typecheck && test && build`), fazer um cadastro real de ponta a ponta de
 novo com Playwright (mesmo script/roteiro já usado 2x nesta sessão —
