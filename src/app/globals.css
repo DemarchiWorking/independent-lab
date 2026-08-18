@@ -44,6 +44,63 @@ body {
   .clip-hex {
     clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
   }
+
+  /* Landing (GH-MKT-01) — gradiente teal→laranja nas 2 cores de marca
+     (design-system/tokens.ts, color.brand.teal/orange). */
+  .text-gradient {
+    background: linear-gradient(135deg, #00d4c8, #f59e0b 85%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Landing (GH-MKT-01) — "text shimmer" (padrão cult-ui/aceternity): faixa
+     de brilho varrendo o texto em loop via background-clip animado. Mesmo
+     teal da marca (design-system/tokens.ts, color.brand.teal). */
+  .text-shimmer {
+    background: linear-gradient(
+      110deg,
+      #eaf2ff 0%,
+      #eaf2ff 38%,
+      #00d4c8 50%,
+      #eaf2ff 62%,
+      #eaf2ff 100%
+    );
+    background-size: 220% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer-text 3.4s linear infinite;
+  }
+
+  /* Faixa de rolagem infinita (padrão skiper-ui/aceternity) — ver
+     src/components/ui/Marquee.tsx. */
+  .animate-marquee {
+    animation: marquee linear infinite;
+  }
+  .animation-direction-reverse {
+    animation-direction: reverse;
+  }
+  .group:hover .animate-marquee {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes shimmer-text {
+  from {
+    background-position: 200% center;
+  }
+  to {
+    background-position: -200% center;
+  }
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "labdatadev · gamehub",
+  title: "labdatadev · gamehub — sua empresa documentada em 10 minutos",
   description:
-    "Metaverso de negócios isométrico — estilo Startup Panic — com marketplace de serviços de TI reais e parcerias regionais.",
+    "Cadastre seu negócio, ganhe um lote no mapa isométrico da sua região e deixe a IA gerar sua documentação completa (Canvas, Modelo de Negócio, SWOT, Proposta Comercial e mais) — documentação e marketing no piloto automático.",
 };
 
 export const viewport: Viewport = {
