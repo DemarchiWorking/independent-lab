@@ -67,9 +67,26 @@ no notebook resolve isso sozinho. O que dá pra fazer:
 1. `ssh root@2.25.146.39` e `docker ps` — ver o que não está rodando.
 2. `docker compose -f docker-compose.yml -f docker-compose.supabase.yml up -d`
    (dentro de `/root/labdatadev-gamehub`) — tenta subir de novo o que caiu.
-3. Se nada disso resolver em campo, a apresentação segue com o material
-   estático (prints/vídeo gravado com antecedência) — por isso vale ter um
-   vídeo curto de backup gravado ANTES do evento, não só a demo ao vivo.
+3. Se nada disso resolver em campo, a apresentação segue com o **vídeo de
+   backup** — ver seção abaixo.
+
+## Vídeo de backup
+
+`deploy/apresentacao/assets/demo-backup.mp4` (55s, 1280×720, ~3,4 MB) —
+gravação real (não é mockup) do fluxo inteiro: landing → cadastro de 10
+perguntas → IA gerando a documentação → login → os 6 documentos prontos no
+painel. Gravado com Playwright direto em produção, dados de teste apagados
+depois.
+
+- **Baixe pro notebook ANTES de sair de casa** (não depende da VPS nem de
+  wifi no dia): `scp root@2.25.146.39:/root/labdatadev-gamehub/deploy/apresentacao/assets/demo-backup.mp4 .`
+- Toca em qualquer player (VLC, ou o navegador — é um `.mp4` padrão).
+- Não está versionado no git (é binário grande e fica desatualizado a cada
+  mudança visual da landing) — se a landing mudar muito, regrave antes do
+  próximo evento.
+- Só usar como **plano B de verdade** — a demo ao vivo (QR Code →
+  cadastro real) é sempre a principal; o vídeo é o que mostrar SE a rede
+  falhar.
 
 ## Onde cada arquivo desta pasta entra
 
@@ -80,3 +97,4 @@ no notebook resolve isso sozinho. O que dá pra fazer:
 | `gerar-agora.bat` | Windows, via SSH | Dispara `document-engine/scripts/gerar-agora.sh` remotamente |
 | `document-engine/scripts/gerar-agora.sh` | VPS | Roda o motor de documentação na hora, fora do cron |
 | `document-engine/cron/run-evento.sh` | VPS (cron) | Versão do motor pro modo evento (5 em 5 min) |
+| `assets/demo-backup.mp4` | Notebook (offline) | Vídeo de backup — plano B se a rede falhar |
