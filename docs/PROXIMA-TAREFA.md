@@ -1,13 +1,28 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
-> **🎯 PRIORIDADE #1 — 2026-08-18 (leia ESTA primeiro, antes de tudo
-> abaixo — supera a prioridade de 2026-08-02 até estar concluída).**
-> Sessão anterior parou por limite de uso no MEIO de duas tarefas. Pesquisa
-> já feita (não repetir) + plano concreto abaixo — é pra continuar
-> direto na implementação, não replanejar do zero.
+> **✅ Tarefas A, B, C e D — TODAS fechadas e NO AR em 2026-08-18**
+> (continuação da mesma sessão, depois de retomar de um corte por limite de
+> uso). Commit em produção (porta 3006): confira `git log --oneline -1` e
+> compare com `c5d3976` — se bater ou for mais novo, está tudo aqui
+> descrito no ar. Deploy feito via `./deploy/docker/update.sh`, healthcheck
+> confirmado, e validado ao vivo contra a própria produção (`/cadastro`
+> mostra "Passo 1 de 20", landing menciona "Análise de Concorrência" e "7
+> documentos gerados por rodada"). Cada tarefa abaixo tem seu próprio bloco
+> `✅` com o detalhe do que foi feito/validado — leia o bloco da tarefa que
+> for mexer antes de assumir que precisa redescobrir algo.
 >
-> **Contexto da sessão 2026-08-18 (o que já está no ar, verificado de
-> verdade, não só "deveria funcionar"):**
+> **O que NÃO ficou pronto** (real, não modéstia): (1) sem teste
+> automatizado (Vitest/RTL) para `CapituloCard`/`CapituloGate` — só
+> validação manual via Playwright; (2) `/world`/`/world/v2`/`/hub` com o
+> GameShell autenticado nunca passou por auditoria formal multi-viewport
+> (só os testes pontuais da Tarefa D); (3) o `.env` do stack Supabase desta
+> VPS pode ainda não ter `KONG_HTTP_PORT=8010` persistido — o risco foi
+> neutralizado no código (`deploy/supabase-up.sh` agora exporta o default
+> sozinho), mas ninguém confirmou o valor real gravado no arquivo (bloqueado
+> por permissão de acesso a segredo nesta sessão).
+>
+> **Contexto de sessões anteriores (o que já estava no ar antes desta
+> rodada, verificado de verdade, não só "deveria funcionar"):**
 > - **GH-DOC-01** (`document-engine/`): motor de documentação por IA
 >   expandido de 2 → 6 tipos (Canvas, Modelo de Negócio, SWOT, Resumo
 >   Executivo, Roadmap, Proposta Comercial), cron horário +
