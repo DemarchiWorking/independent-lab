@@ -5,6 +5,39 @@
 > Sessão anterior parou por limite de uso no MEIO de duas tarefas. Pesquisa
 > já feita (não repetir) + plano concreto abaixo — é pra continuar
 > direto na implementação, não replanejar do zero.
+>
+> **Contexto da sessão 2026-08-18 (o que já está no ar, verificado de
+> verdade, não só "deveria funcionar"):**
+> - **GH-DOC-01** (`document-engine/`): motor de documentação por IA
+>   expandido de 2 → 6 tipos (Canvas, Modelo de Negócio, SWOT, Resumo
+>   Executivo, Roadmap, Proposta Comercial), cron horário +
+>   `gerar-agora.sh`/`.bat` (gatilho manual) + `run-evento.sh` (cron de
+>   5min pro dia da apresentação). Achado e corrigido um `SyntaxError`
+>   real em `prompt.mjs` (backticks aninhados quebrando o parse) que
+>   travava TODA geração silenciosamente — só foi achado rodando uma
+>   geração de verdade, não pelos gates.
+> - **GH-MKT-01** (`src/features/landing/`): `/` deixou de ser o demo
+>   direto e virou landing de marketing de verdade (seções modulares em
+>   `sections/` + `content.ts` como fonte única de copy/dados), CTA
+>   maior (`LandingLinkButton` ganhou prop `size`), escada de valor real
+>   (`DEGRAUS`) como oferta — sem inventar checkout que não existe. Demo
+>   antigo realocado pra `/demo`.
+> - **`/apresentacao`**: tela de QR Code pra projetar no telão do Sebrae,
+>   aponta pra `NEXT_PUBLIC_LANDING_URL` (default IP:porta desta VPS, sem
+>   domínio ainda).
+> - **Vídeo de backup**: `deploy/apresentacao/assets/demo-backup.mp4`
+>   (gravado com Playwright, dados reais, não versionado no git).
+> - **Validado 2x com cadastro real de ponta a ponta** (Playwright,
+>   celular simulado): landing → 10 perguntas → conta real → `/painel` →
+>   `gerar-agora.sh` → os documentos aparecendo de verdade → login de
+>   novo com o mesmo e-mail. Dados de teste sempre apagados depois.
+> - **Commit no ar em produção (porta 3006):** `144ba8d` (branch
+>   `integracao-deploy-vps`) — confira `git log --oneline -10` pra ver se
+>   mudou desde então.
+> - **Achado, NÃO desta sessão** (só reportado pelo fundador testando num
+>   iPhone real): `/world` e `/world/visitar/[tenantId]` não abrem no
+>   celular — ver Tarefa D abaixo. Esta sessão nunca tocou nesses
+>   arquivos.
 
 ## Tarefa A — Onboarding mais rico (perguntas + score de ICP + escada de valor)
 
