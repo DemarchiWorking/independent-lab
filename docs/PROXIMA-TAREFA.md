@@ -217,10 +217,34 @@ objetivo/gargalo/investimento):
 > (`DocumentoGerado.tipo`), `DocumentosPainel.tsx` (`TITULO_TIPO` + texto),
 > `features/landing/content.ts` (`DOCUMENTOS` + `STATS`). Gates verdes:
 > `typecheck && test (326/326) && build`.
-> **Ainda falta:** rodar a migration `0039` contra o Supabase self-hosted
-> real da VPS (`deploy/supabase/`) e validar a RPC + a geração do 7º
-> documento de ponta a ponta com um cadastro real — nada disso foi testado
-> contra banco de verdade nesta rodada, só sintaxe/gates estáticos.
+> **✅ Migration aplicada e RPC validada em 2026-08-18** (mesma sessão):
+> `deploy/supabase-up.sh` rodou contra o Supabase self-hosted real da VPS —
+> `0039_analise_concorrencia.sql` aplicada (rastreada em
+> `_migrations.aplicadas`). `concorrentes_regiao` testada com 3 tenants
+> reais (`tenant 1 "admin"` retornou os 2 concorrentes reais do mesmo
+> segmento/cidade — `Lab Demarchi`, `Admin`; `tenant 9`/`tenant 6`, únicos
+> no segmento, retornaram lista vazia corretamente) — via REST/Kong (mesmo
+> caminho de `scan-and-generate.mjs`) e via `psql` direto. ACL do Postgres
+> confirma `proacl = {postgres=X,service_role=X}` — nem `anon` nem
+> `authenticated` têm `execute`, grant correto.
+> ⚠️ **Incidente durante o processo (resolvido, ~1-2min de downtime):**
+> `deploy/supabase-up.sh` recriou o container `gamehub-supabase-kong` e ele
+> subiu na porta 8000 (host) em vez de 8010, colidindo com o Supabase do
+> Company HQ (`supabase-kong`, também nesta VPS) — o `.env` do stack
+> aparentemente não tinha `KONG_HTTP_PORT=8010` persistido (ou nunca foi
+> escrito nele, apesar do comentário do script dizer que a 1ª execução
+> grava isso). Corrigido passando `KONG_HTTP_PORT=8010` explícito na
+> chamada do script — funcionou, mas o `.env` do stack pode continuar sem
+> essa variável, o que reproduziria o mesmo incidente na PRÓXIMA vez que
+> `supabase-up.sh` rodar sem o override explícito. **Próxima sessão:**
+> confirmar (o agente não pôde ler `.env` — bloqueado por política de
+> permissão de arquivo de segredo) e, se for o caso, adicionar
+> `KONG_HTTP_PORT=8010` de forma persistente, ou sempre chamar o script com
+> `KONG_HTTP_PORT=8010 ./deploy/supabase-up.sh` daqui em diante.
+> **Ainda falta:** validar a geração do 7º documento de ponta a ponta com
+> um cadastro real via UI (Playwright) — a RPC/dado foi validado, mas o
+> `claude -p` headless gerando o `07-analise-concorrencia.md` de verdade
+> ainda não rodou nesta sessão.
 
 **Pedido do fundador:** documento comparando o negócio a outros perfis do
 MESMO segmento na MESMA região, usando dados reais do próprio jogo (nunca
