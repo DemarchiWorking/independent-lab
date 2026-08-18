@@ -424,6 +424,35 @@ os dados de teste depois — commit + push (`integracao-deploy-vps`) +
 
 ## Tarefa C — Responsividade/UX de ponta a ponta (além da landing)
 
+> **✅ Auditoria feita em 2026-08-18** (mesma sessão de A/B/D) — Playwright
+> real (não DevTools), overflow horizontal (`scrollWidth > clientWidth`,
+> mesma técnica já validada na landing) em 320/375/390/412/768px:
+> - `/entrar`, `/recuperar-senha`: limpos.
+> - `/cadastro`: **todos os 20 passos** (as 19 perguntas + conta),
+>   preenchendo de verdade em cada um, em 320px e 375px — zero overflow.
+>   O padrão existente (`ActionButton fullWidth`, `grid sm:grid-cols-2`)
+>   já aguentou as 9 perguntas novas sem ajuste.
+> - `/hub`: limpo em todas as larguras testadas.
+> - `/painel`: **bug real achado e corrigido** — `OfertasPainel.tsx`
+>   (form de "Serviços na sua vitrine") tinha um input "Preço" com
+>   `w-32` fixo ao lado de um input "Descrição" `flex-1` **sem
+>   `min-w-0`** — o browser não deixava o `flex-1` encolher abaixo do seu
+>   min-content em telas de 320-390px, forçando a seção inteira (e por
+>   arrasto, a `grid` que a envolve) ~75px mais larga que a viewport
+>   (395px medidos, constante, independente da largura da tela — sinal
+>   claro de largura fixa por conteúdo, não de layout fluido). Corrigido:
+>   `flex-col sm:flex-row` (empilha em telas estreitas) + `min-w-0` no
+>   `flex-1` + `Preço` vira `w-full sm:w-32`. Confirmado limpo depois em
+>   320/375/390/412/768px.
+> - Um falso-positivo descartado: o passo "segmento" do cadastro mediu
+>   1-2px de overflow logo após o clique em "Continuar" — sumiu esperando
+>   a transição do `framer-motion`/`AnimatePresence` terminar (~450ms);
+>   era artefato da animação em trânsito, não layout quebrado.
+> Gates verdes: typecheck, 329/329 testes, build. **Ainda falta:**
+> `/world`/`/world/v2`/GameShell (`/hub` autenticado com o mundo aberto —
+> maior superfície, ver nota "auditar por último" abaixo) não recebeu
+> auditoria multi-viewport formal, só os testes pontuais da Tarefa D.
+
 A landing (`/`) e a página de QR (`/apresentacao`) já foram auditadas e
 corrigidas nesta sessão anterior — testadas de verdade com Playwright em
 13 larguras (320px–1920px) e nos 7 dispositivos-alvo (iPhone SE/14,
