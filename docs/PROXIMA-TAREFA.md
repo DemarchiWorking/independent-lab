@@ -41,6 +41,90 @@
 
 ## Tarefa A — Onboarding mais rico (perguntas + score de ICP + escada de valor)
 
+**Revisão 2026-08-18 (2ª passada, pedido do fundador: "garanta que as
+perguntas são as melhores pro objetivo de gerar documentação"):** auditei
+a lista de 8 perguntas novas contra os 7 documentos reais que o motor
+gera — achei 2 lacunas de verdade e 2 perguntas de baixo valor pra
+documentação (mantidas só por "seria legal saber"). **Troca recomendada,
+NÃO implementada ainda** (é só a lista de campos que muda, o resto do
+plano de arquivos abaixo continua valendo):
+
+**Matriz de rastreabilidade — pergunta → documento que ela alimenta**
+(perguntas sem nenhum documento associado são candidatas a cortar; a
+`01-corpus-oficial-gamehub.md` seção E.1 e os arquivos `02-05` da
+knowledge-base já definem a estrutura exata de cada documento):
+
+| Pergunta | Canvas | Modelo Negócio | SWOT | Resumo Exec. | Roadmap | Proposta Comercial | Concorrência |
+|---|---|---|---|---|---|---|---|
+| segmento, cidade, bairro (existentes) | ✓ (Segmentos) | ✓ | ✓ | ✓ | | | ✓ |
+| **`problemaPrincipal`** (NOVA) | ✓ (Proposta de Valor) | ✓✓ (é a pergunta #1 do OFC, D.2 do corpus) | | | | ✓ | |
+| equipe, presencaDigital (existentes) | ✓ (Recursos-Chave/Canais) | | ✓ (atributos) | | ✓ | | |
+| `licitacaoPublico` (NOVA) | | ✓ (posicionamento) | | | | | |
+| captacao (existente) | ✓ (Canais) | | ✓ | | ✓ | | |
+| **`modeloReceita`** (NOVA) | ✓✓ (Fluxos de Receita — hoje SEM NENHUM dado) | ✓ (unit economics) | | | | | |
+| `ticketMedio` (NOVA) | ✓ (Fluxos de Receita) | ✓✓ (unit economics) | | | | ✓ | |
+| `clientesPagantes` (NOVA) | | | | ✓ (5 números) | | | |
+| `faturamentoFaixa` (NOVA) | | ✓ (porte) | | | | | |
+| `diferencial` (NOVA) | ✓ (Proposta de Valor) | ✓✓ (vantagem injusta, tese em 3 pilares) | ✓ (forças) | | | ✓ | |
+| **`provaSocial`** (NOVA, opcional) | | | | | | ✓✓ (hoje a seção fica VAZIA sem isso — ver `05-proposta-comercial.md`) | |
+| `concorrentesConhecidos` (NOVA) | ✓ (Parceiros/Concorrência) | | ✓ (ameaças) | | | | ✓✓ |
+| objetivo, gargalo, investimento (existentes) | ✓ (Estrutura de Custos) | ✓ | ✓ (fraquezas) | ✓ | ✓✓ | | |
+
+**Cortar** (mantidas na primeira passada, mas nenhum documento depende
+delas de forma central — são "seria legal saber", não "a IA precisa
+disso"):
+- `anosDeOperacao` — nenhuma seção de nenhum documento pede maturidade em
+  anos especificamente (a escada de valor já mede maturidade melhor, via
+  atributos+degrau).
+- `decisor` — só ajudaria um script comercial de VENDA (que este produto
+  não gera hoje — ver `docs/ARQUITETURA.md` sobre escopo), não os 7
+  documentos reais.
+
+**Adicionar no lugar** (lacunas reais achadas nesta auditoria):
+- `problemaPrincipal` (texto curto, ~1 frase) — "Qual problema você
+  resolve pros SEUS clientes?" — é literalmente a primeira das 7
+  perguntas OFC (`01-corpus-oficial-gamehub.md`, seção D.2) que TODO
+  Modelo de Negócio precisa responder, e hoje **não existe pergunta
+  nenhuma sobre isso** — as 10 perguntas atuais só perguntam sobre o
+  GARGALO INTERNO do próprio negócio (ex. "perco leads"), nunca sobre o
+  problema que ele resolve pro cliente dele. Lacuna mais grave achada.
+- `modeloReceita` (escolha: `"projeto-unico" | "assinatura-recorrente" |
+  "comissao-resultado" | "venda-produto" | "combinacao"`) — bloco "Fluxos
+  de Receita" do Canvas (um dos 9 blocos obrigatórios, ordem D.1) hoje não
+  tem NENHUM dado de onboarding pra se basear — a IA teria que
+  `[HIPÓTESE]` o bloco inteiro.
+- `provaSocial` (texto curto, opcional, aceitar "ainda não tenho") — hoje
+  `05-proposta-comercial.md` (seção "Prova social") **omite a seção
+  inteira** quando não há dado — ter essa pergunta faz a Proposta
+  Comercial sair completa, não capada, na maioria dos cadastros.
+
+**Lista final revisada (9 perguntas novas, era 8 — mesma ordem sugerida:
+identidade → `problemaPrincipal` → operação → `licitacaoPublico` →
+`modeloReceita`/`ticketMedio`/`clientesPagantes`/`faturamentoFaixa` →
+`diferencial`/`provaSocial`/`concorrentesConhecidos` → objetivo/gargalo/
+investimento):**
+
+1. `problemaPrincipal` — texto curto.
+2. `licitacaoPublico`: `"vende-regularmente" | "ja-vendeu" | "tem-interesse" | "nao-e-foco"` (ICP real, entra no score — ver fórmula abaixo, inalterada).
+3. `modeloReceita`: `"projeto-unico" | "assinatura-recorrente" | "comissao-resultado" | "venda-produto" | "combinacao"`.
+4. `ticketMedio`: `"ate-500" | "500-2000" | "2000-10000" | "10000-50000" | "acima-50000" | "nao-sei"`.
+5. `clientesPagantes`: `"nenhum" | "1-5" | "6-20" | "21-50" | "mais-50"`.
+6. `faturamentoFaixa`: `"ate-10k" | "10-30k" | "30-100k" | "100-300k" | "acima-300k" | "prefiro-nao-informar"` (entra no `degrauAlvo`, inalterado).
+7. `diferencial` — texto curto.
+8. `provaSocial` — texto curto, opcional ("ainda não tenho" é resposta válida).
+9. `concorrentesConhecidos` — texto curto, opcional.
+
+**Total: 19 perguntas + conta = 20 passos** (era 18+1=19 na 1ª versão —
+só 1 a mais, e a composição é bem melhor: 5 dos 9 novos campos agora têm
+um documento específico dependendo deles, contra 3 de 8 antes).
+
+Fórmula de score/degrau (`scoring.ts`) e o ajuste do teste
+(`scoring.test.ts`) **continuam exatamente como já estava planejado**
+abaixo — só `licitacaoPublico` e `faturamentoFaixa` entram na conta, os
+outros 7 campos novos são só ficha/documentação, sem tocar a fórmula.
+
+### Plano de arquivos (original, ainda válido)
+
 **Pedido do fundador:** melhores perguntas de cadastro pra alimentar a IA
 geradora de documentos, entender se o negócio é cliente ideal (ICP/BANT) e
 como subir a escada de valor (cobrar mais). Usar o V4MOS
