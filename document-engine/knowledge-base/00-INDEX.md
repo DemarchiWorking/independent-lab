@@ -14,7 +14,10 @@ gerando no momento:
   atributos de maturidade, com "Histórico de Revisões" append-only.
 - `05-proposta-comercial.md` — peça de venda do TENANT para os clientes
   DELE (não é sobre o negócio do tenant, é uma ferramenta de venda pronta).
+- `06-analise-concorrencia.md` — comparação com concorrentes REAIS do
+  mesmo segmento e cidade (dados do próprio jogo, via RPC
+  `concorrentes_regiao`) — nunca concorrente fictício.
 
 Se este engine crescer para gerar ainda mais tipos de documento, adicione
-`06-`, `07-`... aqui e atualize este índice — nunca deixe conhecimento novo
+`07-`, `08-`... aqui e atualize este índice — nunca deixe conhecimento novo
 só na memória de uma sessão.

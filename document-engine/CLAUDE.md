@@ -74,21 +74,25 @@ específico sem depender do script, consulte a fila via
 
 ## Estrutura de saída por rodada (`clients/<tenant_id>-<fila_id>/`)
 
-**Escopo atual: 6 documentos** (expandido de 2 para 6 na migration `0038`
-— ver `knowledge-base/01-corpus-oficial-gamehub.md`, seção "Escopo atual de
+**Escopo atual: 7 documentos** (expandido de 2 para 6 na migration `0038`,
+depois para 7 na migration `0039` — ver
+`knowledge-base/01-corpus-oficial-gamehub.md`, seção "Escopo atual de
 geração", e `knowledge-base/00-INDEX.md` para o arquivo de metodologia de
 cada um).
 
 - `context-ficha.md` — a ficha recebida da fila (cópia do `contexto_snapshot`, para auditoria)
+- `context-concorrentes.md` — concorrentes REAIS (mesmo segmento + cidade, `perfil_publico = true`) via RPC `concorrentes_regiao` (migration 0039), ou o aviso de lista vazia
 - `01-business-model-canvas.md` — 9 blocos, ordem oficial 5→4→6→7→9→2→1→3→8
 - `02-modelo-de-negocio.md` — posicionamento OFC + escada de valor do gamehub + unit economics + próximas ações (contém "Notas de Versão", append-only)
 - `03-analise-swot.md` — SWOT cruzada (matriz Ofensiva/Reforço/Confronto/Defensiva), ancorada nos 5 atributos e no degrau da ficha
 - `04-resumo-executivo.md` — 1 página standalone, sem jargão de jogo, para o dono mostrar a alguém de fora
 - `05-roadmap-melhoria-continua.md` — pipeline Kaizen ancorado nos 5 atributos, com "Histórico de Revisões" (append-only)
 - `06-proposta-comercial.md` — peça de venda do tenant para os clientes DELE, baseada nas ofertas reais da vitrine
+- `07-analise-concorrencia.md` — comparação com os concorrentes reais de `context-concorrentes.md`, nunca concorrente inventado
 
-Custo por rodada é proporcionalmente maior (6 documentos em vez de 2, mesma
-chamada `claude -p`) — timeout do motor subiu de 15 para 25 min por negócio
+Custo por rodada é proporcionalmente maior (7 documentos em vez de 2, mesma
+chamada `claude -p`) — timeout do motor subiu de 15 para 25 min (migration
+0038) e depois para 30 min (migration 0039) por negócio
 (`scan-and-generate.mjs`, `CLAUDE_TIMEOUT_MS`) para dar folga.
 
 Estes arquivos em `clients/` são só rascunho de trabalho — a fonte da

@@ -113,7 +113,7 @@ lógica exposta.
 
 ## Escopo atual de geração (importante)
 
-Por decisão de produto, o gamehub gera hoje **seis documentos** por rodada,
+Por decisão de produto, o gamehub gera hoje **sete documentos** por rodada,
 cada um com sua própria metodologia detalhada em arquivo próprio da
 knowledge-base (ver `00-INDEX.md`):
 
@@ -124,8 +124,12 @@ knowledge-base (ver `00-INDEX.md`):
 5. **Roadmap de Melhoria Contínua** (`roadmap-melhoria-continua`) —
    `04-roadmap-melhoria-continua.md`.
 6. **Proposta Comercial** (`proposta-comercial`) — `05-proposta-comercial.md`.
+7. **Análise de Concorrência** (`analise-concorrencia`) —
+   `06-analise-concorrencia.md`. Dados de concorrentes REAIS (mesmo
+   segmento + cidade) vêm em "context-concorrentes.md", via RPC
+   `concorrentes_regiao` — nunca concorrente inventado.
 
-O `check` da tabela `documentos_gerados` (migration `0037`, expandido pela
-migration `0038`) aceita exatamente estes 6 valores de `tipo` — não invente
-um sétimo sem migration nova e sem arquivo de metodologia correspondente
-aqui.
+O `check` da tabela `documentos_gerados` (migration `0037`, expandido pelas
+migrations `0038` e `0039`) aceita exatamente estes 7 valores de `tipo` —
+não invente um oitavo sem migration nova e sem arquivo de metodologia
+correspondente aqui.

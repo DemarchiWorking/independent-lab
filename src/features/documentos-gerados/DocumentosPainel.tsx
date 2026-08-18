@@ -12,6 +12,7 @@ const TITULO_TIPO: Record<DocumentoGerado["tipo"], string> = {
   "resumo-executivo": "Resumo Executivo",
   "roadmap-melhoria-continua": "Roadmap de Melhoria Contínua",
   "proposta-comercial": "Proposta Comercial",
+  "analise-concorrencia": "Análise de Concorrência",
 };
 
 /**
@@ -59,11 +60,11 @@ export function DocumentosPainel({ documentos }: { documentos: DocumentoGerado[]
         </button>
       </div>
       <p className="mb-3 text-xs text-muted">
-        6 documentos gerados pela IA a partir da sua ficha (cadastro,
+        7 documentos gerados pela IA a partir da sua ficha (cadastro,
         onboarding, vitrine, equipe e sede): Canvas, Modelo de Negócio, SWOT,
-        Resumo Executivo, Roadmap de Melhoria Contínua e Proposta Comercial —
-        a cada rodada uma versão nova é adicionada, o histórico nunca é
-        apagado.
+        Resumo Executivo, Roadmap de Melhoria Contínua, Proposta Comercial e
+        Análise de Concorrência — a cada rodada uma versão nova é
+        adicionada, o histórico nunca é apagado.
       </p>
 
       {mensagem ? <p className="mb-3 text-xs font-bold text-teal">{mensagem}</p> : null}

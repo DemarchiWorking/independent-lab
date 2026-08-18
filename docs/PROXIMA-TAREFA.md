@@ -203,6 +203,25 @@ objetivo/gargalo/investimento):
 
 ## Tarefa B — 7º documento: Análise de Concorrência (dados REAIS, não inventados)
 
+> **✅ Código implementado em 2026-08-18 (continuação da sessão anterior).**
+> Migration `0039_analise_concorrencia.sql` (constraint de `tipo` + RPC
+> `concorrentes_regiao`, sintaxe validada com `pg-query-emscripten` — sem
+> Postgres local, ainda não aplicada em nenhum banco real);
+> `document-engine/scripts/lib/supabase.mjs` (`fetchConcorrentes`),
+> `scan-and-generate.mjs` (busca concorrentes, escreve
+> `context-concorrentes.md`, 7ª entrada no `DOC_TYPE_MAP`, timeout 30min),
+> `lib/prompt.mjs` (7 documentos) e
+> `knowledge-base/06-analise-concorrencia.md` (metodologia) todos
+> atualizados; `00-INDEX.md`/`01-corpus-oficial-gamehub.md` refletem 7
+> documentos. Fiação de UI: `src/lib/db/types.ts`
+> (`DocumentoGerado.tipo`), `DocumentosPainel.tsx` (`TITULO_TIPO` + texto),
+> `features/landing/content.ts` (`DOCUMENTOS` + `STATS`). Gates verdes:
+> `typecheck && test (326/326) && build`.
+> **Ainda falta:** rodar a migration `0039` contra o Supabase self-hosted
+> real da VPS (`deploy/supabase/`) e validar a RPC + a geração do 7º
+> documento de ponta a ponta com um cadastro real — nada disso foi testado
+> contra banco de verdade nesta rodada, só sintaxe/gates estáticos.
+
 **Pedido do fundador:** documento comparando o negócio a outros perfis do
 MESMO segmento na MESMA região, usando dados reais do próprio jogo (nunca
 concorrente fictício).

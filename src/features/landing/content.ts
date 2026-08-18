@@ -32,10 +32,10 @@ export const HERO = {
   linkDemo: "ver demo ao vivo sem cadastro",
 };
 
-// Reflete exatamente o que o Document Engine (GH-DOC-01) gera hoje — 6
-// documentos por rodada, ver document-engine/knowledge-base/01-corpus-
-// oficial-gamehub.md. Nunca prometer no marketing mais do que o motor
-// realmente produz.
+// Reflete exatamente o que o Document Engine (GH-DOC-01/GH-DOC-02) gera
+// hoje — 7 documentos por rodada, ver document-engine/knowledge-base/01-
+// corpus-oficial-gamehub.md. Nunca prometer no marketing mais do que o
+// motor realmente produz.
 export const DOCUMENTOS = [
   { label: "Business Model Canvas", desc: "9 blocos, ordem oficial, com tensões e riscos mapeados" },
   { label: "Modelo de Negócio", desc: "Narrativa estratégica, escada de valor, unit economics" },
@@ -43,6 +43,7 @@ export const DOCUMENTOS = [
   { label: "Resumo Executivo", desc: "1 página, pronta pra mostrar a um sócio ou parceiro" },
   { label: "Roadmap de Melhoria Contínua", desc: "Plano de 90 dias ligado aos seus 5 atributos" },
   { label: "Proposta Comercial", desc: "Peça de venda pronta pra usar com os SEUS clientes" },
+  { label: "Análise de Concorrência", desc: "Comparação com negócios reais do seu segmento e região" },
 ] as const;
 
 export const TICKER_ITEMS = DOCUMENTOS.map((d) => d.label);
@@ -60,7 +61,7 @@ export const CANAIS_MARKETING = [
 
 export const STATS = [
   { to: 10, suffix: " min", label: "do cadastro à documentação pronta" },
-  { to: 6, suffix: "", label: "documentos gerados por rodada" },
+  { to: 7, suffix: "", label: "documentos gerados por rodada" },
   { to: 5, suffix: "", label: "degraus na escada de valor" },
 ] as const;
 

@@ -64,6 +64,16 @@ export function makeSupabaseClient({ restUrl, serviceRoleKey }) {
       });
     },
 
+    // GH-DOC-02 — concorrentes reais (mesmo segmento + cidade, perfil
+    // público) via RPC `concorrentes_regiao` (migration 0039). Nunca chamada
+    // com apikey de anon/authenticated — só service_role tem `execute`.
+    async fetchConcorrentes(tenantId) {
+      return request("/rpc/concorrentes_regiao", {
+        method: "POST",
+        body: JSON.stringify({ p_tenant_id: tenantId, p_limite: 6 }),
+      });
+    },
+
     async insertDocumento({ tenantId, filaId, tipo, titulo, conteudoMarkdown }) {
       return request("/documentos_gerados", {
         method: "POST",

@@ -33,10 +33,10 @@ const APP_ENV_PATH = join(ROOT_DIR, "..", ".env");
 const SUPABASE_REST_URL = "http://127.0.0.1:8010/rest/v1";
 const KNOWLEDGE_BASE_DIR = join(ROOT_DIR, "knowledge-base");
 const CLIENTS_DIR = join(ROOT_DIR, "clients");
-// 25 min (era 15 até a migration 0038) — o corpus passou de 2 para 6
-// documentos por rodada, mais leitura de knowledge-base proporcionalmente
-// maior; ainda cabe folgado dentro da janela horária do cron.
-const CLAUDE_TIMEOUT_MS = 25 * 60 * 1000;
+// 30 min (era 25 até a migration 0039) — o corpus passou de 6 para 7
+// documentos por rodada (GH-DOC-02, Análise de Concorrência); ainda cabe
+// folgado dentro da janela horária do cron.
+const CLAUDE_TIMEOUT_MS = 30 * 60 * 1000;
 
 // Cron roda com PATH mínimo (sem /root/.npm-global/bin) — resolver o binário
 // do Claude Code por caminho absoluto é obrigatório, senão o spawn falha
@@ -50,7 +50,7 @@ if (!existsSync(CLAUDE_BIN)) {
   process.exit(1);
 }
 
-// Escopo atual (migration 0038: 6 tipos — ver
+// Escopo atual (migration 0039: 7 tipos — ver
 // document-engine/knowledge-base/01-corpus-oficial-gamehub.md, "Escopo atual
 // de geração").
 const DOC_TYPE_MAP = [
@@ -64,6 +64,11 @@ const DOC_TYPE_MAP = [
     title: "Roadmap de Melhoria Contínua",
   },
   { file: "06-proposta-comercial.md", type: "proposta-comercial", title: "Proposta Comercial" },
+  {
+    file: "07-analise-concorrencia.md",
+    type: "analise-concorrencia",
+    title: "Análise de Concorrência",
+  },
 ];
 const EXPECTED_FILES = DOC_TYPE_MAP.map((d) => d.file);
 
@@ -154,6 +159,31 @@ async function main() {
     }
 
     writeFileSync(join(clientDir, "context-ficha.md"), item.contexto_snapshot);
+
+    // GH-DOC-02 — concorrentes reais (mesmo segmento + cidade, perfil
+    // público) via RPC `concorrentes_regiao`. Falha aqui NUNCA derruba a
+    // rodada inteira (é só enriquecimento) — cai para o caso "nenhum
+    // concorrente", que o prompt já trata com honestidade.
+    let concorrentes = [];
+    try {
+      concorrentes = (await supabase.fetchConcorrentes(item.tenant_id)) || [];
+    } catch (e) {
+      log(`AVISO: não consegui buscar concorrentes de "${nome}" (tenant_id=${item.tenant_id}): ${e.message}`);
+    }
+    const contextoConcorrentes =
+      concorrentes.length > 0
+        ? [
+            "# Concorrentes reais na mesma região e segmento",
+            "",
+            "Dados reais do próprio jogo (mesmo segmento, mesma cidade, perfil público) — NUNCA inventar concorrente além desta lista.",
+            "",
+            ...concorrentes.map(
+              (c) =>
+                `- **${c.nome}** — nível ${c.nivel}, degrau ${c.degrau_atual}/5, bairro ${c.bairro_nome}, no jogo desde ${c.criado_em}`,
+            ),
+          ].join("\n")
+        : "# Concorrentes reais na mesma região e segmento\n\nNenhum concorrente do mesmo segmento cadastrado ainda nesta cidade — escreva sobre a dinâmica regional/do segmento em geral (e a resposta livre de `concorrentesConhecidos` na ficha, se preenchida), nunca fabrique um nome de empresa.";
+    writeFileSync(join(clientDir, "context-concorrentes.md"), contextoConcorrentes);
 
     const prompt = buildPrompt({ nomeNegocio: nome });
     const result = await runClaude(prompt, clientDir);

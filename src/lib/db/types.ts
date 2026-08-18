@@ -587,7 +587,8 @@ export interface DocumentoGerado {
     | "swot"
     | "resumo-executivo"
     | "roadmap-melhoria-continua"
-    | "proposta-comercial";
+    | "proposta-comercial"
+    | "analise-concorrencia";
   titulo: string;
   conteudoMarkdown: string;
   geradoEm: string;
