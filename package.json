@@ -21,6 +21,7 @@
     "framer-motion": "^11.11.17",
     "next": "^15.5.22",
     "pixi.js": "^8.19.0",
+    "qrcode.react": "^4.2.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "three": "^0.185.1"
