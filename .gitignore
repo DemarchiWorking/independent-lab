@@ -53,3 +53,9 @@ deploy/terraform/crash.log
 # Estado local de deploy Docker (deploy/docker/update.sh e rollback.sh) —
 # qual commit está no ar em CADA host é fato do host, não do repositório.
 deploy/docker/.state/
+
+# Document Engine (GH-DOC-01) — rascunho de rodada por tenant (dado real de
+# cliente) e logs de cron: fato do host, nunca do repositório. O código
+# (scripts/, knowledge-base/, cron/) continua versionado normalmente.
+document-engine/clients/
+document-engine/logs/

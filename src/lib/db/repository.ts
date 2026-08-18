@@ -7,6 +7,7 @@ import type {
   ClienteAdmin,
   ConviteResgatado,
   DestaqueBairro,
+  DocumentoGerado,
   Endereco,
   EscopoMapa,
   EventoGlobal,
@@ -379,6 +380,19 @@ export interface GameRepository {
    * `assinaturas` vem sempre `[]` — billing só existe no driver Supabase.
    */
   listarClientesAdmin(): Promise<ClienteAdmin[]>;
+
+  /** ---- Documentação de negócio gerada por IA (GH-DOC-01) ---- */
+  /**
+   * Enfileira uma rodada de geração para o tenant — idempotente na RPC
+   * (`enfileirar_geracao_documento`): não duplica item já
+   * pendente/processando, e não reenfileira se `hash` bate com a última
+   * geração concluída. `contexto` é a "ficha" (markdown), ver
+   * `features/documentos-gerados/contexto.ts`. No file-adapter é no-op —
+   * esta esteira depende do motor headless rodando contra o Postgres real.
+   */
+  enfileirarGeracaoDocumento(tenantId: string, contexto: string, hash: string): Promise<void>;
+  /** Documentos já entregues a este tenant, mais recente primeiro. */
+  listarMeusDocumentos(tenantId: string): Promise<DocumentoGerado[]>;
 }
 
 /** Entrada de `criarSolicitacao` — o servidor deriva id/status/datas. */

@@ -529,3 +529,26 @@ export interface ClienteAdmin {
   } | null;
   assinaturas: Assinatura[];
 }
+
+/**
+ * ---------- Documentação de negócio gerada por IA (GH-DOC-01) ----------
+ * Resultado entregue ao cliente pelo motor headless (`document-engine/`,
+ * cron horário) — cada rodada INSERE linhas novas, nunca sobrescreve; o
+ * histórico de versões vive na tabela. Só existe no driver Supabase (esta
+ * esteira depende do Postgres + do motor rodando na VPS — modo `file` é
+ * demo/dev sem infra, ver `listarMeusDocumentos` no file-adapter).
+ */
+export interface DocumentoGerado {
+  id: string;
+  tenantId: string;
+  tipo:
+    | "canvas"
+    | "modelo-negocio"
+    | "swot"
+    | "resumo-executivo"
+    | "roadmap-melhoria-continua"
+    | "proposta-comercial";
+  titulo: string;
+  conteudoMarkdown: string;
+  geradoEm: string;
+}

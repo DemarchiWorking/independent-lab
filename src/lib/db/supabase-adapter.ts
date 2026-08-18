@@ -14,6 +14,7 @@ import type {
   ClienteAdmin,
   ConviteResgatado,
   DestaqueBairro,
+  DocumentoGerado,
   EscopoMapa,
   EventoGlobal,
   FuncionarioContratado,
@@ -1699,5 +1700,47 @@ export class SupabaseRepository implements GameRepository {
         assinaturas: assinaturasPorTenant.get(tenantId) ?? [],
       };
     });
+  }
+
+  // ---- Documentação de negócio gerada por IA (GH-DOC-01) ----
+
+  async enfileirarGeracaoDocumento(
+    tenantId: string,
+    contexto: string,
+    hash: string,
+  ): Promise<void> {
+    const { error } = await this.db.rpc("enfileirar_geracao_documento", {
+      p_tenant_id: Number(tenantId),
+      p_contexto: contexto,
+      p_hash: hash,
+    });
+    if (error) throw new Error(`enfileirar_geracao_documento: ${error.message}`);
+  }
+
+  async listarMeusDocumentos(tenantId: string): Promise<DocumentoGerado[]> {
+    const { data, error } = await this.db
+      .from("documentos_gerados")
+      .select("id, tenant_id, tipo, titulo, conteudo_markdown, gerado_em")
+      .eq("tenant_id", Number(tenantId))
+      .order("gerado_em", { ascending: false });
+
+    if (error) throw new Error(`listarMeusDocumentos: ${error.message}`);
+
+    type LinhaDocumento = {
+      id: number;
+      tenant_id: number;
+      tipo: DocumentoGerado["tipo"];
+      titulo: string;
+      conteudo_markdown: string;
+      gerado_em: string;
+    };
+    return ((data ?? []) as LinhaDocumento[]).map((d) => ({
+      id: String(d.id),
+      tenantId: String(d.tenant_id),
+      tipo: d.tipo,
+      titulo: d.titulo,
+      conteudoMarkdown: d.conteudo_markdown,
+      geradoEm: d.gerado_em,
+    }));
   }
 }

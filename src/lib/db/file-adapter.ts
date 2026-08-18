@@ -18,6 +18,7 @@ import type {
   ClienteAdmin,
   ConviteResgatado,
   DestaqueBairro,
+  DocumentoGerado,
   Endereco,
   EscopoMapa,
   EventoGlobal,
@@ -1192,5 +1193,14 @@ export class FileRepository implements GameRepository {
           };
         }),
     );
+  }
+
+  // ---- Documentação de negócio gerada por IA (GH-DOC-01) ----
+  // No-op: a esteira de geração depende do motor headless rodando contra o
+  // Postgres real (fila + RLS) — modo `file` é demo/dev sem infra.
+  async enfileirarGeracaoDocumento(): Promise<void> {}
+
+  async listarMeusDocumentos(): Promise<DocumentoGerado[]> {
+    return [];
   }
 }
