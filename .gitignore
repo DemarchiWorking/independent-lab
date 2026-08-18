@@ -59,3 +59,8 @@ deploy/docker/.state/
 # (scripts/, knowledge-base/, cron/) continua versionado normalmente.
 document-engine/clients/
 document-engine/logs/
+
+# Vídeo de backup da demo (deploy/apresentacao/assets/) — binário grande,
+# fato do host que gravou (e pode ficar desatualizado a cada mudança visual
+# da landing), nunca versionar.
+deploy/apresentacao/assets/
