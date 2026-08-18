@@ -17,6 +17,19 @@ import type { Capitulo, Escolha, TomEscolha } from "./tipos";
  * Visual de "carta que chegou", não de modal de sistema: tem remetente, tem
  * data, e as opções mostram o custo ANTES de clicar. O jogador precisa poder
  * decidir informado — escolha às cegas não ensina nada sobre o negócio dele.
+ *
+ * `fixed inset-0` (overlay de página inteira), não bloco no fluxo normal —
+ * achado real em celular (relato do fundador, docs/PROXIMA-TAREFA.md Tarefa
+ * D): `CapituloGate` é montado ANTES/fora do `<GameShell>` em `/hub` e
+ * `/world` (ver os `page.tsx`), então como bloco em fluxo ele empurrava o
+ * canvas do World inteiro para baixo da dobra numa tela de celular — o
+ * jogador via só o card, sem nenhuma pista de que dava pra rolar até o
+ * jogo. Como overlay fixo e centralizado, com `max-h` + scroll interno
+ * próprio, ele nunca depende da altura da viewport: aparece por cima,
+ * sempre visível, em qualquer tamanho de tela. Não reaproveita
+ * `RibbonPanel` de propósito: lá o `absolute inset-0` é relativo à janela
+ * do jogo (dentro do `<GameShell>`) — aqui o gate precisa cobrir a
+ * PÁGINA inteira, incluindo fora do `<GameShell>`.
  */
 
 const CORES_TOM: Record<TomEscolha, string> = {
@@ -80,103 +93,113 @@ export function CapituloCard({
   };
 
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
+    <motion.div
+      className="fixed inset-0 z-40 flex items-center justify-center p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={springSnappy}
-      className="relative w-full overflow-hidden rounded-md bg-panel p-4 pt-5 text-ink shadow-modal"
-      aria-label={`Capítulo: ${capitulo.titulo}`}
     >
-      <span className="clip-ribbon absolute -left-1.5 -top-3 rounded-sm bg-coral px-4 py-1.5 text-[13px] font-extrabold text-white shadow-[0_3px_0] shadow-coral-dark">
-        {rotuloDeTempo(diaDoNegocio)}
-      </span>
+      <div className="absolute inset-0 bg-black/55" />
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={springSnappy}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Capítulo: ${capitulo.titulo}`}
+        className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-md bg-panel p-4 pt-5 text-ink shadow-modal"
+      >
+        <span className="clip-ribbon absolute -left-1.5 -top-3 rounded-sm bg-coral px-4 py-1.5 text-[13px] font-extrabold text-white shadow-[0_3px_0] shadow-coral-dark">
+          {rotuloDeTempo(diaDoNegocio)}
+        </span>
 
-      <div className="mt-3">
-        <p className="font-pixel text-[8px] uppercase tracking-wide text-[#5b6b86]">
-          {capitulo.remetente}
-        </p>
-        <h2 className="mt-1 text-base font-extrabold leading-tight">
-          {capitulo.titulo}
-        </h2>
-        <p className="mt-2 text-[13px] leading-relaxed text-[#33415c]">
-          {capitulo.narrativa}
-        </p>
-      </div>
+        <div className="mt-3">
+          <p className="font-pixel text-[8px] uppercase tracking-wide text-[#5b6b86]">
+            {capitulo.remetente}
+          </p>
+          <h2 className="mt-1 text-base font-extrabold leading-tight">
+            {capitulo.titulo}
+          </h2>
+          <p className="mt-2 text-[13px] leading-relaxed text-[#33415c]">
+            {capitulo.narrativa}
+          </p>
+        </div>
 
-      <AnimatePresence mode="wait">
-        {desfecho ? (
-          <motion.div
-            key="desfecho"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-3 rounded-sm bg-[#f1f4f9] p-3"
-          >
-            <p className="text-[13px] font-bold leading-relaxed text-ink">
-              {desfecho}
-            </p>
-            {documento ? (
-              <p className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-teal">
-                <Icon name="file" size={13} />
-                Documento liberado no seu acervo: {documento}
-              </p>
-            ) : null}
-            <button
-              type="button"
-              {...pressable}
-              onClick={() => {
-                // sincroniza o resto da tela (HUD, moeda, XP) e só então some
-                // — a ordem importa pouco aqui porque `aoFechar` já tira este
-                // card da árvore por estado local, imune ao refresh alheio
-                router.refresh();
-                aoFechar?.();
-              }}
-              className="mt-3 w-full rounded-md bg-orange px-3 py-2 text-center text-[12px] font-extrabold text-ink shadow-[0_3px_0] shadow-orange-dark"
+        <AnimatePresence mode="wait">
+          {desfecho ? (
+            <motion.div
+              key="desfecho"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 rounded-sm bg-[#f1f4f9] p-3"
             >
-              Continuar
-            </button>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="escolhas"
-            variants={listContainer}
-            initial="initial"
-            animate="enter"
-            exit={{ opacity: 0 }}
-            className="mt-3 flex flex-col gap-2"
-          >
-            {capitulo.escolhas.map((e) => (
-              <motion.button
-                key={e.id}
-                variants={listItem}
-                {...(pendente ? {} : pressable)}
+              <p className="text-[13px] font-bold leading-relaxed text-ink">
+                {desfecho}
+              </p>
+              {documento ? (
+                <p className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-teal">
+                  <Icon name="file" size={13} />
+                  Documento liberado no seu acervo: {documento}
+                </p>
+              ) : null}
+              <button
                 type="button"
-                disabled={pendente}
-                onClick={() => escolher(e)}
-                className={cn(
-                  "rounded-md border-2 bg-white p-2.5 text-left transition-colors disabled:opacity-60",
-                  CORES_TOM[e.tom],
-                )}
+                {...pressable}
+                onClick={() => {
+                  // sincroniza o resto da tela (HUD, moeda, XP) e só então some
+                  // — a ordem importa pouco aqui porque `aoFechar` já tira este
+                  // card da árvore por estado local, imune ao refresh alheio
+                  router.refresh();
+                  aoFechar?.();
+                }}
+                className="mt-3 w-full rounded-md bg-orange px-3 py-2 text-center text-[12px] font-extrabold text-ink shadow-[0_3px_0] shadow-orange-dark"
               >
-                <span className="flex items-center gap-1.5">
-                  <Icon name={ICONE_TOM[e.tom]} size={14} />
-                  <b className="text-[13px]">{e.rotulo}</b>
-                </span>
-                <span className="mt-0.5 block text-[11px] text-[#5b6b86]">
-                  {e.descricao}
-                </span>
-                <CustoDaEscolha escolha={e} />
-              </motion.button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+                Continuar
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="escolhas"
+              variants={listContainer}
+              initial="initial"
+              animate="enter"
+              exit={{ opacity: 0 }}
+              className="mt-3 flex flex-col gap-2"
+            >
+              {capitulo.escolhas.map((e) => (
+                <motion.button
+                  key={e.id}
+                  variants={listItem}
+                  {...(pendente ? {} : pressable)}
+                  type="button"
+                  disabled={pendente}
+                  onClick={() => escolher(e)}
+                  className={cn(
+                    "rounded-md border-2 bg-white p-2.5 text-left transition-colors disabled:opacity-60",
+                    CORES_TOM[e.tom],
+                  )}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Icon name={ICONE_TOM[e.tom]} size={14} />
+                    <b className="text-[13px]">{e.rotulo}</b>
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-[#5b6b86]">
+                    {e.descricao}
+                  </span>
+                  <CustoDaEscolha escolha={e} />
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {erro ? (
-        <p className="mt-2 rounded-sm bg-coral/15 px-2.5 py-1.5 text-[11px] font-bold text-coral-dark">
-          {erro}
-        </p>
-      ) : null}
-    </motion.section>
+        {erro ? (
+          <p className="mt-2 rounded-sm bg-coral/15 px-2.5 py-1.5 text-[11px] font-bold text-coral-dark">
+            {erro}
+          </p>
+        ) : null}
+      </motion.section>
+    </motion.div>
   );
 }
 

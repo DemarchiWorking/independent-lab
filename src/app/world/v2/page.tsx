@@ -59,7 +59,7 @@ export default async function WorldV2Page() {
         </div>
       </div>
 
-      <CapituloGate inicial={capitulo} className="mb-4" />
+      <CapituloGate inicial={capitulo} />
 
       <WorldScreenV2
         sede={sede}

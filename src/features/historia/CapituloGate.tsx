@@ -17,25 +17,19 @@ import type { CapituloAberto } from "./actions";
  * A correção: capturar o capítulo inicial em estado do CLIENTE, que não
  * resincroniza com a prop em re-renders subsequentes — só fecha quando o
  * jogador confirma (`aoFechar`), nunca por um refresh alheio de fundo.
+ *
+ * Sem wrapper de posicionamento própria: `CapituloCard` é `fixed inset-0`
+ * (overlay de página inteira, ver comentário lá) — não depende de onde é
+ * montado no DOM, então não precisa de `className`/padding por página.
  */
-export function CapituloGate({
-  inicial,
-  className = "mx-auto w-full max-w-6xl px-3 pt-6",
-}: {
-  inicial: CapituloAberto | null;
-  /** classe do wrapper — ajuste por página para não duplicar padding de um
-   *  `<main>` que já centraliza (ex.: `/world` já tem `px-3`) */
-  className?: string;
-}) {
+export function CapituloGate({ inicial }: { inicial: CapituloAberto | null }) {
   const [capitulo, setCapitulo] = useState(inicial);
   if (!capitulo) return null;
   return (
-    <div className={className}>
-      <CapituloCard
-        capitulo={capitulo.capitulo}
-        diaDoNegocio={capitulo.diaDoNegocio}
-        aoFechar={() => setCapitulo(null)}
-      />
-    </div>
+    <CapituloCard
+      capitulo={capitulo.capitulo}
+      diaDoNegocio={capitulo.diaDoNegocio}
+      aoFechar={() => setCapitulo(null)}
+    />
   );
 }

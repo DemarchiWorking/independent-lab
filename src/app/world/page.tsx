@@ -52,7 +52,7 @@ export default async function WorldPage() {
 
       {/* SEMPRE montado — ver comentário em CapituloGate.tsx sobre por que
           um `if` aqui derrubaria o card no meio da leitura do jogador. */}
-      <CapituloGate inicial={capitulo} className="mb-4" />
+      <CapituloGate inicial={capitulo} />
 
       <WorldScreen
         sede={sede}

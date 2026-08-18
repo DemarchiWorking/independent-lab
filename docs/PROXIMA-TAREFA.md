@@ -309,6 +309,47 @@ inventar um novo.
 
 ## Tarefa D — BUG real relatado pelo fundador: mundo/escritórios não abrem no celular (prioridade ABAIXO de A/B/C acima)
 
+> **✅ Causa raiz achada e corrigida em 2026-08-18** (mesma sessão que A/B).
+> **NÃO era a suspeita nº 1 original** (desalinhamento de coordenada de
+> toque do Pixi) — reproduzido de verdade com Playwright em viewport iPhone
+> 13 (390×664, `hasTouch`/`isMobile`), logado numa conta real, e a causa é
+> muito mais simples e mais grave: `CapituloGate`/`CapituloCard`
+> (`src/features/historia/`) — a carta de história que aparece no topo de
+> `/hub` e `/world` (evento do dia 0 "Primeiro dia" E também os eventos
+> globais do admin, ex. a campanha ao vivo "SEBRAE · Semana do
+> Empreendedor do Vale do Café", que estava ATIVA durante este teste) —
+> renderizava como **bloco no fluxo normal da página**, não como modal.
+> Numa tela de celular (viewport 664px de altura), o card sozinho já
+> ocupava a viewport inteira — o canvas do World (`WorldCanvas.tsx`) ficava
+> **inteiramente abaixo da dobra** (medido: topo do canvas a 527–576px
+> numa viewport de 664px, ou pior — a mais de 700px quando havia 2 cards
+> em sequência), sem NENHUMA pista visual de que dava pra rolar. Um jogador
+> real abrindo `/world` no celular via só o card, achava que "não abria" —
+> bate exatamente com o relato ("múltiplos bugs, caminhos de falha").
+> Confirmado que NÃO era bug de coordenada Pixi: com o card resolvido via
+> script, tocar no canvas (dentro da área visível) funcionou sem erro.
+>
+> **Fix** (`CapituloCard.tsx` + `CapituloGate.tsx`): o card virou overlay
+> `fixed inset-0` com backdrop escurecido, painel `max-h-[85vh]
+> overflow-y-auto` centralizado — cabe em qualquer viewport, nunca depende
+> da altura da tela, nunca empurra o canvas. `CapituloGate` perdeu o prop
+> `className` (não faz mais sentido — overlay fixo não depende de onde é
+> montado no DOM); as 3 chamadas (`/hub`, `/world`, `/world/v2`)
+> simplificadas. Nenhuma mudança de regra de negócio (`escolherNoCapitulo`
+> intacta) — só posicionamento visual. Medido depois do fix: canvas sempre
+> em `top:178px` numa viewport de 664px, INDEPENDENTE de haver card aberto
+> ou não; card sempre cabe inteiro (medido 382px de altura numa viewport de
+> 664px) com backdrop cobrindo 100% da tela (confirmado via
+> `elementFromPoint` no canto superior). Gates verdes: typecheck, 326/326
+> testes, build. `/world/visitar/[tenantId]` testado também (nunca teve
+> `CapituloGate` — não estava exposto a este bug, mas confirmado saudável
+> no mobile mesmo assim: canvas em `top:178px`, sem erros JS).
+> **Ainda não validado**: não há teste automatizado (Vitest/RTL) cobrindo
+> este componente — só validação manual via Playwright nesta sessão. Não
+> deployado em produção ainda (só testado contra Supabase real via
+> instância local apontada pro mesmo banco) — falta rodar
+> `./deploy/docker/update.sh` pra ir ao ar de verdade.
+
 **Relato direto, 2026-08-18, testando num iPhone real:** não é possível
 entrar no Mundo (`/world`) nem visitar nenhum escritório do quarteirão ou
 de outro lugar do mapa, no celular. "Múltiplos bugs, caminhos de falha,
