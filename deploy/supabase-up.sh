@@ -40,6 +40,18 @@ done
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SUPA_DIR="$ROOT_DIR/deploy/supabase"
 
+# Achado ao vivo (2026-08-18): `.env` gravado ANTES desta correção (ex. o
+# desta VPS) fica com `KONG_HTTP_PORT=8000` para sempre — o script nunca
+# regenera `.env` (comentário abaixo), e o default `${KONG_HTTP_PORT:-8010}`
+# do compose só vale pra chave AUSENTE, não pra uma já gravada com 8000.
+# Resultado real: `docker compose up` recria o Kong na porta 8000, colidindo
+# com qualquer outro Supabase self-hosted na mesma VPS (ex. Company HQ) —
+# incidente real, ~1-2min de downtime, corrigido manualmente na hora.
+# `deploy/docker/update.sh` já exportava isso antes de chamar este script;
+# faltava aqui também, pra quem chama `supabase-up.sh` direto (como
+# `setup.sh`, ou um operador manual) ficar protegido do mesmo jeito.
+export KONG_HTTP_PORT="${KONG_HTTP_PORT:-8010}"
+
 COMPOSE_FILES=(-f docker-compose.yml)
 if [ "$LABD_CLOUD" = "1" ]; then
   COMPOSE_FILES+=(-f docker-compose.labd-cloud.yml)

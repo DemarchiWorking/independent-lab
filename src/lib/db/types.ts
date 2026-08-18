@@ -104,7 +104,7 @@ export interface Usuario {
   criadoEm: string;
 }
 
-/** As 10 respostas + o que foi calculado a partir delas. */
+/** As respostas do onboarding + o que foi calculado a partir delas. */
 export interface Onboarding {
   tenantId: string;
   respostas: Respostas;

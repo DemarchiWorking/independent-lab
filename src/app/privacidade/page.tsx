@@ -27,10 +27,14 @@ export default function PrivacidadePage() {
         <h2 className="font-extrabold text-teal">O que coletamos no cadastro</h2>
         <p>
           Nome do negócio, segmento, cidade e bairro, seu nome e e-mail, e as
-          respostas de um diagnóstico de 10 perguntas (equipe, presença
-          digital, objetivo, gargalo e faixa de investimento). Essas
-          respostas alimentam o diagnóstico e as recomendações dentro do
-          jogo — nunca são vendidas ou compartilhadas com terceiros.
+          respostas de um diagnóstico de 19 perguntas (equipe, presença
+          digital, objetivo, gargalo, faixa de investimento, problema que
+          você resolve pros seus clientes, relação com licitação pública,
+          modelo de receita, ticket médio, clientes pagantes, faturamento,
+          diferencial competitivo, prova social e concorrentes conhecidos).
+          Essas respostas alimentam o diagnóstico, as recomendações dentro
+          do jogo e a documentação de negócio gerada por IA — nunca são
+          vendidas ou compartilhadas com terceiros.
         </p>
       </section>
 
@@ -61,9 +65,10 @@ export default function PrivacidadePage() {
         <p>
           E-mail e telefone (contato acontece por formulário, nunca expondo
           seu endereço direto), moeda virtual, XP, e as respostas do
-          diagnóstico de 10 perguntas — incluindo faixa de investimento e
-          gargalo declarados. Esses dados são usados só internamente, para
-          personalizar sua experiência no jogo.
+          diagnóstico de 19 perguntas — incluindo faixa de investimento,
+          faturamento, ticket médio e gargalo declarados. Esses dados são
+          usados só internamente, para personalizar sua experiência no jogo
+          e gerar sua documentação de negócio.
         </p>
       </section>
 

@@ -9,7 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { cadastrar, type EstadoForm } from "@/features/auth/actions";
 import { perguntas } from "./perguntas";
 
-const TOTAL = perguntas.length + 1; // 10 perguntas + tela de conta
+const TOTAL = perguntas.length + 1; // perguntas.length (19) + tela de conta
 
 interface ContextoConvite {
   token: string;
@@ -18,7 +18,7 @@ interface ContextoConvite {
   bairroNome: string;
 }
 
-/** Cadastro em passos: 10 perguntas + conta. Uma pergunta por tela, com
+/** Cadastro em passos: perguntas.ts (19 perguntas) + conta. Uma pergunta por tela, com
  *  transição animada — parece jogo, não formulário.
  *
  *  `convite` (GH-GROW-02, opcional): pré-preenche cidade/bairro com o do

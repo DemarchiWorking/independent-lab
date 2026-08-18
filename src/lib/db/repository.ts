@@ -426,7 +426,7 @@ export interface NovoNegocio {
   xpInicial: number;
   moedaVirtual: number;
   /** valores iniciais dos 5 eixos, calculados pelo onboarding a partir das
-   *  10 respostas (features/onboarding/scoring.ts) */
+   *  respostas do onboarding (features/onboarding/scoring.ts) */
   atributosIniciais: Negocio["atributos"];
   /** Opt-out do perfil público, decidido no formulário de cadastro (GH-GROW-01). */
   perfilPublico: boolean;

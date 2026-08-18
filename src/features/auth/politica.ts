@@ -7,4 +7,4 @@
  *  Vive num módulo próprio (não em `actions.ts`) porque um arquivo
  *  `"use server"` só pode exportar funções async — uma constante ali
  *  quebra o build. */
-export const POLITICA_PRIVACIDADE_VERSAO = "2026-07-28";
+export const POLITICA_PRIVACIDADE_VERSAO = "2026-08-18";

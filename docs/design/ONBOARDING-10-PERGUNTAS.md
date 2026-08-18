@@ -1,3 +1,11 @@
+> ⚠️ **Desatualizado (2026-08-18):** o cadastro tem hoje **19 perguntas**,
+> não 10 — expandido na Tarefa A de `docs/PROXIMA-TAREFA.md` (matriz de
+> rastreabilidade pergunta→documento gerado por IA, a referência atual).
+> A fonte de verdade do que existe agora é sempre
+> `src/features/onboarding/perguntas.ts` (data-driven). Este arquivo
+> continua valendo pelo *princípio* de design (cada pergunta serve a
+> múltiplos propósitos) — só a lista abaixo ficou incompleta.
+
 # Onboarding — 10 perguntas que criam um negócio
 
 > Cada pergunta tem **três funções ao mesmo tempo**: cadastrar o negócio,

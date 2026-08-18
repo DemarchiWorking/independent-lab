@@ -117,7 +117,7 @@ function texto(fd: FormData, campo: string): string {
   return String(fd.get(campo) ?? "").trim();
 }
 
-/** Cadastro: conta + 10 respostas → tenant com lote no mapa + sessão. */
+/** Cadastro: conta + respostas do onboarding → tenant com lote no mapa + sessão. */
 export async function cadastrar(
   _anterior: EstadoForm,
   fd: FormData,

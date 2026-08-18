@@ -3,7 +3,7 @@ import { ehCidadePrioritaria } from "@/lib/regiao";
 import { atributosVazios, type Atributos } from "@/lib/atributos";
 
 /**
- * Converte as 10 respostas em posição comercial e de jogo.
+ * Converte as respostas do onboarding em posição comercial e de jogo.
  * Regras documentadas em docs/design/ONBOARDING-10-PERGUNTAS.md
  */
 
@@ -19,7 +19,7 @@ export interface Resultado {
    */
   xpInicial: number;
   servicosRecomendados: string[];
-  /** os 5 eixos de atributo, já calculados a partir das 10 respostas */
+  /** os 5 eixos de atributo, já calculados a partir das respostas do onboarding */
   atributosIniciais: Atributos;
 }
 
@@ -86,7 +86,7 @@ function servicosPara(r: Respostas): string[] {
 }
 
 /**
- * Valor inicial de cada eixo, a partir das 10 respostas — ver
+ * Valor inicial de cada eixo, a partir das respostas do onboarding — ver
  * docs/analise-prints/telas/economia-de-atributos.md §5 pela justificativa
  * de cada mapeamento. Nenhum eixo nasce de zero absoluto: todo negócio real
  * já tem alguma base, mesmo que pequena.
