@@ -1,5 +1,189 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
+> **🎯 PRIORIDADE #1 — 2026-08-18 (leia ESTA primeiro, antes de tudo
+> abaixo — supera a prioridade de 2026-08-02 até estar concluída).**
+> Sessão anterior parou por limite de uso no MEIO de duas tarefas. Pesquisa
+> já feita (não repetir) + plano concreto abaixo — é pra continuar
+> direto na implementação, não replanejar do zero.
+
+## Tarefa A — Onboarding mais rico (perguntas + score de ICP + escada de valor)
+
+**Pedido do fundador:** melhores perguntas de cadastro pra alimentar a IA
+geradora de documentos, entender se o negócio é cliente ideal (ICP/BANT) e
+como subir a escada de valor (cobrar mais). Usar o V4MOS
+(`/opt/v4mos/src/lib/questions/index.ts`, 38 perguntas em 8 blocos, cada
+uma com `aiHint` explicando pra que serve) como inspiração de qualidade —
+mas SEM copiar o volume: o cadastro do gamehub é feito ao vivo, no celular,
+na frente de um jurado (ver Tarefa B) — 18 perguntas curtas (majoritariamente
+`escolha`/chips, poucos `texto` curtos), não 38 parágrafos.
+
+**Descoberta importante: nenhuma migration é necessária pras perguntas em
+si** — `onboardings.respostas` já é `jsonb` (`0001_init.sql`), só estender
+o TypeScript.
+
+**Plano já fechado — 8 perguntas novas, adicionar em
+`src/features/onboarding/perguntas.ts` nesta posição relativa às 10
+atuais** (identidade/segmento/local → NOVAS → operação → NOVAS →
+objetivo/gargalo/investimento):
+
+1. `anosDeOperacao`: `"menos-1" | "1-3" | "3-10" | "mais-10"` — maturidade.
+2. `licitacaoPublico`: `"vende-regularmente" | "ja-vendeu" | "tem-interesse" | "nao-e-foco"`
+   — **a mais valiosa**: é o ICP real do Lab Demarchi/Siga Pregão (fornecer
+   pro poder público via licitação) e HOJE não é perguntado.
+3. `clientesPagantes`: `"nenhum" | "1-5" | "6-20" | "21-50" | "mais-50"`.
+4. `faturamentoFaixa`: `"ate-10k" | "10-30k" | "30-100k" | "100-300k" | "acima-300k" | "prefiro-nao-informar"`.
+5. `ticketMedio`: `"ate-500" | "500-2000" | "2000-10000" | "10000-50000" | "acima-50000" | "nao-sei"`.
+6. `diferencial`: texto curto — "Em 1 frase, por que um cliente escolhe
+   você e não o concorrente?"
+7. `decisor`: `"dono" | "socio-financeiro" | "equipe-compras" | "depende-do-valor"`.
+8. `concorrentesConhecidos`: texto curto, opcional na prática (aceitar
+   "não sei") — "Você sabe quem são seus 2-3 concorrentes na região?"
+
+**Arquivos a tocar, em ordem:**
+1. `src/lib/db/types.ts` — `Respostas` ganha os 8 campos.
+2. `src/features/onboarding/perguntas.ts` — 8 `Pergunta` novas (`tipo`
+   `escolha`/`texto`, mesmo padrão das 10 atuais — **Wizard.tsx NÃO precisa
+   mudar**, é 100% data-driven a partir deste array).
+3. `src/features/onboarding/scoring.ts` (`calcular()`) — só 3 campos novos
+   entram no score/degrau (os outros 5 só enriquecem a ficha pra IA, sem
+   tocar a fórmula):
+   - `licitacaoPublico`: `vende-regularmente` +25, `ja-vendeu` +12,
+     `tem-interesse` +5, `nao-e-foco` +0 (score já é clampado em [0,100],
+     não precisa reduzir outros pesos).
+   - `faturamentoFaixa`: `100-300k`/`acima-300k` → `+1` no `degrauAlvo`
+     (capado em 5); outras faixas neutras (sem alterar).
+   - `clientesPagantes`: pontos pequenos de tração no score (opcional, só
+     se sobrar tempo — não é essencial).
+4. `src/features/onboarding/scoring.test.ts` — **CRÍTICO**: o helper
+   `respostas()` no topo do arquivo constrói um `Respostas` só com os 10
+   campos atuais — vai quebrar o typecheck assim que o tipo crescer. Setar
+   o default pra `licitacaoPublico: "vende-regularmente"` (o fixture já
+   representa "ICP ideal", e licitação regular É o ICP real — o teste
+   `scoreFit >= 90` continua passando, só fica mais alto, clampado em 100).
+   Pra faturamento, usar um valor NEUTRO (`"30-100k"`) no fixture padrão
+   pra não alterar o `degrauAlvo: 4` já asserido no teste "ICP ideal mira
+   degrau alto".
+5. `src/features/auth/actions.ts` (`cadastrar()`) — ler os 8 campos novos
+   do `FormData` pro objeto `Respostas` (mesmo padrão `texto(fd, "campo")
+   || "default"` das linhas 151-165 atuais).
+6. `src/features/documentos-gerados/contexto.ts`
+   (`construirFichaMarkdown()`) — incluir as respostas novas na seção "4.
+   Diagnóstico de onboarding" da ficha (mesmo padrão das linhas
+   existentes).
+
+## Tarefa B — 7º documento: Análise de Concorrência (dados REAIS, não inventados)
+
+**Pedido do fundador:** documento comparando o negócio a outros perfis do
+MESMO segmento na MESMA região, usando dados reais do próprio jogo (nunca
+concorrente fictício).
+
+**Descoberta importante:** a hierarquia `cidades → bairros →
+quarteiroes → negocios` já existe (`0001_init.sql`) e RPCs parecidos já
+existem (`vizinhos_do_tenant`, `benchmark_bairro`, `destaque_bairro` —
+ver `src/lib/db/supabase-adapter.ts` linhas ~310-365 e ~717) — seguir o
+MESMO padrão arquitetural (RPC `security definer`, só `service_role`), não
+inventar um novo.
+
+**Plano:**
+1. **Nova migration** `supabase/migrations/0039_analise_concorrencia.sql`:
+   - `alter table documentos_gerados drop constraint
+     documentos_gerados_tipo_check` + recriar incluindo
+     `'analise-concorrencia'` (mesmo padrão da migration `0038`, que já fez
+     isso pros outros 4 tipos).
+   - RPC nova `concorrentes_regiao(p_tenant_id bigint, p_limite int
+     default 6)` — dado o tenant, resolve `segmento` + `cidade_id` dele
+     (join `negocios → quarteiroes → bairros`), e retorna outros negócios
+     **mesmo segmento, mesma cidade, `perfil_publico = true`**, campos
+     `nome, segmento, nivel, degrau_atual, bairro_nome, criado_em` — só
+     dado já público hoje (mesmas colunas de `negocios_publico`).
+     Rascunho de SQL já resolvido — a sessão anterior chegou a escrever a
+     função inteira (plpgsql, `security definer`, `set search_path = ''`,
+     `revoke ... from public, anon, authenticated` + `grant ... to
+     service_role`) — só falta colar num arquivo de migration e rodar.
+2. `document-engine/scripts/lib/supabase.mjs` — método novo
+   `fetchConcorrentes(tenantId)` chamando
+   `POST /rest/v1/rpc/concorrentes_regiao`.
+3. `document-engine/scripts/scan-and-generate.mjs`:
+   - Depois de ler o item da fila (já tem `tenant_id`), chamar
+     `fetchConcorrentes` e escrever o resultado em
+     `context-concorrentes.md` na pasta do cliente (lista dos concorrentes
+     reais, ou "nenhum concorrente do mesmo segmento cadastrado ainda
+     nesta cidade" — tratar o caso vazio com honestidade, não inventar).
+   - `DOC_TYPE_MAP` ganha uma 7ª entrada: `{ file:
+     "07-analise-concorrencia.md", type: "analise-concorrencia", title:
+     "Análise de Concorrência" }`.
+   - `CLAUDE_TIMEOUT_MS` sobe um pouco (7 docs agora vs. 6) — considerar
+     ~30 min.
+4. `document-engine/scripts/lib/prompt.mjs` — instruir a ler
+   `context-concorrentes.md` e escrever o 7º arquivo. Regra inegociável:
+   **nunca inventar concorrente que não esteja na lista real** — se vazia,
+   escrever sobre dinâmica regional/segmento em geral (usando também a
+   resposta livre `concorrentesConhecidos` do onboarding, se preenchida),
+   nunca fabricar um nome de empresa.
+5. **Novo arquivo de metodologia**
+   `document-engine/knowledge-base/06-analise-concorrencia.md` (mesmo
+   estilo dos arquivos 02-05 já existentes — estrutura de saída, regras de
+   rigor, checklist).
+6. Atualizar `00-INDEX.md` e `01-corpus-oficial-gamehub.md` (seção "Escopo
+   atual de geração") pra **7 documentos**.
+7. **Fiação de UI/tipos** (mesmo padrão de quando foi de 2→6 documentos,
+   já feito nesta mesma sessão anterior, replicar):
+   - `src/lib/db/types.ts` (`DocumentoGerado.tipo`) — 7º valor no union.
+   - `src/features/documentos-gerados/DocumentosPainel.tsx`
+     (`TITULO_TIPO`) — entrada nova.
+   - `src/features/landing/content.ts` (`DOCUMENTOS`) — 7º item (o
+     `TICKER_ITEMS` deriva automaticamente do array, não precisa mexer).
+
+**Depois das duas tarefas:** rodar gates
+(`typecheck && test && build`), fazer um cadastro real de ponta a ponta de
+novo com Playwright (mesmo script/roteiro já usado 2x nesta sessão —
+landing → 18 perguntas → conta → `/painel` → `gerar-agora.sh` →
+confirmar os 7 documentos, incluindo o de concorrência, aparecendo de
+verdade) — **nunca marcar como pronto sem essa validação real**, apagar
+os dados de teste depois — commit + push (`integracao-deploy-vps`) +
+`./deploy/docker/update.sh`.
+
+## Tarefa C — Responsividade/UX de ponta a ponta (além da landing)
+
+A landing (`/`) e a página de QR (`/apresentacao`) já foram auditadas e
+corrigidas nesta sessão anterior — testadas de verdade com Playwright em
+13 larguras (320px–1920px) e nos 7 dispositivos-alvo (iPhone SE/14,
+Android médio, iPad retrato/paisagem, 720p, 1080p), com um bug real de nav
+achado e corrigido. **Isso está feito, não repetir.**
+
+O que falta (pedido explícito: "todos os botões adaptados e do tamanho
+ideal do aparelho... adaptado automaticamente seguindo as melhores
+práticas"), nas telas que ainda NÃO passaram por essa auditoria:
+
+1. `/cadastro` (Wizard, 19 passos agora com a Tarefa A) — nunca testado em
+   celular real via Playwright. Foco: os botões `ActionButton`
+   (`src/components/ui/ActionButton.tsx`, `fullWidth` já é o padrão) e o
+   grid de opções (`sm:grid-cols-2` em `Wizard.tsx` linha ~229) em telas
+   muito estreitas (320-375px) com rótulos longos (ex. "Contabilidade &
+   Consultoria & Consultoria").
+2. `/painel` — já foi visualmente conferido no teste E2E (screenshots
+   full-page), mas não passou por auditoria formal multi-viewport como a
+   landing.
+3. `/entrar`, `/recuperar-senha` — nunca auditadas.
+4. `/hub` (GameShell autenticado) — é a experiência central do jogo,
+   maior superfície, maior risco; auditar por último, com mais tempo.
+
+**Padrão a seguir** (já validado e funcionando na landing, replicar):
+Playwright com viewport real (não emulação de DevTools) nas mesmas 7
+resoluções-alvo + checagem automática de `document.documentElement.
+scrollWidth > clientWidth` (overflow horizontal) em cada uma — é o que
+achou o bug real do nav truncando. Corrigir achados de verdade antes de
+declarar pronto, não só rodar o gate.
+
+**"Tamanho ideal do aparelho, adaptado automaticamente"** — o padrão já
+estabelecido (`LandingLinkButton` ganhou prop `size: "sm"|"md"|"lg"` nesta
+sessão) é o caminho: aplicar o mesmo raciocínio ao `ActionButton` do jogo
+(hoje só tem `fullWidth` boolean, sem variação de tamanho) se a auditoria
+do `/cadastro`/`/hub` achar botão pequeno demais pra toque em celular
+(mínimo recomendado ~44×44px de área de toque, WCAG 2.5.5).
+
+---
+
 > **🎯 PRIORIDADE #1 — 2026-08-02 (leia ESTA primeiro, antes de tudo
 > abaixo, inclusive antes do bloco de bugs críticos logo abaixo):**
 > "Mapa Vivo" — redesign completo de UX/visual do Mapa + Sede, nível
