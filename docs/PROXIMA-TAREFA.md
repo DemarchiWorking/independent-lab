@@ -1,6 +1,47 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
-> **✅ Fechamento final da sessão 2026-08-19** — os 2 últimos itens em
+> **✅ `KONG_HTTP_PORT=8010` gravado de verdade no `.env`** (2026-08-19,
+> pedido explícito do usuário) — editado via `sed -i` cirúrgico (nunca li o
+> conteúdo do arquivo, só substituí a linha). Validado sem depender de
+> leitura: `docker compose config` (sem NENHUM override manual) resolveu
+> `published: "8010"` sozinho, e `./deploy/supabase-up.sh` de novo (também
+> sem override) confirmou Kong saudável na porta certa — dupla garantia
+> agora (arquivo certo + `export` no script).
+>
+> **✅ Bug real de mobile achado e corrigido: colisão entre o menu lateral
+> e a barra de navegação inferior do GameShell** (2026-08-19, auditoria
+> completa pedida pelo usuário — "responsividade completa pra iPhone e
+> Android, múltiplos dispositivos"). `LateralMenu` (`src/components/ui/
+> LateralMenu.tsx`) usava `top-1/2 -translate-y-1/2` (centralizado na
+> altura INTEIRA da caixa do jogo, `min-h-[440px]` fixo em qualquer
+> largura de celular/tablet retrato). Com até 10 módulos hoje (nenhum
+> deles é bloqueado por degrau, exceto `labdatadev`/degrau 2 — ou seja, a
+> MAIORIA dos usuários reais vê 9 dos 10 rapidamente), os 2 últimos ícones
+> ("Mercado", "Finanças") ficavam fisicamente por trás da barra `<Nav>`
+> inferior (mesmo z-index, `<Nav>` renderiza depois no JSX e pinta por
+> cima) — **impossíveis de abrir pelo menu lateral no celular, sem erro
+> nenhum, silenciosamente**. Achado com diagnóstico real via
+> `elementFromPoint` (não só overflow de scroll — a checagem padrão de
+> overflow horizontal não pega esse tipo de colisão vertical), não
+> suposição. Corrigido: `<nav>` ganhou limite inferior real (`bottom-20`,
+> reserva o espaço da `<Nav>`) + `overflow-y-auto` (rolagem própria
+> quando não cabe) + `shrink-0` nos itens (preserva 36px de alvo de
+> toque, nunca espreme) + removido `justify-center` (centralizar um
+> container com overflow corta as duas pontas simetricamente — achado ao
+> vivo corrigindo o próprio fix). Validado: item 1-8 clicáveis direto,
+> 9-10 alcançáveis rolando o `<nav>` (testado de verdade — clique em
+> "Finanças" depois de rolar renderizou a tela certa). Rodada completa de
+> auditoria depois do fix: **zero overflow horizontal, zero erro JS**, em
+> `/hub` + 8 abas + `/world` + `/world/v2` + `/world/visitar/[id]` (+v2) +
+> `/painel` + `/marketplace` + `/parcerias` + `/labdatadev` + `/demo` +
+> `/n/[slug]`, nas 7 resoluções-alvo (iPhone SE/14, Android médio, iPad
+> retrato/paisagem, 720p, 1080p). Gates verdes: typecheck, 329/329
+> testes, build. **Possível polish futuro, não crítico:** nenhuma pista
+> visual hoje avisa que o menu lateral rola quando há mais de ~8 módulos
+> (sem gradiente/indicador) — funciona, mas não é auto-descobrível sem
+> tentar arrastar.
+>
+> **Fechamento anterior da sessão 2026-08-19** — os 2 últimos itens em
 > aberto do bloco de code review foram resolvidos:
 > 1. **`KONG_HTTP_PORT` no `.env` do stack Supabase**: não pôde ser lido
 >    diretamente (bloqueado por permissão de acesso a segredo nesta
