@@ -58,6 +58,13 @@ export default function PrivacidadePage() {
           cadastro, marcando a opção correspondente — ela não aparece na
           busca nem no diretório do ecossistema.
         </p>
+        <p>
+          Esses mesmos dados públicos (nome, segmento, bairro, nível e
+          degrau) de outros negócios do seu segmento e região também podem
+          aparecer, de forma agregada, no documento "Análise de
+          Concorrência" que a IA gera pra você — nunca dados privados de
+          onboarding de ninguém, só o que já é público na página de cada um.
+        </p>
       </section>
 
       <section className="mb-5 space-y-2">

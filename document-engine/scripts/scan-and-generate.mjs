@@ -162,27 +162,40 @@ async function main() {
 
     // GH-DOC-02 — concorrentes reais (mesmo segmento + cidade, perfil
     // público) via RPC `concorrentes_regiao`. Falha aqui NUNCA derruba a
-    // rodada inteira (é só enriquecimento) — cai para o caso "nenhum
-    // concorrente", que o prompt já trata com honestidade.
-    let concorrentes = [];
+    // rodada inteira (é só enriquecimento) — mas achado real de code review
+    // (2026-08-18): antes, falha de rede/RPC/migration-não-aplicada caía no
+    // MESMO texto de "nenhum concorrente encontrado" — o 7º documento então
+    // afirmava (de forma falsa) "você é o primeiro do segmento" numa
+    // rodada onde os dados simplesmente não puderam ser buscados. Agora os
+    // dois casos têm textos DIFERENTES — falha é honesta sobre ser falha.
+    let concorrentes = null; // null = falha ao buscar; [] = buscou, veio vazio de verdade
     try {
       concorrentes = (await supabase.fetchConcorrentes(item.tenant_id)) || [];
     } catch (e) {
       log(`AVISO: não consegui buscar concorrentes de "${nome}" (tenant_id=${item.tenant_id}): ${e.message}`);
     }
-    const contextoConcorrentes =
-      concorrentes.length > 0
-        ? [
-            "# Concorrentes reais na mesma região e segmento",
-            "",
-            "Dados reais do próprio jogo (mesmo segmento, mesma cidade, perfil público) — NUNCA inventar concorrente além desta lista.",
-            "",
-            ...concorrentes.map(
-              (c) =>
-                `- **${c.nome}** — nível ${c.nivel}, degrau ${c.degrau_atual}/5, bairro ${c.bairro_nome}, no jogo desde ${c.criado_em}`,
-            ),
-          ].join("\n")
-        : "# Concorrentes reais na mesma região e segmento\n\nNenhum concorrente do mesmo segmento cadastrado ainda nesta cidade — escreva sobre a dinâmica regional/do segmento em geral (e a resposta livre de `concorrentesConhecidos` na ficha, se preenchida), nunca fabrique um nome de empresa.";
+    let contextoConcorrentes;
+    if (concorrentes === null) {
+      contextoConcorrentes =
+        "# Concorrentes reais na mesma região e segmento\n\n" +
+        "**Dados indisponíveis nesta rodada** — falha técnica ao buscar (não é ausência de concorrente confirmada). " +
+        "Nunca escreva que este negócio é 'o primeiro' ou 'único' do segmento — isso não foi verificado. " +
+        "Foque a seção no que a ficha permitir (ex. a resposta livre `concorrentesConhecidos`, se preenchida) e deixe explícito que a comparação com dados reais da plataforma ficará para a próxima rodada.";
+    } else if (concorrentes.length > 0) {
+      contextoConcorrentes = [
+        "# Concorrentes reais na mesma região e segmento",
+        "",
+        "Dados reais do próprio jogo (mesmo segmento, mesma cidade, perfil público) — NUNCA inventar concorrente além desta lista.",
+        "",
+        ...concorrentes.map(
+          (c) =>
+            `- **${c.nome}** — nível ${c.nivel}, degrau ${c.degrau_atual}/5, bairro ${c.bairro_nome}, no jogo desde ${c.criado_em}`,
+        ),
+      ].join("\n");
+    } else {
+      contextoConcorrentes =
+        "# Concorrentes reais na mesma região e segmento\n\nNenhum concorrente do mesmo segmento cadastrado ainda nesta cidade — escreva sobre a dinâmica regional/do segmento em geral (e a resposta livre de `concorrentesConhecidos` na ficha, se preenchida), nunca fabrique um nome de empresa.";
+    }
     writeFileSync(join(clientDir, "context-concorrentes.md"), contextoConcorrentes);
 
     const prompt = buildPrompt({ nomeNegocio: nome });

@@ -16,6 +16,13 @@ Diferente do restante do corpus, aqui não existe `[HIPÓTESE]` para nome de
 empresa — ou o dado é real (está na lista) ou a seção fala de dinâmica
 regional/de segmento em geral, sem nomear ninguém.
 
+**Se "context-concorrentes.md" disser "dados indisponíveis nesta rodada"**
+(falha técnica ao buscar, não ausência confirmada): trate como diferente de
+"nenhum concorrente encontrado" — **nunca afirme que o negócio é "o
+primeiro" ou "único" do segmento** nesse caso, isso não foi verificado.
+Escreva a seção reconhecendo a limitação explicitamente e usando só o que
+a ficha permitir (ex. `concorrentesConhecidos`, se preenchida).
+
 **Se "context-concorrentes.md" vier vazio** (nenhum concorrente do mesmo
 segmento cadastrado ainda nesta cidade): não force uma comparação — abra o
 documento com esse fato explícito ("Você é o primeiro negócio do segmento

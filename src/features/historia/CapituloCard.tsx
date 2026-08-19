@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
@@ -59,6 +59,50 @@ export function CapituloCard({
   const [desfecho, setDesfecho] = useState<string | null>(null);
   const [documento, setDocumento] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const painelRef = useRef<HTMLElement | null>(null);
+
+  /**
+   * Achado real de code review (2026-08-18) sobre o overlay `fixed inset-0`
+   * introduzido nesta sessão: `role="dialog" aria-modal="true"` declarava
+   * uma semântica de modal que não era garantida — sem foco inicial e sem
+   * trap de Tab, um usuário de teclado/leitor de tela conseguia tabular
+   * pra elementos do `/hub`/`/world` por trás do overlay (visualmente
+   * cobertos, mas ainda focáveis); sem travar o scroll do `<body>`, a
+   * página de fundo ainda rolava por teclado (Space/PageDown) mesmo com o
+   * modal "aberto" — na mesma superfície mobile que motivou o fix
+   * original. Escape É de propósito NÃO tratado aqui: diferente de um
+   * modal comum, este card representa uma decisão de jogo que precisa ser
+   * tomada (mesmo padrão de um diálogo de consentimento obrigatório) —
+   * não há conceito de "fechar sem escolher".
+   */
+  useEffect(() => {
+    const overflowOriginal = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    painelRef.current?.focus();
+
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !painelRef.current) return;
+      const focaveis = painelRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focaveis.length === 0) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      if (e.shiftKey && document.activeElement === primeiro) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && document.activeElement === ultimo) {
+        e.preventDefault();
+        primeiro.focus();
+      }
+    };
+    document.addEventListener("keydown", aoTeclar);
+
+    return () => {
+      document.body.style.overflow = overflowOriginal;
+      document.removeEventListener("keydown", aoTeclar);
+    };
+  }, []);
 
   /**
    * De propósito, SEM `useTransition`/`startTransition` aqui.
@@ -101,13 +145,15 @@ export function CapituloCard({
     >
       <div className="absolute inset-0 bg-black/55" />
       <motion.section
+        ref={painelRef}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={springSnappy}
         role="dialog"
         aria-modal="true"
         aria-label={`Capítulo: ${capitulo.titulo}`}
-        className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-md bg-panel p-4 pt-5 text-ink shadow-modal"
+        tabIndex={-1}
+        className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-md bg-panel p-4 pt-5 text-ink shadow-modal outline-none"
       >
         <span className="clip-ribbon absolute -left-1.5 -top-3 rounded-sm bg-coral px-4 py-1.5 text-[13px] font-extrabold text-white shadow-[0_3px_0] shadow-coral-dark">
           {rotuloDeTempo(diaDoNegocio)}

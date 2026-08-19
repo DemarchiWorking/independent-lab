@@ -23,6 +23,14 @@ export interface Pergunta {
   tipo: "texto" | "escolha" | "multipla";
   opcoes?: Opcao[];
   placeholder?: string;
+  /** Só perguntas `tipo: "texto"` — teto de caracteres no input do Wizard.
+   *  Achado real de code review (2026-08-18): as 4 perguntas de texto livre
+   *  novas (problemaPrincipal/diferencial/provaSocial/concorrentesConhecidos)
+   *  não tinham teto nenhum antes de virar contexto pro prompt de IA do
+   *  document-engine — texto extremamente longo infla custo/latência sem
+   *  limite. `actions.ts` (`cadastrar`) trunca de novo no servidor — o
+   *  cliente nunca é fonte de verdade sozinho (regra 4 do AGENTS.md). */
+  maxLength?: number;
 }
 
 export const perguntas: Pergunta[] = [
@@ -75,6 +83,7 @@ export const perguntas: Pergunta[] = [
     ajuda: "Em 1 frase — é a base do seu Modelo de Negócio.",
     tipo: "texto",
     placeholder: "Ex.: empresas perdem prazo de entrega por falta de gestão",
+    maxLength: 300,
   },
   {
     campo: "equipe",
@@ -180,6 +189,7 @@ export const perguntas: Pergunta[] = [
     titulo: "Em 1 frase, por que um cliente escolhe você e não o concorrente?",
     tipo: "texto",
     placeholder: "Ex.: entrego em metade do prazo do mercado",
+    maxLength: 300,
   },
   {
     campo: "provaSocial",
@@ -187,6 +197,7 @@ export const perguntas: Pergunta[] = [
     ajuda: "Opcional — pode responder 'ainda não tenho'.",
     tipo: "texto",
     placeholder: "Ex.: aumentei em 30% as vendas do Mercado Silva",
+    maxLength: 300,
   },
   {
     campo: "concorrentesConhecidos",
@@ -194,6 +205,7 @@ export const perguntas: Pergunta[] = [
     ajuda: "Opcional — pode responder 'não sei'.",
     tipo: "texto",
     placeholder: "Ex.: Construtora ABC, Engenharia XYZ",
+    maxLength: 300,
   },
   {
     campo: "objetivo",

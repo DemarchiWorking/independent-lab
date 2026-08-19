@@ -183,9 +183,14 @@ log "Aplicando seed (cidades do ICP)..."
 docker compose exec -T db psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
   < "$ROOT_DIR/supabase/seed.sql"
 
-# lido de volta do .env (não do ambiente do shell) — é a fonte real que o
-# docker compose usou para publicar a porta/URL.
-PORTA_KONG="$(grep '^KONG_HTTP_PORT=' .env | cut -d= -f2)"
+# PORTA_KONG vem da variável de ambiente já exportada acima (linha ~53),
+# NUNCA relida do `.env` — achado real de code review (2026-08-18): reler
+# do `.env` aqui reportava a porta ERRADA sempre que o arquivo tivesse o
+# valor antigo (8000) persistido, porque é o `export` (shell vence sobre
+# `.env` na resolução do Compose), não o arquivo, que decide a porta
+# publicada de verdade. URL_PUBLICA continua vindo do `.env` — não é
+# afetada por esse `export`.
+PORTA_KONG="$KONG_HTTP_PORT"
 URL_PUBLICA="$(grep '^SUPABASE_PUBLIC_URL=' .env | cut -d= -f2-)"
 
 echo

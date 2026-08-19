@@ -113,8 +113,14 @@ const SEGMENTOS: Segmento[] = [
   "outro",
 ];
 
-function texto(fd: FormData, campo: string): string {
-  return String(fd.get(campo) ?? "").trim();
+function texto(fd: FormData, campo: string, maxLength?: number): string {
+  const v = String(fd.get(campo) ?? "").trim();
+  // Truncamento no servidor (achado real de code review, 2026-08-18): o
+  // `maxLength` do input no Wizard é só UX — um POST direto ignora isso.
+  // Sem teto, texto livre gigante infla sem limite o markdown da ficha e o
+  // prompt enviado ao motor de IA headless (custo/latência). O cliente
+  // nunca é fonte de verdade sozinho (regra 4 do AGENTS.md).
+  return maxLength ? v.slice(0, maxLength) : v;
 }
 
 /** Cadastro: conta + respostas do onboarding → tenant com lote no mapa + sessão. */
@@ -154,7 +160,7 @@ export async function cadastrar(
     segmento: SEGMENTOS.includes(segmentoBruto) ? segmentoBruto : "outro",
     cidade: texto(fd, "cidade") || "Outra",
     bairro: texto(fd, "bairro") || "Centro",
-    problemaPrincipal: texto(fd, "problemaPrincipal"),
+    problemaPrincipal: texto(fd, "problemaPrincipal", 300),
     equipe: (texto(fd, "equipe") || "so-eu") as Respostas["equipe"],
     presencaDigital: (texto(fd, "presencaDigital") ||
       "nada") as Respostas["presencaDigital"],
@@ -169,9 +175,9 @@ export async function cadastrar(
       "nenhum") as Respostas["clientesPagantes"],
     faturamentoFaixa: (texto(fd, "faturamentoFaixa") ||
       "prefiro-nao-informar") as Respostas["faturamentoFaixa"],
-    diferencial: texto(fd, "diferencial"),
-    provaSocial: texto(fd, "provaSocial"),
-    concorrentesConhecidos: texto(fd, "concorrentesConhecidos"),
+    diferencial: texto(fd, "diferencial", 300),
+    provaSocial: texto(fd, "provaSocial", 300),
+    concorrentesConhecidos: texto(fd, "concorrentesConhecidos", 300),
     objetivo: (texto(fd, "objetivo") || "mais-leads") as Respostas["objetivo"],
     gargalo: (texto(fd, "gargalo") || "perco-leads") as Respostas["gargalo"],
     investimento: (texto(fd, "investimento") ||

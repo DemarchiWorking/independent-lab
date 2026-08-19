@@ -1,5 +1,78 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
+> **✅ Code review (bmad-code-review) rodado em 2026-08-18/19** sobre o
+> diff inteiro das Tarefas A/B/C/D (`71ad0d3..335c96c`, 31 arquivos) — dois
+> revisores em paralelo (Blind Hunter, só o diff; Edge Case Hunter, com
+> acesso ao repo), sem spec/story formal (`no-spec`). 17 achados triados:
+> **7 corrigidos**, 4 descartados como falso-positivo (verificados contra o
+> código real), 6 registrados como pendência pré-existente/baixo risco.
+>
+> **Corrigido:**
+> 1. `scan-and-generate.mjs` tratava falha de rede/RPC ao buscar
+>    concorrentes IGUAL a "nenhum concorrente encontrado" — o 7º documento
+>    podia afirmar falsamente "você é o primeiro do segmento" numa rodada
+>    onde os dados só não puderam ser buscados. Agora os dois casos têm
+>    texto diferente (`concorrentes === null` vs `[]`), e
+>    `06-analise-concorrencia.md` instrui a IA a nunca declarar
+>    exclusividade quando o dado está indisponível.
+> 2. `CapituloCard.tsx` declarava `role="dialog" aria-modal="true"` sem
+>    cumprir a semântica: sem foco inicial, sem trap de Tab (dava pra
+>    tabular pra elementos do `/hub`/`/world` por trás do overlay) e sem
+>    travar o scroll do `<body>` (rolava por teclado atrás do modal —
+>    mesma superfície mobile que motivou o fix original). Corrigido com
+>    `useEffect` (foco no painel, ciclo de Tab preso ao dialog,
+>    `body.style.overflow='hidden'` com cleanup) — validado com Playwright
+>    de verdade (foco inicial ✓, 8 Tabs seguidos nunca escapam ✓, overflow
+>    volta ao normal ao fechar ✓). Escape continua sem handler DE
+>    PROPÓSITO — é uma decisão de jogo obrigatória, não um modal comum.
+> 3. `deploy/supabase-up.sh` relia `PORTA_KONG` de volta do `.env` na
+>    mensagem final — desde a correção do incidente Kong (commit anterior)
+>    é o `export` que decide a porta real publicada, não mais o arquivo;
+>    reler do `.env` reportava a porta ERRADA (8000) quando o arquivo
+>    tinha o valor antigo, mesmo com o Kong real no ar em 8010. Agora usa
+>    `$KONG_HTTP_PORT` (a variável já exportada) direto.
+> 4. `scoring.ts`: `PONTOS_LICITACAO[r.licitacaoPublico]` sem fallback —
+>    um `FormData` forjado com valor fora do enum (bypass da UI normal)
+>    faria a busca retornar `undefined`, propagando `NaN` por `score`/
+>    `xpInicial` até um insert que rejeita `xp: null` sem mensagem
+>    amigável. Adicionado `?? 0`.
+> 5. As 4 perguntas de texto livre novas (`problemaPrincipal`,
+>    `diferencial`, `provaSocial`, `concorrentesConhecidos`) não tinham
+>    teto de tamanho antes de virar contexto pro prompt de IA do
+>    document-engine. Adicionado `maxLength: 300` no tipo `Pergunta` +
+>    Wizard (client) e truncamento espelhado em `actions.ts` (server —
+>    cliente nunca é fonte de verdade sozinho, regra 4 do AGENTS.md).
+> 6. `/privacidade` não mencionava que dados públicos de OUTROS tenants
+>    (nome/segmento/bairro/nível/degrau) podem aparecer agregados no
+>    documento "Análise de Concorrência" — adicionada uma frase
+>    esclarecendo (o dado em si já era público antes, isso é só
+>    transparência sobre o novo formato). Versão da política subiu pra
+>    `2026-08-18b` (mesmo protocolo já usado nesta sessão).
+>
+> **Descartado (falso-positivo, verificado contra o código real):**
+> changelog "3 call sites" vs diff "2 hunks" (na verdade `/hub` nunca
+> passava `className`, não precisava de diff — typecheck/build confirmam);
+> "falta migration pros 8 campos novos" (`onboardings.respostas` já é
+> `jsonb`); "PONTOS_LICITACAO satura o score em 100" (clamp deliberado
+> pré-existente, já documentado no teste); "contagem de testes
+> inconsistente 326 vs 329" (não é inconsistente — `contexto.test.ts` foi
+> adicionado ENTRE os blocos de Tarefa B e C serem escritos).
+>
+> **Deferido** (pré-existente ou baixo risco, não é regressão desta
+> sessão): mesmo padrão de cast sem validação runtime em `equipe`/
+> `investimento`/outros enums pré-existentes (só corrigi o campo NOVO,
+> `licitacaoPublico`); `DROP CONSTRAINT` sem `IF EXISTS` na migration
+> (mesmo padrão da 0038, já aplicada com sucesso); RPC `concorrentes_regiao`
+> sem clamp em `p_limite` (zero risco real — só chamada internamente com
+> valor fixo); risco de prompt injection via texto livre indo pro prompt
+> de IA (arquitetural, pré-existente desde `bairro`/`nomeNegocio`,
+> amplificado mas não introduzido — mitigado parcialmente pelo teto de 300
+> chars, fix completo é tarefa maior de sandboxing do motor headless);
+> falta de teste automatizado pro `CapituloCard` e auditoria formal
+> multi-viewport do GameShell (já rastreados abaixo, sem mudança).
+>
+> Gates verdes depois de tudo: typecheck, 329/329 testes, build.
+
 > **✅ Tarefas A, B, C e D — TODAS fechadas e NO AR em 2026-08-18**
 > (continuação da mesma sessão, depois de retomar de um corte por limite de
 > uso). Commit em produção (porta 3006): confira `git log --oneline -1` e

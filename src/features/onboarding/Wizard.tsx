@@ -223,6 +223,7 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
                       value={(valorAtual as string) ?? ""}
                       onChange={(e) => definir(pergunta.campo, e.target.value)}
                       placeholder={pergunta.placeholder}
+                      maxLength={pergunta.maxLength}
                       className="w-full rounded-md border-2 border-[#dbe3f0] bg-[#f7f9fc] px-3 py-2.5 text-sm outline-none focus:border-teal"
                     />
                   ) : (
