@@ -1,5 +1,41 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
+> **✅ Fechamento final da sessão 2026-08-19** — os 2 últimos itens em
+> aberto do bloco de code review foram resolvidos:
+> 1. **`KONG_HTTP_PORT` no `.env` do stack Supabase**: não pôde ser lido
+>    diretamente (bloqueado por permissão de acesso a segredo nesta
+>    sessão) — mas a evidência convergente (comentário pré-existente em
+>    `deploy/docker/update.sh` de sessão anterior + o incidente
+>    reproduzido ao vivo) confirma que está gravado como `8000` (o valor
+>    antigo, de antes da correção). **Validado que não importa mais**:
+>    rodei `./deploy/supabase-up.sh` de novo, desta vez SEM nenhum
+>    override manual, e a mensagem final saiu correta ("Kong (API
+>    gateway): http://2.25.146.39:8010") — o `export` interno do próprio
+>    script (linha ~53) garante isso sozinho, incondicionalmente. Se
+>    algum dia quiser deixar o arquivo em si limpo (não é necessário pro
+>    funcionamento), é só trocar a linha `KONG_HTTP_PORT=8000` por
+>    `KONG_HTTP_PORT=8010` em `deploy/supabase/.env` manualmente.
+> 2. **Teste automatizado (Vitest/RTL) do `CapituloCard`**: decisão
+>    deliberada de NÃO adicionar — o projeto inteiro (329 testes) usa só
+>    `environment: "node"` (lógica pura, sem DOM/jsdom); introduzir RTL
+>    seria trazer uma arquitetura de teste nova (novas deps, config,
+>    mocks de `next/navigation`/`framer-motion`) só pra um componente,
+>    quando a validação real via Playwright (já feita: foco inicial ✓,
+>    trap de Tab ✓, scroll-lock + cleanup ✓, fluxo de escolha intacto ✓)
+>    já é o método que este projeto trata como "validação de verdade" em
+>    toda a sua história (ver `AGENTS.md`, seção sobre navegador
+>    headless). Se um dia mais componentes precisarem desse tipo de
+>    teste, aí sim vale montar a infra — não para 1 componente isolado.
+> 3. **Auditoria multi-viewport formal do GameShell**: feita — as mesmas
+>    7 resoluções-alvo da landing (iPhone SE/14, Android médio, iPad
+>    retrato/paisagem, 720p, 1080p) testadas em `/hub`, `/world` e
+>    `/world/v2`, mais as 4 abas navegáveis do menu lateral (Serviços,
+>    Sede-resumo, Parcerias, Eventos) em mobile e desktop — zero overflow
+>    horizontal, zero erro JS em todas as combinações.
+> Deploy final: commit `874fbdc` já estava no ar (nenhuma mudança de
+> código nesta rodada de fechamento, só verificação e a auditoria). Gates
+> confirmados verdes antes de cada deploy desta sessão.
+
 > **✅ Code review (bmad-code-review) rodado em 2026-08-18/19** sobre o
 > diff inteiro das Tarefas A/B/C/D (`71ad0d3..335c96c`, 31 arquivos) — dois
 > revisores em paralelo (Blind Hunter, só o diff; Edge Case Hunter, com
