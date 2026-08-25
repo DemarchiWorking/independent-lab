@@ -65,7 +65,17 @@ export function PitchQRs() {
                 />
               </div>
               <p className="mb-1.5 text-sm font-bold text-white">{item.subtitulo}</p>
-              <p className="font-mono text-xs text-muted">{item.url.replace(/^https?:\/\//, "")}</p>
+              <p className="mb-4 rounded-md border border-line bg-card px-3 py-1.5 font-mono text-xs text-teal">
+                {item.url.replace(/^https?:\/\//, "")}
+              </p>
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md bg-orange px-4 py-2 text-xs font-extrabold text-ink shadow-[0_3px_0] shadow-orange-dark transition-transform hover:-translate-y-0.5"
+              >
+                <Icon name="arrow" size={14} /> Abrir agora
+              </a>
             </motion.div>
           ))}
         </motion.div>
