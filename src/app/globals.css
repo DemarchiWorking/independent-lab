@@ -188,7 +188,15 @@ body {
     page-break-after: always;
   }
 
+  .pitch-scope.bg-grain::before,
   .pitch-scope .bg-grain::before {
-    display: none;
+    display: none !important;
+  }
+
+  /* Blobs decorativos com `blur()` — o motor de PDF do Chromium rasteriza
+     cada um em bitmap de página inteira; sem isso, um deck de ~20 páginas
+     ficava com dezenas de MB por causa só disso. */
+  .pitch-scope [class*="blur-"] {
+    display: none !important;
   }
 }
