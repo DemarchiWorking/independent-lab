@@ -335,6 +335,29 @@ export const EMPRESA = {
   },
 };
 
+export const QR_FINAL = {
+  badge: "Aponte a câmera agora",
+  titulo: "Dois jeitos de ver",
+  tituloDestaque: "isso funcionando ao vivo.",
+  descricao: "Escaneie e entre nos dois sistemas reais, ao vivo, multiplayer — nenhum dos dois é protótipo de slide.",
+  itens: [
+    {
+      nome: "V4MOS",
+      subtitulo: "Interface Web Enterprise — documentação de startup por IA",
+      url: process.env.NEXT_PUBLIC_V4MOS_URL || "http://2.25.146.39:3002",
+      icon: "monitor" as const,
+    },
+    {
+      nome: "labdatadev gamehub",
+      subtitulo: "Cadastre seu negócio e jogue ao vivo, com outros participantes",
+      url: process.env.NEXT_PUBLIC_LANDING_URL
+        ? `${process.env.NEXT_PUBLIC_LANDING_URL}/cadastro`
+        : "http://2.25.146.39:3006/cadastro",
+      icon: "cube" as const,
+    },
+  ],
+};
+
 export const CTA_FINAL_PITCH = {
   titulo: "Tecnologia de grande empresa,",
   tituloLinha2: "no bolso do pequeno empresário.",

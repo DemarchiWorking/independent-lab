@@ -11,6 +11,7 @@ import { Gamificacao } from "./sections/Gamificacao";
 import { Equipe } from "./sections/Equipe";
 import { PitchScript } from "./sections/PitchScript";
 import { PitchCTA } from "./sections/PitchCTA";
+import { PitchQRs } from "./sections/PitchQRs";
 import { PitchFooter } from "./sections/PitchFooter";
 import { ScrollProgress } from "./sections/ScrollProgress";
 import { SectionNav } from "./sections/SectionNav";
@@ -39,6 +40,7 @@ export function PitchPage() {
       <Equipe />
       <PitchScript />
       <PitchCTA />
+      <PitchQRs />
       <PitchFooter />
     </div>
   );
