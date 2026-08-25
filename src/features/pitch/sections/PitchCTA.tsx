@@ -2,12 +2,14 @@
 
 import { motion } from "framer-motion";
 import { LandingLinkButton } from "@/components/ui/LandingLinkButton";
+import { MotionCanvas } from "@/components/effects/MotionCanvas";
 import { CTA_FINAL_PITCH } from "../content";
 
 export function PitchCTA() {
   return (
-    <section className="px-4 py-20 sm:px-6 sm:py-24">
-      <div className="mx-auto max-w-3xl text-center">
+    <section id="cta" className="relative scroll-mt-20 overflow-hidden px-4 py-20 sm:px-6 sm:py-24">
+      <MotionCanvas className="pointer-events-none absolute inset-0 opacity-50" />
+      <div className="relative mx-auto max-w-3xl text-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           whileInView={{ opacity: 1, scale: 1 }}

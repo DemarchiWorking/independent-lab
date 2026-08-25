@@ -7,7 +7,7 @@ import { AGENTES_IA } from "../content";
 
 export function AgentesIA() {
   return (
-    <section className="relative px-4 py-20 sm:px-6 sm:py-24">
+    <section id="agentes" className="relative scroll-mt-20 px-4 py-20 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-5xl">
         <motion.div
           initial="hidden"

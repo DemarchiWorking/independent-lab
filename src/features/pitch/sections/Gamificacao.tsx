@@ -7,7 +7,7 @@ import { GAMIFICACAO } from "../content";
 
 export function Gamificacao() {
   return (
-    <section className="relative border-y border-line/60 bg-card/40 px-4 py-20 sm:px-6 sm:py-24">
+    <section id="gamificacao" className="relative scroll-mt-20 border-y border-line/60 bg-card/40 px-4 py-20 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-5xl">
         <motion.div
           initial="hidden"

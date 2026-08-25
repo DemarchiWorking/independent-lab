@@ -10,7 +10,7 @@ import { PITCH_HERO, PITCH_NAV } from "../content";
 
 export function PitchHero() {
   return (
-    <section className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-4 pt-24 text-center sm:px-6 sm:pt-20">
+    <section id="hero" className="relative flex min-h-[100dvh] scroll-mt-20 flex-col items-center justify-center overflow-hidden px-4 pt-24 text-center sm:px-6 sm:pt-20">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal/5 blur-[120px]" />
         <div className="absolute right-0 top-0 h-[400px] w-[400px] rounded-full bg-orange/5 blur-[100px]" />

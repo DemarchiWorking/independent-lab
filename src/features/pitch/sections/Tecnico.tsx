@@ -4,10 +4,11 @@ import { motion } from "framer-motion";
 import { Icon } from "@/components/ui/Icon";
 import { fadeUp, stagger } from "../motion";
 import { TECNICO } from "../content";
+import { MultiTenantDiagram } from "./MultiTenantDiagram";
 
 export function Tecnico() {
   return (
-    <section className="relative border-y border-line/60 bg-card/40 px-4 py-20 sm:px-6 sm:py-24">
+    <section id="tecnico" className="relative scroll-mt-20 border-y border-line/60 bg-card/40 px-4 py-20 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-6xl">
         <motion.div
           initial="hidden"
@@ -31,6 +32,16 @@ export function Tecnico() {
           <motion.p variants={fadeUp} transition={{ duration: 0.5 }} className="text-base leading-relaxed text-muted">
             {TECNICO.descricao}
           </motion.p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6 }}
+          className="relative mb-12 rounded-md border border-[#6b8cff]/20 bg-night/40 bg-tech-grid py-6"
+        >
+          <MultiTenantDiagram />
         </motion.div>
 
         <motion.div

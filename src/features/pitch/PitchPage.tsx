@@ -12,6 +12,8 @@ import { Equipe } from "./sections/Equipe";
 import { PitchScript } from "./sections/PitchScript";
 import { PitchCTA } from "./sections/PitchCTA";
 import { PitchFooter } from "./sections/PitchFooter";
+import { ScrollProgress } from "./sections/ScrollProgress";
+import { SectionNav } from "./sections/SectionNav";
 
 /**
  * Pitch institucional (rota `/pitch`) — apresentação pro Sebrae Startup Win
@@ -21,7 +23,9 @@ import { PitchFooter } from "./sections/PitchFooter";
  */
 export function PitchPage() {
   return (
-    <div className="min-h-screen">
+    <div className="pitch-scope relative min-h-screen bg-grain">
+      <ScrollProgress />
+      <SectionNav />
       <PitchNav />
       <PitchHero />
       <Problema />

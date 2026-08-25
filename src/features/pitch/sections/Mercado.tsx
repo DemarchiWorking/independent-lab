@@ -5,10 +5,11 @@ import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 import { SpotlightCard } from "@/components/ui/SpotlightCard";
 import { fadeUp, stagger } from "../motion";
 import { MERCADO } from "../content";
+import { MercadoDiagram } from "./MercadoDiagram";
 
 export function Mercado() {
   return (
-    <section className="relative px-4 py-20 sm:px-6 sm:py-24">
+    <section id="mercado" className="relative scroll-mt-20 bg-tech-grid px-4 py-20 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-6xl">
         <motion.div
           initial="hidden"
@@ -50,28 +51,39 @@ export function Mercado() {
           ))}
         </motion.div>
 
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          variants={stagger}
-          className="grid gap-4 md:grid-cols-3"
-        >
-          {MERCADO.camadas.map((c) => (
-            <motion.div
-              key={c.nome}
-              variants={fadeUp}
-              transition={{ duration: 0.5 }}
-              className="rounded-md border border-line bg-card2 p-5"
-            >
-              <span className="mb-2 inline-block font-pixel text-[10px] uppercase tracking-[2px] text-orange">
-                {c.nome}
-              </span>
-              <h3 className="mb-1.5 text-sm font-extrabold text-white">{c.titulo}</h3>
-              <p className="text-xs leading-relaxed text-muted">{c.texto}</p>
-            </motion.div>
-          ))}
-        </motion.div>
+        <div className="grid gap-8 md:grid-cols-[280px_1fr] md:items-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6 }}
+          >
+            <MercadoDiagram />
+          </motion.div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-80px" }}
+            variants={stagger}
+            className="grid gap-4 sm:grid-cols-3 md:grid-cols-1"
+          >
+            {MERCADO.camadas.map((c) => (
+              <motion.div
+                key={c.nome}
+                variants={fadeUp}
+                transition={{ duration: 0.5 }}
+                className="rounded-md border border-line bg-card2 p-5"
+              >
+                <span className="mb-2 inline-block font-pixel text-[10px] uppercase tracking-[2px] text-orange">
+                  {c.nome}
+                </span>
+                <h3 className="mb-1.5 text-sm font-extrabold text-white">{c.titulo}</h3>
+                <p className="text-xs leading-relaxed text-muted">{c.texto}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
 
         <p className="mt-8 text-center text-[11px] text-muted/60">{MERCADO.fonte}</p>
       </div>

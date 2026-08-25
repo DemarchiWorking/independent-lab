@@ -8,7 +8,7 @@ import { EQUIPE, EMPRESA } from "../content";
 export function Equipe() {
   const { pessoa } = EQUIPE;
   return (
-    <section className="relative border-y border-line/60 bg-card/40 px-4 py-20 sm:px-6 sm:py-24">
+    <section id="equipe" className="relative scroll-mt-20 border-y border-line/60 bg-card/40 px-4 py-20 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-4xl">
         <motion.div
           initial="hidden"
