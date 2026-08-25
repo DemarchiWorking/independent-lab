@@ -25,6 +25,9 @@ export function Tecnico() {
           <motion.h2 variants={fadeUp} transition={{ duration: 0.5 }} className="mb-4 text-2xl font-extrabold text-white sm:text-3xl md:text-4xl">
             {TECNICO.titulo} <span className="text-gradient">{TECNICO.tituloDestaque}</span>
           </motion.h2>
+          <motion.p variants={fadeUp} transition={{ duration: 0.5 }} className="mb-2 text-sm font-bold text-[#8fa6ff]">
+            {TECNICO.traducaoSimples}
+          </motion.p>
           <motion.p variants={fadeUp} transition={{ duration: 0.5 }} className="text-base leading-relaxed text-muted">
             {TECNICO.descricao}
           </motion.p>

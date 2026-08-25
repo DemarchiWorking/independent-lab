@@ -24,16 +24,25 @@ export const PITCH_HERO = {
   tituloDestaque: "a mesma tecnologia",
   tituloLinha2: "de uma grande empresa.",
   subtitulo:
-    "Hoje ele não tem. Não por falta de vontade — por falta de dinheiro pra contratar uma equipe de tecnologia, marketing e comercial. A gente resolve isso com Inteligência Artificial, por uma fração do custo de um funcionário.",
+    "Hoje ele não tem. Não por falta de vontade — por falta de dinheiro pra contratar uma equipe de tecnologia, marketing e comercial. Enquanto ele resolve isso sozinho à noite, o concorrente da capital já está usando IA pra vender. A gente fecha essa distância — em minutos, não em meses.",
   ctaPrimario: "Ver o pitch (2min30)",
   ctaSecundario: "Testar o produto ao vivo",
+  ganchos: [
+    { icon: "file", texto: "7 documentos em 10 minutos" },
+    { icon: "coin", texto: "R$ 0 pra começar" },
+    { icon: "briefcase", texto: "Comercial de IA, 24h por dia" },
+  ] satisfies { icon: IconName; texto: string }[],
 };
 
 export const PROBLEMA = {
   badge: "O problema",
   titulo: "O empresário do interior está sozinho",
+  historia:
+    "São 22h numa cidade do interior. A dona de uma pequena empresa de engenharia fecha a última planilha do dia e abre o Instagram — não pra descansar, pra tentar postar alguma coisa, porque ninguém mais vai fazer isso por ela. Ela sabe que devia ter site, proposta pronta, um jogo comercial ativo. Sabe também que isso custa um salário que o negócio dela ainda não paga. Então ela vai dormir sem postar. De novo.",
   descricao:
     "Fora das capitais, a maioria dos pequenos negócios roda no boca a boca, na planilha e na memória do dono. Ele sabe que precisa de site, marketing, propostas comerciais e organização — mas contratar uma agência ou montar uma equipe própria custa o que ele fatura em meses.",
+  urgencia:
+    "E cada mês que passa sem isso não é um mês neutro — é um mês de cliente indo pro concorrente que já apareceu primeiro no Google.",
   pontos: [
     {
       icon: "coin",
@@ -91,6 +100,8 @@ export const TECNICO = {
   badge: "Como construímos",
   titulo: "Arquitetura multi-tenant real,",
   tituloDestaque: "não gambiarra de planilha.",
+  traducaoSimples:
+    "Tradução simples: seus dados ficam trancados e isolados dos dados dos outros clientes, e o sistema não fica mais caro conforme cresce — o oposto de contratar mais gente.",
   descricao:
     "Cada empresário cadastrado é um tenant isolado dentro do mesmo banco de dados — Postgres com Row-Level Security (RLS) aplicado em produção, não checado só no código. Isso é a diferença entre um MVP de fim de semana e uma plataforma que aguenta milhares de empresas ao mesmo tempo.",
   pontos: [
@@ -123,23 +134,28 @@ export const AGENTES_IA = {
   tituloDestaque: "chatbot. É força de trabalho.",
   descricao:
     "Um agente de IA não espera pergunta — ele tem um cargo, uma meta e autonomia pra agir: gerar o documento, montar o post, escrever a proposta, responder o lead. A diferença entre uma IA generativa comum e um agente é a mesma diferença entre uma calculadora e um funcionário.",
+  traducaoSimples:
+    "Tradução simples: não é um robô que responde pergunta. É como contratar alguém que nunca dorme, nunca falta e já chega sabendo o trabalho todo.",
   argumentos: [
     {
+      icon: "chart",
       titulo: "O mercado já provou a tese",
       texto:
         "O mercado global de agentes de IA foi avaliado em cerca de US$ 7,8 bilhões em 2025 e é projetado para chegar a mais de US$ 50 bilhões até 2030 — crescimento acima de 40% ao ano, um dos mais rápidos da história da tecnologia empresarial.",
     },
     {
+      icon: "coin",
       titulo: "Aumento de lucro, não só corte de custo",
       texto:
         "Cada Funcionário de IA contratado substitui uma tarefa que hoje custa hora de gente cara (marketing, comercial, documentação) por uma assinatura fixa — e continua trabalhando 24h, sem férias, sem turnover, escalando junto com o negócio sem precisar de treinamento.",
     },
     {
+      icon: "bolt",
       titulo: "O próximo passo: agentes que agem sozinhos",
       texto:
         "Hoje nossos agentes geram conteúdo e documentos sob comando. Nos próximos 12 a 24 meses, a evolução natural é agentes que monitoram a vitrine regional e disparam a ação sozinhos — responder um lead, ajustar uma proposta, sugerir o próximo passo — sem o empresário precisar pedir.",
     },
-  ],
+  ] satisfies { icon: IconName; titulo: string; texto: string }[],
 };
 
 export const MERCADO = {
@@ -190,13 +206,13 @@ export const PITCH_SCRIPT = {
       tempo: "0:00–0:25",
       titulo: "A dor",
       texto:
-        "\"Todo empresário do interior sabe que precisa de marketing, de comercial, de organização. Só que contratar isso custa R$ 10 mil por mês — e o negócio dele fatura menos que isso. Enquanto isso, o concorrente da capital, com dinheiro pra agência, cresce mais rápido não porque tem produto melhor. Porque tem tecnologia que ele não tem.\"",
+        "\"4,6 milhões de pequenos negócios abriram no Brasil só em 2025. Quantos desses têm marketing, comercial e um plano de verdade rodando? Quase nenhum — porque isso custa R$ 10 mil por mês, e o negócio deles fatura menos que isso. Enquanto isso, o concorrente da capital, com dinheiro pra agência, cresce mais rápido. Não porque tem produto melhor. Porque tem tecnologia que o empresário do interior não tem.\"",
     },
     {
       tempo: "0:25–1:00",
       titulo: "A virada",
       texto:
-        "\"A gente resolveu isso construindo uma equipe inteira de Inteligência Artificial — documentador, social media, comercial — por assinatura, a uma fração do custo de UM funcionário CLT. Em 10 minutos de cadastro, o empresário sai com 7 documentos de nível consultoria. Em 1 clique, sai com um mês de posts prontos. E o time comercial de IA já está de olho em oportunidade, 24 horas, sem parar.\"",
+        "\"A gente resolveu isso construindo uma equipe inteira de Inteligência Artificial — documentador, social media, comercial — por assinatura, a uma fração do custo de UM funcionário CLT. Em 10 minutos de cadastro, o empresário sai com 7 documentos de nível consultoria, prontos. Em 1 clique, sai com um mês inteiro de posts prontos. E o time comercial de IA já está de olho em oportunidade, 24 horas por dia, sem parar — mesmo enquanto ele dorme.\"",
     },
     {
       tempo: "1:00–1:35",
@@ -214,7 +230,31 @@ export const PITCH_SCRIPT = {
       tempo: "2:05–2:30",
       titulo: "O pedido",
       texto:
-        "\"Já está no ar, já funciona, já está sendo testado com contas reais agora mesmo. O que a gente precisa do Sebrae é exatamente isso: acesso à base de empreendedores do Startup Win pra validar em escala, e apoio pra levar essa mesma tecnologia de grande empresa pro empresário que nunca teve acesso a ela. Obrigado.\"",
+        "\"Isso não é protótipo de slide. Já está no ar, já funciona, já está sendo testado com contas reais agora mesmo — inclusive nesta apresentação. O que a gente pede ao Sebrae é simples: acesso à base de empreendedores do Startup Win pra validar em escala, e apoio pra levar essa mesma tecnologia de grande empresa pro empresário que nunca teve acesso a ela. Porque cada dia que ele espera é um dia a mais de vantagem pro concorrente. Obrigado.\"",
+    },
+  ],
+};
+
+export const PROVA_REAL = {
+  badge: "Não é mockup",
+  titulo: "Isto está",
+  tituloDestaque: "no ar agora mesmo.",
+  itens: [
+    {
+      src: "/pitch/painel-documentos.png",
+      alt: "Painel do labdatadev gamehub mostrando os 7 documentos gerados por IA para o negócio Radiz Engenharia",
+      url: "labdatadev.cloud/painel",
+      legenda: "7 documentos gerados por IA, de verdade — não ilustração de slide.",
+      width: 888,
+      height: 448,
+    },
+    {
+      src: "/pitch/world-sede.png",
+      alt: "Sede isométrica do negócio no jogo, com os Funcionários de IA contratados aparecendo como avatares",
+      url: "labdatadev.cloud/world",
+      legenda: "Cada Funcionário de IA contratado aparece como avatar na sua sede.",
+      width: 1280,
+      height: 800,
     },
   ],
 };
@@ -224,7 +264,7 @@ export const CUSTO_COMPARATIVO = {
   titulo: "O mesmo resultado,",
   tituloDestaque: "por uma fração do preço.",
   descricao:
-    "Marketing, comercial e consultoria de gestão de verdade sempre existiram — só que a um preço que 97% dos pequenos negócios do país nunca vão poder pagar. A gente não inventou a demanda. Só derrubou a barreira de entrada.",
+    "Marketing, comercial e consultoria de gestão de verdade sempre existiram — só que a um preço que 97% dos pequenos negócios do país nunca vão poder pagar. A gente não inventou a demanda. Só derrubou a barreira de entrada. E quem paga o preço de esperar não é a gente — é o empresário que continua invisível enquanto decide.",
   linhas: [
     {
       nome: "V4 Company",
@@ -279,6 +319,7 @@ export const CTA_FINAL_PITCH = {
   tituloLinha2: "no bolso do pequeno empresário.",
   descricao:
     "Cadastro grátis, documentação de consultoria em 10 minutos, marketing e comercial rodando por IA — hoje, não em uma promessa de roadmap.",
+  urgencia: "Cada dia sem isso é um dia a mais de vantagem pro concorrente que já começou.",
   ctaPrimario: "Testar o produto ao vivo",
   ctaSecundario: "Ver a apresentação com QR Code",
 };

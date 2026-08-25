@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { Icon } from "@/components/ui/Icon";
 import { fadeUp, stagger } from "../motion";
 import { AGENTES_IA } from "../content";
 
@@ -27,6 +28,9 @@ export function AgentesIA() {
           <motion.p variants={fadeUp} transition={{ duration: 0.5 }} className="text-base leading-relaxed text-muted">
             {AGENTES_IA.descricao}
           </motion.p>
+          <motion.p variants={fadeUp} transition={{ duration: 0.5 }} className="mt-3 text-sm font-bold text-teal">
+            {AGENTES_IA.traducaoSimples}
+          </motion.p>
         </motion.div>
 
         <motion.div
@@ -36,16 +40,16 @@ export function AgentesIA() {
           variants={stagger}
           className="space-y-4"
         >
-          {AGENTES_IA.argumentos.map((a, i) => (
+          {AGENTES_IA.argumentos.map((a) => (
             <motion.div
               key={a.titulo}
               variants={fadeUp}
               transition={{ duration: 0.5 }}
               className="flex flex-col gap-4 rounded-md border border-line bg-card2 p-6 shadow-hard sm:flex-row sm:items-start"
             >
-              <span className="font-pixel text-3xl text-orange/40 sm:w-16 sm:shrink-0">
-                {String(i + 1).padStart(2, "0")}
-              </span>
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-md bg-orange/15 sm:size-12">
+                <Icon name={a.icon} size={22} className="text-orange" />
+              </div>
               <div>
                 <h3 className="mb-1.5 text-base font-extrabold text-white sm:text-lg">{a.titulo}</h3>
                 <p className="text-sm leading-relaxed text-muted">{a.texto}</p>

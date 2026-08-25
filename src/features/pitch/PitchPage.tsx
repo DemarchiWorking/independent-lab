@@ -2,6 +2,7 @@ import { PitchNav } from "./sections/PitchNav";
 import { PitchHero } from "./sections/PitchHero";
 import { Problema } from "./sections/Problema";
 import { Solucao } from "./sections/Solucao";
+import { ProvaReal } from "./sections/ProvaReal";
 import { CustoComparativo } from "./sections/CustoComparativo";
 import { Tecnico } from "./sections/Tecnico";
 import { AgentesIA } from "./sections/AgentesIA";
@@ -25,6 +26,7 @@ export function PitchPage() {
       <PitchHero />
       <Problema />
       <Solucao />
+      <ProvaReal />
       <CustoComparativo />
       <Tecnico />
       <AgentesIA />

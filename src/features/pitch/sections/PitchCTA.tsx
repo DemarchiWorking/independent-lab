@@ -20,7 +20,8 @@ export function PitchCTA() {
             <br />
             {CTA_FINAL_PITCH.tituloLinha2}
           </h2>
-          <p className="mb-8 text-muted">{CTA_FINAL_PITCH.descricao}</p>
+          <p className="mb-3 text-muted">{CTA_FINAL_PITCH.descricao}</p>
+          <p className="mb-8 text-sm font-bold text-orange">{CTA_FINAL_PITCH.urgencia}</p>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <LandingLinkButton href="/cadastro" icon="arrow" size="lg" className="w-full sm:w-auto">
               {CTA_FINAL_PITCH.ctaPrimario}

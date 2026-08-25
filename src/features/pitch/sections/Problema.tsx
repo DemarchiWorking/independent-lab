@@ -35,8 +35,19 @@ export function Problema() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-80px" }}
+          variants={fadeUp}
+          transition={{ duration: 0.6 }}
+          className="mx-auto mb-12 max-w-3xl rounded-md border border-line bg-card2 p-6 shadow-hard sm:p-8"
+        >
+          <p className="text-sm italic leading-relaxed text-muted sm:text-base">{PROBLEMA.historia}</p>
+        </motion.div>
+
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
           variants={stagger}
-          className="grid gap-5 sm:gap-6 md:grid-cols-3"
+          className="mb-8 grid gap-5 sm:gap-6 md:grid-cols-3"
         >
           {PROBLEMA.pontos.map((p) => (
             <motion.div key={p.titulo} variants={fadeUp} transition={{ duration: 0.5 }}>
@@ -50,6 +61,16 @@ export function Problema() {
             </motion.div>
           ))}
         </motion.div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mx-auto max-w-2xl text-center text-sm font-bold text-coral"
+        >
+          {PROBLEMA.urgencia}
+        </motion.p>
       </div>
     </section>
   );

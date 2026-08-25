@@ -54,6 +54,22 @@ export function PitchHero() {
             {PITCH_HERO.ctaSecundario}
           </LandingLinkButton>
         </motion.div>
+
+        <motion.div
+          variants={fadeUp}
+          transition={{ duration: 0.4 }}
+          className="mt-8 flex flex-wrap items-center justify-center gap-2.5"
+        >
+          {PITCH_HERO.ganchos.map((g) => (
+            <span
+              key={g.texto}
+              className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-card2/80 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm"
+            >
+              <Icon name={g.icon} size={14} className="text-teal" />
+              {g.texto}
+            </span>
+          ))}
+        </motion.div>
       </motion.div>
 
       <div className="absolute bottom-20 right-16 hidden opacity-20 lg:block">
