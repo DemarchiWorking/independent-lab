@@ -297,7 +297,7 @@ export const CUSTO_COMPARATIVO = {
 };
 
 export const EQUIPE = {
-  badge: "Quem constrói",
+  badge: "Quem faz acontecer",
   titulo: "A equipe por trás",
   tituloDestaque: "do labdatadev.",
   pessoa: {

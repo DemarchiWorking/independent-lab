@@ -7,8 +7,11 @@ export function PitchFooter() {
   return (
     <footer className="border-t border-line/60 px-6 py-10">
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 text-center">
-        <p className="font-pixel text-[10px] uppercase tracking-[2px] text-teal">
-          labdatadev · gamehub — Laboratório Demarchi
+        {/* Sem uppercase de propósito: "Press Start 2P" não tem glifo pro
+            "Ó" maiúsculo, e "Laboratório" é nome próprio — não dá pra
+            reescrever o texto como fizemos nos badges. */}
+        <p className="font-pixel text-[10px] tracking-[1px] text-teal">
+          LABDATADEV · GAMEHUB — Laboratório Demarchi
         </p>
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted">
           <span className="inline-flex items-center gap-1.5">
