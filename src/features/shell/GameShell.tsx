@@ -279,6 +279,34 @@ export function GameShell({
     return () => el.removeEventListener("scroll", resetar);
   }, [view]);
 
+  // Achado 2026-08-25 (feedback direto ao vivo): a barra de navegação
+  // inferior "atrapalha quase todas as funcionalidades... tampando
+  // diversos botões". Ela some sozinha depois de 3,5s parada e volta no
+  // primeiro toque/clique/tecla em qualquer lugar da caixa — nunca fica
+  // permanentemente escondida (sempre reaparece com qualquer atividade,
+  // inclusive trocar de aba), então não é possível "perder" a navegação.
+  const [navVisivel, setNavVisivel] = useState(true);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const reiniciarTimer = () => {
+      setNavVisivel(true);
+      clearTimeout(timer);
+      timer = setTimeout(() => setNavVisivel(false), 3500);
+    };
+    reiniciarTimer();
+    el.addEventListener("pointerdown", reiniciarTimer);
+    el.addEventListener("pointermove", reiniciarTimer);
+    el.addEventListener("keydown", reiniciarTimer);
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener("pointerdown", reiniciarTimer);
+      el.removeEventListener("pointermove", reiniciarTimer);
+      el.removeEventListener("keydown", reiniciarTimer);
+    };
+  }, [view]);
+
   return (
     // Achado 2026-08-25: em celular a caixa do jogo tinha altura FIXA
     // (440px, herdada do `min-h-[440px]` pensado pro aspect-ratio de
@@ -478,7 +506,7 @@ export function GameShell({
           nosDesbloqueados={nosDesbloqueados}
         />
 
-        <Nav items={navItems} current={core} onChange={go} />
+        <Nav items={navItems} current={core} onChange={go} visivel={navVisivel} />
 
         <RibbonPanel title="Módulos" open={drawer} onClose={() => setDrawer(false)}>
           <motion.div
