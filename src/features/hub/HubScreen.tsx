@@ -60,7 +60,13 @@ export function HubScreen({
   const licao = degrauAtual !== undefined ? licaoDoDegrau(degrauAtual) : undefined;
 
   return (
-    <div className="relative flex h-full flex-col items-center justify-center gap-5">
+    // `justify-center` + `h-full` fixo transbordava pra CIMA do próprio
+    // limite em telas curtas (achado 2026-08-25: o texto centralizado
+    // "vazava" de volta pro espaço do HUD mesmo com o HUD medido
+    // corretamente) — `justify-start`/`min-h-full` deixa o conteúdo
+    // crescer pra baixo e rolar dentro do container pai
+    // (`overflow-y-auto` em `GameShell`), nunca pra fora dos dois lados.
+    <div className="relative flex min-h-full flex-col items-center justify-start gap-5 py-4">
       {missao ? (
         <MissaoCard missao={missao} />
       ) : (

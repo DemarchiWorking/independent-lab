@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { screenVariants, pressable, listContainer, listItem } from "@/lib/motion";
 import { IsoRoom } from "@/components/ui/IsoRoom";
@@ -172,6 +172,29 @@ export function GameShell({
   const [celular, setCelular] = useState(false);
   const [inventario, setInventario] = useState(false);
 
+  // Altura REAL do HudBar, medida ao vivo — nunca assumir um valor fixo
+  // (achado 2026-08-25: em telas estreitas o texto de cada StatCard pode
+  // quebrar linha, o HUD cresce, e um `pt-24` fixo deixava lição/saldo
+  // cobrindo o conteúdo abaixo). 96px é só o palpite inicial até o primeiro
+  // `ResizeObserver` disparar — mesmo valor que `pt-24` já usava.
+  const hudRef = useRef<HTMLDivElement>(null);
+  const [hudHeight, setHudHeight] = useState(96);
+
+  useEffect(() => {
+    const el = hudRef.current;
+    if (!el) return;
+    // `entries[0].contentRect` exclui padding/borda (o HudBar tem `p-3`,
+    // 24px verticais) — sempre medir a caixa completa via
+    // `getBoundingClientRect`, senão o conteúdo abaixo fica raso demais de
+    // novo (mesma classe de bug que este código existe pra evitar).
+    const observer = new ResizeObserver(() => {
+      const altura = el.getBoundingClientRect().height;
+      if (altura) setHudHeight(Math.ceil(altura));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const demo = hud === undefined;
   const dadosHud = hud ?? HUD_DEMO;
   const temMapa = Boolean(mapa && endereco && meuTenantId);
@@ -244,6 +267,7 @@ export function GameShell({
        <RecompensaProvider demo={demo}>
         <IsoRoom />
         <HudBar
+          ref={hudRef}
           data={dadosHud}
           acoes={
             demo
@@ -258,7 +282,10 @@ export function GameShell({
           }
         />
 
-        <div className="absolute inset-x-0 bottom-0 top-0 z-10 pb-20 pl-14 pr-4 pt-24">
+        <div
+          className="absolute inset-x-0 bottom-0 top-0 z-10 overflow-y-auto pb-20 pl-14 pr-4"
+          style={{ paddingTop: hudHeight + 12 }}
+        >
           <AnimatePresence mode="wait">
             <motion.section
               key={view}

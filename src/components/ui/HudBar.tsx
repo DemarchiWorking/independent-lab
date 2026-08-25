@@ -1,5 +1,6 @@
 "use client";
 
+import { forwardRef } from "react";
 import { motion } from "framer-motion";
 import { pressable, springSnappy } from "@/lib/motion";
 import { StatCard } from "./StatCard";
@@ -28,10 +29,17 @@ export interface HudAcoes {
 
 /** Moldura de topo do jogo: cartões (moeda/rede/ciclo) + Objetivo + Saldo +
  *  faixa de alerta. Fica fixa enquanto o "palco" central troca de tela.
- *  Cada elemento é um atalho para a tela que explica aquele número. */
-export function HudBar({ data, acoes = {} }: { data: HudData; acoes?: HudAcoes }) {
+ *  Cada elemento é um atalho para a tela que explica aquele número.
+ *
+ *  `ref` aponta pro elemento raiz — o `GameShell` mede a altura REAL dele
+ *  via `ResizeObserver` (achado 2026-08-25: em telas estreitas o texto de
+ *  cada `StatCard` pode quebrar linha, o HUD passa de 96px pra até ~166px,
+ *  e um `padding-top` fixo no conteúdo abaixo deixava lição/saldo cobrindo
+ *  os cards de negócio — nunca mais assumir uma altura fixa aqui). */
+export const HudBar = forwardRef<HTMLDivElement, { data: HudData; acoes?: HudAcoes }>(
+  function HudBar({ data, acoes = {} }, ref) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-3">
+    <div ref={ref} className="pointer-events-none absolute inset-x-0 top-0 z-20 p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="pointer-events-auto flex gap-2">
           <StatCard
@@ -103,4 +111,4 @@ export function HudBar({ data, acoes = {} }: { data: HudData; acoes?: HudAcoes }
       </div>
     </div>
   );
-}
+});
