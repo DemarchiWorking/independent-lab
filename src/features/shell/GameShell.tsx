@@ -179,6 +179,7 @@ export function GameShell({
   // `ResizeObserver` disparar — mesmo valor que `pt-24` já usava.
   const hudRef = useRef<HTMLDivElement>(null);
   const [hudHeight, setHudHeight] = useState(96);
+  const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = hudRef.current;
@@ -258,12 +259,25 @@ export function GameShell({
     setDrawer(false);
   };
 
+  // Achado 2026-08-25 (auditoria mobile): trocar pra Parcerias em 375px
+  // deixava a caixa do jogo (`overflow-hidden`, não deveria rolar visível
+  // pro usuário) com `scrollLeft` não-zero — algum elemento interno recebe
+  // foco fora da área visível e o navegador rola até ele mesmo em
+  // containers `overflow:hidden`. Resetar a rolagem a cada troca de view é
+  // a defesa correta independente de qual view causa isso no futuro.
+  useEffect(() => {
+    boxRef.current?.scrollTo({ left: 0, top: 0 });
+  }, [view]);
+
   return (
     <main className="mx-auto w-full max-w-6xl px-3 py-6">
       <p className="mb-3 font-pixel text-[11px] uppercase tracking-[3px] text-teal">
         labdatadev · gamehub
       </p>
-      <div className="relative aspect-[20/11] min-h-[440px] w-full overflow-hidden rounded-[14px] border-[3px] border-[#05304a] shadow-[0_0_0_4px_#041018,0_18px_50px_rgba(0,0,0,.55)]">
+      <div
+        ref={boxRef}
+        className="relative aspect-[20/11] min-h-[440px] w-full overflow-hidden rounded-[14px] border-[3px] border-[#05304a] shadow-[0_0_0_4px_#041018,0_18px_50px_rgba(0,0,0,.55)]"
+      >
        <RecompensaProvider demo={demo}>
         <IsoRoom />
         <HudBar
