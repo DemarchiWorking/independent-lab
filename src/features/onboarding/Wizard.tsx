@@ -42,9 +42,11 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
 
   const valorAtual = pergunta ? valores[pergunta.campo] : undefined;
   const respondida = pergunta
-    ? pergunta.tipo === "multipla"
-      ? Array.isArray(valorAtual) && valorAtual.length > 0
-      : typeof valorAtual === "string" && valorAtual.trim().length > 0
+    ? pergunta.campo === "cidade"
+      ? true // sem cidade escolhida/CEP preenchido, cai no padrão ao avançar
+      : pergunta.tipo === "multipla"
+        ? Array.isArray(valorAtual) && valorAtual.length > 0
+        : typeof valorAtual === "string" && valorAtual.trim().length > 0
     : true;
 
   const definir = (campo: string, valor: string | string[]) =>
@@ -121,11 +123,29 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
     );
   };
 
-  // CEP obrigatório: a pergunta "cidade" (onde o campo de CEP vive) só libera
-  // avançar com os 8 dígitos completos, além da própria cidade escolhida.
+  // CEP com padrão de segurança para apresentação ao vivo: se o campo ficar
+  // incompleto/vazio quando o apresentador avançar, cai para o CEP/bairro
+  // padrão (26700-000, Centro, Mendes — mesmo lote usado pelo seed de demo)
+  // em vez de travar o cadastro na frente da banca.
+  const CEP_PADRAO = "26700000";
+  const CIDADE_PADRAO = "Mendes";
+  const BAIRRO_PADRAO = "Centro";
   const cepCompleto = cepInput.replace(/\D/g, "").length === 8;
-  const podeAvancar =
-    pergunta?.campo === "cidade" ? respondida && cepCompleto : respondida;
+  const podeAvancar = respondida;
+
+  const avancar = () => {
+    if (pergunta?.campo === "cidade" && !cepCompleto) {
+      setCepInput(mascararCep(CEP_PADRAO));
+      setValores((v) => ({
+        ...v,
+        cep: CEP_PADRAO,
+        cidade: CIDADE_PADRAO,
+        bairro: BAIRRO_PADRAO,
+      }));
+      setStatusCep("encontrado");
+    }
+    setPasso((p) => p + 1);
+  };
 
   return (
     <form action={formAction} className="w-full max-w-lg">
@@ -176,15 +196,14 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
                 {pergunta.campo === "cidade" ? (
                   <div className="mt-3">
                     <label className="mb-1 block text-[11px] font-bold text-muted">
-                      CEP *
+                      CEP
                     </label>
                     <input
                       inputMode="numeric"
                       value={cepInput}
                       onChange={(e) => setCepInput(mascararCep(e.target.value))}
-                      placeholder="00000-000 — preenche cidade e bairro sozinho"
+                      placeholder="00000-000 — preenche cidade e bairro sozinho (opcional)"
                       maxLength={9}
-                      required
                       className="w-full rounded-md border-2 border-[#dbe3f0] bg-[#f7f9fc] px-3 py-2.5 text-sm outline-none focus:border-teal"
                     />
                     {cepInput.length > 0 && !cepCompleto && statusCep === "idle" ? (
@@ -378,7 +397,7 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
           </ActionButton>
         ) : (
           <ActionButton
-            onClick={() => podeAvancar && setPasso((p) => p + 1)}
+            onClick={() => podeAvancar && avancar()}
             disabled={!podeAvancar}
             icon="arrow"
           >
