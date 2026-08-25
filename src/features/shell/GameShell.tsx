@@ -342,7 +342,7 @@ export function GameShell({
         />
 
         <div
-          className="absolute inset-x-0 bottom-0 top-0 z-10 overflow-y-auto pb-20 pl-14 pr-4"
+          className="absolute inset-x-0 bottom-0 top-0 z-10 overflow-y-auto pb-24 pl-14 pr-4"
           style={{ paddingTop: hudHeight + 12 }}
         >
           <AnimatePresence mode="wait">

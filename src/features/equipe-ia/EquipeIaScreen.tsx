@@ -69,7 +69,14 @@ export function EquipeIaScreen({
   };
 
   return (
-    <div className="grid h-full grid-cols-1 gap-3 md:grid-cols-[1fr_1.2fr]">
+    // Achado 2026-08-25 (feedback ao vivo): "mostra apenas o Documentador"
+    // — no mobile (1 coluna), a lista de cargos e o painel de detalhe
+    // empilhavam como 2 linhas de grid sem altura explícita; o painel de
+    // detalhe (mais alto, com preço/atributos/tabela/botão) dominava o
+    // espaço e sobrava só o primeiro item da lista visível. Mesma correção
+    // que já resolveu o mesmo bug no mapa: piso garantido pra lista,
+    // painel de detalhe rola dentro de si mesmo se precisar.
+    <div className="grid h-full grid-cols-1 grid-rows-[minmax(160px,1fr)_auto] gap-3 md:grid-cols-[1fr_1.2fr] md:grid-rows-none">
       <motion.ul
         variants={listContainer}
         initial="initial"
@@ -118,7 +125,7 @@ export function EquipeIaScreen({
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={springSnappy}
-          className="flex flex-col rounded-md bg-[#f7f9fc] p-3 text-ink"
+          className="flex max-h-[40dvh] flex-col overflow-auto rounded-md bg-[#f7f9fc] p-3 text-ink md:max-h-none"
         >
           <div className="mb-1.5 flex items-center gap-2">
             <span className="grid h-9 w-9 place-items-center rounded-sm bg-orange text-ink">
