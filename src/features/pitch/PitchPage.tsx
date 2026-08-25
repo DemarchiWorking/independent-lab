@@ -11,7 +11,7 @@ import { Gamificacao } from "./sections/Gamificacao";
 import { Equipe } from "./sections/Equipe";
 import { PitchScript } from "./sections/PitchScript";
 import { PitchCTA } from "./sections/PitchCTA";
-import { Footer } from "@/features/landing/sections/Footer";
+import { PitchFooter } from "./sections/PitchFooter";
 
 /**
  * Pitch institucional (rota `/pitch`) — apresentação pro Sebrae Startup Win
@@ -35,7 +35,7 @@ export function PitchPage() {
       <Equipe />
       <PitchScript />
       <PitchCTA />
-      <Footer />
+      <PitchFooter />
     </div>
   );
 }

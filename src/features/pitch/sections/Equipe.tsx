@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Icon } from "@/components/ui/Icon";
 import { fadeUp, stagger } from "../motion";
-import { EQUIPE } from "../content";
+import { EQUIPE, EMPRESA } from "../content";
 
 export function Equipe() {
   const { pessoa } = EQUIPE;
@@ -71,6 +71,22 @@ export function Equipe() {
                 ))}
               </div>
             </div>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            transition={{ duration: 0.5 }}
+            className="mt-6 rounded-2xl border border-line bg-card2 p-7 shadow-hard-lg sm:p-10"
+          >
+            <h3 className="mb-1 text-lg font-extrabold text-white">
+              {EMPRESA.titulo} <span className="text-gradient">{EMPRESA.tituloDestaque}</span>
+            </h3>
+            <p className="mb-4 text-sm leading-relaxed text-muted">{EMPRESA.quemSomos}</p>
+            <p className="mb-1 text-xs font-bold text-teal">{EMPRESA.cnpj}</p>
+            <p className="text-sm leading-relaxed text-muted">
+              <Icon name="bolt" size={14} className="mr-1 inline text-orange" />
+              <b className="text-white">Planos futuros:</b> {EMPRESA.planosFuturos}
+            </p>
           </motion.div>
         </motion.div>
       </div>

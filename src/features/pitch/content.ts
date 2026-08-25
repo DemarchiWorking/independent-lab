@@ -67,7 +67,7 @@ export const SOLUCAO = {
   titulo: "Uma equipe inteira de IA,",
   tituloDestaque: "por assinatura.",
   descricao:
-    "O labdatadev gamehub transforma cadastro em diagnóstico, diagnóstico em documentação de consultoria, e documentação em ação — marketing e vendas rodando sozinhos. Tudo isso dentro de um jogo, porque jogo é a única interface que faz um empresário sem tempo voltar todo dia.",
+    "O labdatadev gamehub transforma cadastro em diagnóstico, diagnóstico em documentação de consultoria, e documentação em ação — marketing e vendas rodando sozinhos. Tudo isso dentro de um jogo, porque jogo é a única interface que faz um empresário sem tempo voltar todo dia. E isto não é um CRM — é inteligência comercial completa, pensada pra aumentar faturamento e lucro juntos, não só organizar contato de cliente.",
   pilares: [
     {
       icon: "file",
@@ -311,6 +311,27 @@ export const EQUIPE = {
     bio:
       "Construiu carreira dentro de operações críticas de tecnologia antes de empreender — é essa experiência de produção em escala real, não só teoria de curso, que sustenta a arquitetura multi-tenant e a esteira de qualidade por trás do labdatadev gamehub.",
     empresas: ["Globo", "Itaú", "Stefanini Group", "Radix", "Braspress", "Nstech", "Exército Brasileiro"],
+  },
+};
+
+export const EMPRESA = {
+  badge: "Quem está por trás",
+  titulo: "Mais que um CRM.",
+  tituloDestaque: "Uma agência automatizada.",
+  quemSomos:
+    "O labdatadev gamehub é o produto — o Laboratório Demarchi é a empresa por trás dele: uma agência automatizada que controla processo, infraestrutura, métrica e resultado para o empresário, com melhoria contínua de verdade, não relatório engavetado. O resultado final é sempre medido em ROI — aumento de lucro, com storytelling, e redução de gasto com equipe própria. Foco declarado: pequeno e médio negócio (PME), o público que o mercado de tecnologia mais ignora.",
+  cnpj: "44.897.847/0001-96 · Laboratório Demarchi, 5 anos de empresa constituída",
+  planosFuturos:
+    "O próximo horizonte: sair do software e chegar no físico — Inteligência Artificial aplicada a hardware e equipamentos elétricos/eletrônicos, levando a mesma automação de processo pro chão de fábrica do pequeno negócio.",
+  contato: {
+    endereco: "Rio de Janeiro, RJ",
+    site: "labdatadev.cloud",
+    email: "demarchivagas@gmail.com",
+    telefone: "(24) 99843-5335",
+    linkedin: "linkedin.com/in/demarchi1",
+    linkedinHref: "https://www.linkedin.com/in/demarchi1",
+    portfolio: "portfoliodemarchi.com.br",
+    portfolioHref: "https://portfoliodemarchi.com.br",
   },
 };
 
