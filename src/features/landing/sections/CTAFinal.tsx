@@ -21,9 +21,14 @@ export function CTAFinal() {
             {CTA_FINAL.tituloLinha2}
           </h2>
           <p className="mb-8 text-muted">{CTA_FINAL.descricao}</p>
-          <LandingLinkButton href="/cadastro" icon="arrow" size="lg" className="w-full sm:w-auto">
-            {CTA_FINAL.cta}
-          </LandingLinkButton>
+          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <LandingLinkButton href="/cadastro" icon="arrow" size="lg" className="w-full sm:w-auto">
+              {CTA_FINAL.cta}
+            </LandingLinkButton>
+            <LandingLinkButton href="/pitch" variant="outline" size="lg" className="w-full sm:w-auto">
+              Ver a apresentação para investidores
+            </LandingLinkButton>
+          </div>
         </motion.div>
       </div>
     </section>

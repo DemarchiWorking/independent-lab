@@ -42,7 +42,7 @@ export function SectionNav() {
   return (
     <nav
       aria-label="Navegação da apresentação"
-      className="fixed right-5 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-end gap-2.5 lg:flex"
+      className="fixed right-5 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-end gap-2.5 print:hidden lg:flex"
     >
       {SECOES.map((s) => (
         <a

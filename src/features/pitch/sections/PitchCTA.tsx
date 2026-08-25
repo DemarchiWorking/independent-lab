@@ -8,7 +8,7 @@ import { CTA_FINAL_PITCH } from "../content";
 export function PitchCTA() {
   return (
     <section id="cta" className="relative scroll-mt-20 overflow-hidden px-4 py-20 sm:px-6 sm:py-24">
-      <MotionCanvas className="pointer-events-none absolute inset-0 opacity-50" />
+      <MotionCanvas className="pointer-events-none absolute inset-0 opacity-50 print:hidden" />
       <div className="relative mx-auto max-w-3xl text-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}

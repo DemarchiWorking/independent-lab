@@ -153,3 +153,42 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Impressão do /pitch (Ctrl+P → Salvar como PDF) — folha A4, uma seção por
+   página, sem elementos de navegação fixa (que não fazem sentido fora do
+   scroll) nem canvas WebGL (three.js não renderiza em print e deixaria uma
+   caixa preta). Cores de marca preservadas de propósito — isto é um deck
+   pra ser LIDO em PDF, não um documento de texto corrido. */
+@page {
+  size: A4;
+  margin: 14mm 12mm;
+}
+
+@media print {
+  .pitch-scope {
+    background: #080e1d !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  .pitch-scope canvas {
+    display: none !important;
+  }
+
+  .pitch-scope section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    padding-top: 8mm;
+    padding-bottom: 8mm;
+  }
+
+  .pitch-scope section:not(:last-of-type) {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .pitch-scope .bg-grain::before {
+    display: none;
+  }
+}
