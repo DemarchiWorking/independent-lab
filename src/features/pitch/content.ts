@@ -97,7 +97,7 @@ export const SOLUCAO = {
 };
 
 export const TECNICO = {
-  badge: "Como construímos",
+  badge: "Arquitetura técnica",
   titulo: "Arquitetura multi-tenant real,",
   tituloDestaque: "não gambiarra de planilha.",
   traducaoSimples:
