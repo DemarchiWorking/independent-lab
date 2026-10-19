@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { SEGREDO_MIN } from "./segredo-min";
 
 /**
  * Tokens assinados (HMAC-SHA256) usados pelo app: cookie de sessão e link de
@@ -13,8 +14,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 export type Proposito = "sessao" | "convite";
 
-/** Tamanho mínimo do segredo. `openssl rand -hex 32` gera 64 caracteres. */
-export const SEGREDO_MIN = 32;
+export { SEGREDO_MIN };
 
 /** Teto de tamanho do token: evita gastar HMAC e JSON.parse com lixo enorme. */
 const TOKEN_MAX = 4096;

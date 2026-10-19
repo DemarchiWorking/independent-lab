@@ -1,4 +1,4 @@
-import { SEGREDO_MIN } from "@/lib/auth/assinatura";
+import { SEGREDO_MIN } from "@/lib/auth/segredo-min";
 
 /**
  * Validação das variáveis de ambiente. Roda no boot do servidor
