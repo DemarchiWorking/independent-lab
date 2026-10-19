@@ -1,5 +1,20 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
+## 🔒 Produção e segurança (atualizado em 19/10/2026)
+
+O projeto passou por auditoria de segurança e ganhou um fluxo de produção em
+container, pensado para a **VPS compartilhada** (não mexe nos outros projetos).
+Antes de mexer em autenticação, banco em arquivo, deploy ou no visual do World:
+
+- [`seguranca/RELATORIO-2026-10.md`](seguranca/RELATORIO-2026-10.md) — achados, o
+  que foi corrigido, checklist de produção e pendências (VPS, Supabase, ESLint,
+  backup fora da VPS).
+- [`../deploy/README.md`](../deploy/README.md) — como publicar, reverter e operar.
+- [`world/PLANO-EVOLUCAO-GRAFICA.md`](world/PLANO-EVOLUCAO-GRAFICA.md) — o que já
+  mudou no visual da sala e a fila do que falta.
+- O texto abaixo sobre branches é de julho e pode estar desatualizado: confira
+  `git log -1` e `git branch` antes de confiar.
+
 ## 🚨 ANTES DE QUALQUER COISA: confira em que branch o servidor roda
 
 Tudo o que foi entregue em 2026-07-28/29 vive no branch

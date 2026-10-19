@@ -8,6 +8,12 @@
 > que já está construído. Cada recomendação diz **o que muda, por que, e qual
 > o gatilho de decisão** — nada de "troca porque é mais novo".
 >
+> **Atualização 19/10/2026:** o visual e a acessibilidade da sala foram
+> melhorados fora do roteiro G0–G6 (canvas nítido, formas de móvel, paleta por
+> token, feedback, avatares animados). O que foi feito, o que ficou de fora e a
+> fila do que falta estão em [`PLANO-EVOLUCAO-GRAFICA.md`](PLANO-EVOLUCAO-GRAFICA.md);
+> o baseline do §2 abaixo já reflete isso.
+>
 > **Leia antes:** [`ARQUITETURA-WORLD.md`](ARQUITETURA-WORLD.md) (decisão
 > original de engine) · [`MAPA-MUNDI-VALE-DO-CAFE.md`](MAPA-MUNDI-VALE-DO-CAFE.md)
 > (multi-tenant) · [`../BACKLOG-PRODUTO.md`](../BACKLOG-PRODUTO.md)
@@ -49,15 +55,16 @@ Matriz completa e gatilhos de troca em §4.
 
 ## 2. Baseline honesto — o que existe hoje
 
-Auditoria do que está commitado (`724d1c2`), sem otimismo:
+Auditoria do que está commitado (`724d1c2`), sem otimismo — linhas marcadas
+com *(atualizado 19/10/2026)* foram revistas depois do pacote gráfico:
 
 | Camada | Estado | Nota |
 |---|---|---|
 | Geometria isométrica | ✅ Sólida | Projeção + inversa, depth-sort, bijeção slot↔célula, 44 testes |
 | Pathfinding | ✅ Sólido | BFS 4-vizinhos, desvia de mobília |
 | Renderer | 🟡 Funcional, teto baixo | PixiJS v8, desenho procedural por `Graphics`, **zero assets** |
-| Mobília | 🟡 4 silhuetas | Diferenciadas por categoria, mas 1 tile cada, sem rotação |
-| Avatares | 🟡 Andam | Só o dono se move; os de IA são estáticos |
+| Mobília | 🟡 7 formas *(atualizado 19/10/2026)* | Uma forma por item (`forma` no catálogo), orientada pela parede e com marcador de nível; ainda 1 tile cada, sem rotação livre |
+| Avatares | 🟡 Andam e têm vida *(atualizado 19/10/2026)* | Só o dono se move e os de IA são estáticos, mas todos respiram, piscam e olham na direção do passo; passeio dos de IA depende de a cena reportar posições vivas (PLANO-EVOLUCAO-GRAFICA R5) |
 | **Simulação** | ❌ **Inexistente** | Nada muda sozinho. Sem tempo, sem necessidades, sem produção |
 | **Economia viva** | ❌ Inexistente | Atributos sobem por evento discreto; não há fluxo contínuo |
 | **Live ops** | ❌ Inexistente | Sem temporada, missão diária, evento |
@@ -66,6 +73,7 @@ Auditoria do que está commitado (`724d1c2`), sem otimismo:
 
 **Métricas atuais:** `/world` = 154 kB First Load · 84 testes · sala de 4×4 a
 8×8 tiles · até 14 móveis · 5 avatares.
+*(19/10/2026: `/world` = 160 kB First Load · 99 testes no World, 358 no projeto.)*
 
 **Diagnóstico em uma frase:** temos um *cenário* excelente e **nenhum ator com
 vida própria**.
@@ -697,7 +705,7 @@ typecheck, teste e build não pegariam. **Manter esse gancho.**
 
 | Fase | Entrega | Esforço | Depende de | Valor |
 |---|---|---|---|---|
-| **G0** | WebGPU + bucket sort + `roundPixels` | P | — | Base técnica barata |
+| **G0** | WebGPU + bucket sort + `roundPixels` *(`roundPixels` foi avaliado em 19/10/2026 e adiado para junto do atlas: com raiz escalada o movimento "pula")* | P | — | Base técnica barata |
 | **G1** | **ECS + tick + necessidades/humor + economia lazy** | **G** | G0 | 🔴 **O jogo ganha vida** |
 | **G2** | Pipeline de arte + atlas + sprites | G | G0 | 🔴 Salto visual |
 | **G2.5** | **Telemetria (§7.5) + FTUE (§7.6)** | **P** | G1 | 🔴 **Pré-requisito de G3** |

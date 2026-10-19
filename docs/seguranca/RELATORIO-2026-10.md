@@ -1,0 +1,176 @@
+# Relatório de segurança e preparo para produção — outubro de 2026
+
+> **Escopo:** auditoria do `independent-lab` (fork do labdatadev-gamehub) e da
+> VPS compartilhada onde ele vai rodar, correção do que era corrigível no
+> código e empacotamento para produção.
+> **Branch:** `seguranca-producao` (commits locais, nada foi enviado ao remoto).
+> **Data:** 19/10/2026.
+
+## Resumo
+
+O projeto nunca tinha ido para produção. A auditoria achou **três falhas
+críticas**, cinco altas e várias médias; todas as que dependem só do código
+estão **corrigidas e cobertas por teste**. O que sobra depende de uma decisão
+ou de uma ação sua em ambiente real (a VPS), e está listado em
+[Pendências](#pendências-e-riscos-aceitos). Nada foi aplicado na VPS.
+
+| Gate | Resultado |
+|---|---|
+| `npm run typecheck` | limpo |
+| `npm test` | 358 testes em 33 arquivos, todos passando |
+| `npm run build` | passa (Next 15.5.28) |
+| `npm audit --omit=dev --audit-level=high` | 0 vulnerabilidades |
+
+## Achados e status
+
+Legenda: **Corrigido** = mudança feita, testada e verificada; **Pendente** =
+depende de ação sua ou de infraestrutura; **Aceito** = risco conhecido e
+documentado.
+
+### Críticos
+
+| # | Achado | Status | Correção e evidência |
+|---|---|---|---|
+| C1 | O link de convite (que circula por WhatsApp) era aceito como cookie de sessão: sessão e convite usavam o mesmo formato e o mesmo segredo, e `lerSessao` não validava campos. Quem recebia o link virava dono do negócio que convidou. | **Corrigido** | `src/lib/auth/assinatura.ts`: uma chave derivada por propósito (`independent-lab:<proposito>`), `typ` e `exp` no payload, comparação com `timingSafeEqual`. `sessao.ts` valida a forma e expira em 7 dias. Teste: `sessao.test.ts` (token de convite como sessão é rejeitado, sessão expirada é rejeitada). |
+| C2 | Next 15.5.22 com execução remota de código (GHSA-2xp9-vwfh-vxw4, GHSA-p293-qw3h-jr36). | **Corrigido** | Next 15.5.28; `postcss` forçado via `overrides`; `npm audit --omit=dev` = 0. |
+| C3 | Qualquer e-mail que contivesse "demarchi" virava administrador (`src/lib/admin.ts`). | **Corrigido** | Só a lista `GAMEHUB_ADMIN_EMAILS` vale. Teste `admin.test.ts` agora exige a **negação** da regra antiga. Vazio = ninguém é admin. |
+
+### Altos
+
+| # | Achado | Status | Correção e evidência |
+|---|---|---|---|
+| A1 | `recompensar()` podia ser chamado em laço pelo cliente, pagando XP e moeda sem limite. | **Corrigido** | `features/gamificacao/guarda.ts`: o cliente só dispara 4 eventos (`EVENTOS_DO_CLIENTE`), cada um com checagem de elegibilidade no servidor; os de marco pagam uma vez por negócio (`registrarMarco`). Teste: `guarda.test.ts`. No modo Supabase depende da migração `0027_marcos.sql` (ver Pendências). |
+| A2 | Login e cadastro sem limite de tentativas. | **Corrigido** | `src/lib/limite.ts` + `features/auth/actions.ts`: login 30/10 min por IP, 8 falhas/15 min por e-mail, cadastro 5/h por IP. IP confiável = última entrada de `X-Forwarded-For` (a que o Caddy grava). Verificado no navegador: a 9ª tentativa é bloqueada. Teste: `limite.test.ts`. |
+| A3 | O banco em JSON podia apagar todas as contas: `lerJson` engolia erro de parse, a escrita não era atômica e não havia trava; cadastros simultâneos sobrescreviam uns aos outros. | **Corrigido** | `src/lib/db/arquivo.ts`: escrita atômica (temporário + `fsync` + `rename`, modo 0600, `.bak`), leitura que **falha alto** em arquivo corrompido, trava reentrante envolvendo toda escrita do `FileRepository`. Cadastro cria a credencial primeiro e desfaz se o resto falhar. Teste: `arquivo.test.ts` (50 cadastros simultâneos, corrupção, duplo gasto). **Checagem de mutação:** desligar a trava faz 3 desses testes falharem, então eles medem de verdade. |
+| A4 | `tenantId` ia sem validação para caminhos de arquivo (travessia de diretório). | **Corrigido** | `pastaTenant` exige 24 hex. Teste em `arquivo.test.ts`. |
+| A5 | Node 20 fora de suporte. | **Corrigido** | Node 24 (`.nvmrc`, `engines`, `Dockerfile`). |
+
+### Médios e baixos
+
+| # | Achado | Status | Correção e evidência |
+|---|---|---|---|
+| M1 | Segredo com valor padrão no repositório. | **Corrigido** | `GAMEHUB_SECRET` não tem padrão (mínimo 32 caracteres). `lib/ambiente.ts` + `instrumentation.ts` recusam o boot sem ele. `iniciar.bat`/`.sh` e `predev` geram um segredo local. Verificado: o servidor de produção recusa subir sem o segredo. |
+| M2 | Sem cabeçalhos de segurança. | **Corrigido** | `next.config.mjs`: CSP, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, COOP, sem `X-Powered-By`. HSTS fica no Caddy. Verificado com `curl -I`. |
+| M3 | Dados de outros negócios expostos em visita, vizinhos do hub e imagem de conquista. | **Corrigido** | Formatos reduzidos (`VizinhoPublico`, `PitchIA` calculado no servidor); `/api/og/conquista` respeita `perfilPublico`. |
+| M4 | Entradas sem validação (onboarding, ofertas, slot da sede, contato, cadastro). | **Corrigido** | `src/lib/validacao.ts` e checagens nas actions (sem teste de unidade dedicado a esses validadores: é uma lacuna). |
+| M5 | Evento global sem limites de tamanho e com autor exposto aos jogadores. | **Corrigido** | Limites em `eventos-globais/validacao.ts` (teste: `validacao.test.ts` da mesma pasta); `criadoPor` sai do que vai ao jogador. |
+| M6 | Capítulo da história liberável antes da hora. | **Corrigido** | `historia/actions.ts` só entrega capítulo já entregue ou liberado pelo relógio. |
+| M7 | Hash de senha fraco para 2026. | **Corrigido** | scrypt N=2^15, r=8, p=3 com rehash transparente no login e tempo igual para e-mail inexistente. *Desvio do plano:* o plano falava em N=2^17; escolhi 2^15 porque a VPS é compartilhada e 2^17 custa ~128 MB por login. |
+| M8 | Cliente Supabase com chave de serviço importável no navegador. | **Corrigido** | `lib/supabase/client.ts` só roda no servidor; `navegador.ts` lê as variáveis públicas literalmente. |
+| M9 | Seed de demonstração com senha fixa e rodável em produção. | **Corrigido** | A senha vem de `SEED_DEMO_SENHA` e o seed recusa `NODE_ENV=production`. |
+| M10 | Fontes carregadas do Google no navegador de cada jogador (vazamento de IP e domínio externo na CSP). | **Corrigido** | `next/font` serve as fontes do próprio domínio. Ver o risco de build em Pendências. |
+| M11 | Deploy antigo assumia VPS dedicada (Nginx na 80, certbot, `ufw` global, root) e quebraria os outros ~40 containers. | **Corrigido** | Removidos `vps-setup.sh`, `deploy.sh`, `ecosystem.config.js`, `nginx.conf.template` e o deploy automático por SSH. Novo fluxo em container isolado (`deploy/README.md`). |
+| M12 | CI com ações sem versão fixa e deploy automático por SSH. | **Corrigido** | `.github/workflows/ci.yml`: só verifica, permissões `contents: read`, ações fixadas por SHA, `npm audit` no gate. |
+| M13 | `instrumentation.ts` quebrava o `next dev` (puxava `node:crypto` para o bundle Edge). | **Corrigido** | Achado durante a verificação final; `SEGREDO_MIN` agora mora em `lib/auth/segredo-min.ts`, sem imports. Commit `90e5fcf`. |
+| B1 | Vulnerabilidades só de **desenvolvimento** (Tailwind 3 e dependências do `postcss-js`, como `braces` e `chokidar`). | **Aceito** | Só afetam a máquina de desenvolvimento, não o que roda em produção (`--omit=dev` = 0). Sai junto com a migração para Tailwind 4. |
+
+### A VPS (achados de infraestrutura)
+
+Estado medido em 19/10/2026, só leitura:
+
+| # | Achado | Status |
+|---|---|---|
+| V1 | `PermitRootLogin yes` e `PasswordAuthentication yes`: o root aceita senha, exposto à internet. | **Pendente — sua ação** |
+| V2 | Sem `fail2ban` e `MaxAuthTries 6`. | **Pendente — sua ação** |
+| V3 | `unattended-upgrades` está instalado, mas a política de atualização e de reinício não está fixada por configuração do projeto. | **Pendente — sua ação** |
+| V4 | Sem firewall de host. | **Aceito** (ver nota) |
+
+Os itens V1 a V3 têm correção pronta em `deploy/vps-hardening.sh`: por padrão
+**só mostra o estado e o que mudaria**; aplica com `--aplicar`. Ele recusa
+rodar se o root não tiver chave autorizada (travas contra se trancar para
+fora), valida a configuração com `sshd -t` antes de recarregar, isenta o IP da
+sessão atual no `fail2ban` e não reinicia a máquina. Foi executado na VPS **só
+em modo de simulação**, e nada foi alterado lá.
+
+> **V4, por que não liguei o `ufw`:** o Docker publica portas por fora do
+> `ufw`, então a regra não protegeria os containers, e uma política padrão de
+> bloqueio derrubaria os projetos dos outros. A alternativa correta é a cadeia
+> `DOCKER-USER`, e isso precisa ser combinado com os donos dos outros
+> projetos.
+
+## Verificação feita
+
+Em modo de produção local (servidor standalone, dados temporários):
+
+- o boot é recusado sem `GAMEHUB_SECRET`;
+- `/api/health` responde 200 com a versão;
+- todos os cabeçalhos de segurança presentes, sem `X-Powered-By`;
+- `/_next/image` devolve 404 (otimizador desligado de propósito);
+- cadastro em 11 passos, `/painel` e `/world` funcionam;
+- usuário fora da allowlist é barrado em `/admin/eventos`;
+- cookie de sessão é `httpOnly`;
+- `eval` é bloqueado pela CSP e o World ainda renderiza (o Pixi usa a variante
+  sem `new Function`);
+- o limite de tentativas de login dispara na 9ª tentativa.
+
+O que **não** foi testado: a imagem Docker (não há Docker local; ela é
+construída na VPS pelo `publicar.sh`), a recarga do Caddy em produção (testada
+só num container descartável na VPS, onde `caddy validate` devolveu "Valid
+configuration" e a remoção devolveu o arquivo byte a byte) e o modo Supabase.
+
+## Checklist de produção
+
+Antes de abrir para o público, nesta ordem:
+
+1. [ ] **Hardening do SSH:** `bash vps-hardening.sh` (simulação), conferir,
+   depois `--aplicar`, mantendo uma segunda sessão aberta para confirmar o
+   acesso por chave.
+2. [ ] **Publicar:** `ADMIN_EMAILS=voce@exemplo.com ./deploy/publicar.sh`.
+   O `.env` de produção é criado na VPS com um `GAMEHUB_SECRET` **novo**,
+   gerado lá. Não copie o `.env` do seu computador: qualquer convite ou sessão
+   emitida com o segredo de desenvolvimento deixa de valer, e é isso que se
+   quer.
+3. [ ] **HTTPS:** `./deploy/borda-caddy.sh` (recarga a quente do Caddy, sem
+   recriar o container da Vitrine).
+4. [ ] **Conferir:** `curl -I https://lab.2-25-146-39.sslip.io/api/health`,
+   cabeçalhos presentes e a Vitrine ainda em 200.
+5. [ ] **Backup fora da VPS:** `rsync` da pasta `backups/` para outro lugar
+   (cifrado: tem dados pessoais, LGPD). O backup diário dentro da VPS não
+   protege contra perder o disco.
+6. [ ] **Depois de atualizar a Vitrine**, rodar `borda-caddy.sh` de novo: ela
+   recria o container do Caddy e o bloco do `independent-lab` some.
+7. [ ] **Testar um rollback** uma vez, de propósito, para não ser a primeira
+   vez no dia em que precisar.
+
+## Pendências e riscos aceitos
+
+| Item | Por que importa | Como resolver |
+|---|---|---|
+| Migrações `0026_negocios_rls_fachada.sql` e `0027_marcos.sql` não aplicadas | Só afetam o modo `GAMEHUB_DB=supabase`. Sem a 0027, o pagamento único de marcos não funciona nesse modo. | Aplicar em ordem no Supabase antes de trocar de modo. |
+| Supabase: políticas de UPDATE nas tabelas de economia e presença realtime privada | Em Supabase, um jogador autenticado poderia escrever direto na própria economia. No modo `file` (o de produção hoje) o risco não existe. | Revisar RLS das tabelas de economia; trocar o canal de presença por canal privado com autorização. |
+| **Uma instância só** no modo `file` | A trava é interna ao processo. Duas instâncias sobre a mesma pasta perdem dado. O limitador de tentativas também é por processo e zera ao reiniciar. | Manter uma instância. Para escalar, migrar para Supabase e mover o limitador para armazenamento compartilhado. |
+| CSP com `'unsafe-inline'` em scripts | O App Router do Next injeta scripts inline e sem nonce a CSP não pode ser mais estrita. Reduz a proteção contra XSS, mas as demais barreiras ficam (`object-src 'none'`, `frame-ancestors 'none'`, `base-uri`, `form-action`). | Adotar nonce por requisição no middleware (custo: perde páginas estáticas). |
+| ESLint não configurado | `npm run lint` não existe de fato; só o TypeScript estrito pega erro. | Adicionar `eslint-config-next` e regras de segurança, e incluir no CI. |
+| O `next build` depende do Google Fonts | Em 19/10/2026 um build falhou uma vez por erro transitório na busca das fontes e passou na repetição. Na VPS isso derruba o deploy (o `publicar.sh` aborta antes de trocar o container, então a versão antiga continua no ar). | Trocar por `next/font/local` com os arquivos `.woff2` no repositório. Não fiz porque exige baixar os arquivos e eu preferi lhe pedir isso a fazê-lo sozinho. |
+| `sslip.io` | Serviço de terceiros; compartilha limite de emissão de certificado. | Domínio próprio quando for algo duradouro. |
+| Vulnerabilidades só de desenvolvimento | Ver B1. | Migrar para Tailwind 4. |
+
+## Contas de teste criadas localmente
+
+A pedido, criei duas contas **somente no ambiente local**, na pasta `data/`
+(que está no `.gitignore` e é excluída da imagem Docker) e na pasta temporária
+do servidor de teste:
+
+- `admin@admin.com`
+- `admin@gmail.com`
+
+As senhas são fracas de propósito (escolhidas por você para teste) e foram
+criadas direto pelo provedor de autenticação, sem passar pela regra de 8
+caracteres do formulário de cadastro, que continua valendo. Os dois e-mails
+foram colocados em `GAMEHUB_ADMIN_EMAILS` no `.env` **local** (também fora do
+Git). **Não crie essas contas na VPS** e não copie esse `.env` para lá.
+
+## O que mudou onde
+
+| Área | Principais arquivos |
+|---|---|
+| Sessão, convite e segredo | `src/lib/auth/{assinatura,sessao,segredo-min}.ts`, `src/features/growth/convite.ts` |
+| Admin e eventos globais | `src/lib/admin.ts`, `src/features/eventos-globais/` |
+| Recompensas | `src/features/gamificacao/{guarda,actions}.ts`, `supabase/migrations/0027_marcos.sql` |
+| Limite de tentativas | `src/lib/{limite,requisicao,validacao}.ts`, `src/features/auth/actions.ts` |
+| Banco em arquivo | `src/lib/db/{arquivo,file-adapter}.ts` |
+| Ambiente e saúde | `src/lib/ambiente.ts`, `src/instrumentation.ts`, `src/app/api/health/route.ts` |
+| Cabeçalhos | `next.config.mjs` |
+| Container e deploy | `Dockerfile`, `deploy/{compose.yml,publicar.sh,borda-caddy.sh,vps-hardening.sh,README.md}` |
+| CI | `.github/workflows/ci.yml` |
+| Gráfico e acessibilidade | ver `docs/world/PLANO-EVOLUCAO-GRAFICA.md` |
