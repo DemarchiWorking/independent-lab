@@ -1,7 +1,7 @@
 @echo off
 setlocal
 REM ============================================================
-REM  labdatadev-gamehub — iniciar em modo desenvolvimento (Windows)
+REM  independent-lab — iniciar em modo desenvolvimento (Windows)
 REM  Dois cliques neste arquivo: instala dependencias se preciso
 REM  e sobe o app em http://localhost:8081
 REM ============================================================
@@ -12,7 +12,7 @@ where node >nul 2>nul
 if errorlevel 1 (
     echo.
     echo [ERRO] Node.js nao encontrado no PATH.
-    echo Instale o Node 20+ em https://nodejs.org e rode este arquivo de novo.
+    echo Instale o Node 22 ou 24 LTS em https://nodejs.org e rode este arquivo de novo.
     echo.
     pause
     exit /b 1
@@ -32,16 +32,13 @@ if not exist "node_modules" (
     )
 )
 
-if not exist ".env" (
-    if exist ".env.example" (
-        copy ".env.example" ".env" >nul
-        echo Criado .env a partir de .env.example ^(modo GAMEHUB_DB=file, sem infra^).
-    )
-)
+REM O .env e o GAMEHUB_SECRET local sao criados pelo "predev" do npm
+REM (scripts\garantir-segredo.mjs), antes de o servidor subir.
 
 echo.
 echo Subindo o gamehub em modo desenvolvimento...
 echo O navegador abre sozinho em alguns segundos em http://localhost:8081
+echo O servidor so aceita conexoes desta maquina ^(127.0.0.1^).
 echo Para parar: feche esta janela ou pressione Ctrl+C.
 echo.
 

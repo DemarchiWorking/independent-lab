@@ -4,6 +4,7 @@ import { lerSessao } from "@/lib/auth/sessao";
 import { getRepository } from "@/lib/db";
 import { Icon } from "@/components/ui/Icon";
 import { VisitaScreen } from "@/features/world/VisitaScreen";
+import { escolherPitch } from "@/features/vendas/pitchVisita";
 
 export const metadata = { title: "Visitando · World · labdatadev gamehub" };
 
@@ -81,7 +82,8 @@ export default async function VisitarSedePage({ params }: PageProps) {
           `docs/architecture/BMAD-MULTIPLAYER-VPS.md` — então só pode
           trafegar fachada que já é pública no mapa e em `/n/[slug]`. */}
       <VisitaScreen
-        negocioVisitado={negocioVisitado}
+        negocioVisitado={{ id: negocioVisitado.id, nome: negocioVisitado.nome }}
+        pitch={escolherPitch(negocioVisitado)}
         sede={sede}
         mobilia={mobilia}
         funcionarios={funcionarios.map((f) => f.cargoId)}

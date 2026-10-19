@@ -47,8 +47,8 @@ const h = vi.hoisted(() => {
   return { estado, canal };
 });
 
-vi.mock("@/lib/supabase/client", () => ({
-  supabaseAnon: () => ({
+vi.mock("@/lib/supabase/navegador", () => ({
+  supabaseNavegador: () => ({
     channel: (nome: string) => {
       h.estado.canaisCriados.push(nome);
       return h.canal;

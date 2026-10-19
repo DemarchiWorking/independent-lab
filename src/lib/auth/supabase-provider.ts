@@ -1,4 +1,4 @@
-import { supabaseAdmin, supabaseAnon } from "@/lib/supabase/client";
+import { supabaseAdmin, supabaseLogin } from "@/lib/supabase/client";
 import type { AuthProvider, Identidade } from "./provider";
 
 /**
@@ -10,14 +10,18 @@ export class SupabaseAuthProvider implements AuthProvider {
   /**
    * Só há resposta confiável para e-mail existente através da API admin.
    * Mantemos a checagem apenas para dar mensagem melhor no cadastro; o login
-   * continua com mensagem genérica.
+   * continua com mensagem genérica. Percorre todas as páginas: a versão
+   * anterior só olhava a primeira (50 usuários).
    */
   async emailExiste(email: string): Promise<boolean> {
-    const { data, error } = await supabaseAdmin().auth.admin.listUsers();
-    if (error) throw new Error(`Supabase listUsers: ${error.message}`);
-    return data.users.some(
-      (u) => u.email?.toLowerCase() === email.toLowerCase(),
-    );
+    const alvo = email.toLowerCase();
+    const porPagina = 1000;
+    for (let pagina = 1; ; pagina++) {
+      const { data, error } = await supabaseAdmin().auth.admin.listUsers({ page: pagina, perPage: porPagina });
+      if (error) throw new Error(`Supabase listUsers: ${error.message}`);
+      if (data.users.some((u) => u.email?.toLowerCase() === alvo)) return true;
+      if (data.users.length < porPagina) return false;
+    }
   }
 
   async registrar(
@@ -38,11 +42,16 @@ export class SupabaseAuthProvider implements AuthProvider {
   }
 
   async autenticar(email: string, senha: string): Promise<Identidade | null> {
-    const { data, error } = await supabaseAnon().auth.signInWithPassword({
+    const { data, error } = await supabaseLogin().auth.signInWithPassword({
       email,
       password: senha,
     });
     if (error || !data.user) return null;
     return { usuarioId: data.user.id };
+  }
+
+  async remover(usuarioId: string): Promise<void> {
+    const { error } = await supabaseAdmin().auth.admin.deleteUser(usuarioId);
+    if (error) throw new Error(`Supabase deleteUser: ${error.message}`);
   }
 }

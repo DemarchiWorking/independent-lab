@@ -119,9 +119,19 @@ export async function escolherNoCapitulo(
 
   const repo = getRepository();
 
-  // garante a entrega antes de resolver — cobre o caso de alguém chamar a
-  // action direto, sem ter passado por `capituloAtual`
-  await repo.entregarCapitulo(sessao.tenantId, capituloId);
+  // Só resolve capítulo que já foi entregue ou que o relógio liberaria AGORA.
+  // Antes, a action entregava qualquer id que chegasse, e chamá-la direto
+  // pulava os portões de tempo e de XP mínimo da narrativa.
+  const entregues = await repo.listarCapitulosEntregues(sessao.tenantId);
+  if (!entregues.some((c) => c.capituloId === capituloId)) {
+    const ctx = await montarEstado(sessao.tenantId);
+    if (!ctx) return { ok: false, erro: "Negócio não encontrado." };
+    const liberado = proximoCapitulo(CATALOGO_HISTORIA, ctx.estado, ctx.agora);
+    if (liberado?.id !== capituloId) {
+      return { ok: false, erro: "Esse capítulo ainda não chegou." };
+    }
+    await repo.entregarCapitulo(sessao.tenantId, capituloId);
+  }
 
   try {
     await repo.resolverCapitulo(

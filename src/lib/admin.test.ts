@@ -29,15 +29,15 @@ describe("souAdmin", () => {
     expect(souAdmin("founder@labdatadev.com")).toBe(false);
   });
 
-  it("atalho pessoal: e-mail contendo 'demarchi' é admin mesmo fora da allowlist", () => {
+  it("e-mail contendo 'demarchi' fora da allowlist NÃO é admin", () => {
     process.env.GAMEHUB_ADMIN_EMAILS = "";
-    expect(souAdmin("antonio.demarchi@gmail.com")).toBe(true);
-    expect(souAdmin("Demarchi@LabDataDev.com")).toBe(true);
+    expect(souAdmin("antonio.demarchi@gmail.com")).toBe(false);
+    expect(souAdmin("x@demarchi.io")).toBe(false);
   });
 
-  it("atalho pessoal é comparação por substring, não só e-mail exato", () => {
-    process.env.GAMEHUB_ADMIN_EMAILS = "";
-    expect(souAdmin("qualquercoisa.demarchi.qualquercoisa@dominio.com")).toBe(true);
+  it("parte de um e-mail da lista não basta: a comparação é exata", () => {
+    expect(souAdmin("founder@labdatadev.com.br")).toBe(false);
+    expect(souAdmin("founder@labdatadev")).toBe(false);
   });
 
   it("string vazia nunca é admin, mesmo com allowlist vazia por acaso combinar", () => {

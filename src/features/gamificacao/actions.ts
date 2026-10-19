@@ -8,7 +8,10 @@ import { ATRIBUTO_LABEL, atributosFaltantes, mensagemRequisito } from "@/lib/atr
 import { cargoPorId, GANHO_ATRIBUTO_CONTRATACAO } from "@/features/equipe-ia/catalogo";
 import { jobPorId } from "@/features/marketplace/data";
 import { jaAceitouTrabalho } from "@/features/marketplace/guarda";
+import { agoraGlobal } from "@/features/historia/relogio";
 import { EVENTOS, type EventoKey } from "./engine";
+import { eventoDoCliente, marcoDaMissao } from "./guarda";
+import { missaoAtual } from "./missoes";
 import type { AtributoChave } from "@tokens";
 
 export interface ResultadoRecompensa {
@@ -42,12 +45,28 @@ export async function recompensar(
   const sessao = await lerSessao();
   if (!sessao) return { ok: false, erro: "Sessão expirada. Entre novamente." };
 
+  // Só os eventos com guarda passam por aqui (ver `guarda.ts`). Os outros
+  // pagavam a cada chamada e podiam ser repetidos em laço.
+  if (!eventoDoCliente(evento)) return { ok: false, erro: "Evento inválido." };
+  if (contextoId !== undefined && (typeof contextoId !== "string" || contextoId.length > 64)) {
+    return { ok: false, erro: "Evento inválido." };
+  }
   const def = EVENTOS[evento];
-  if (!def) return { ok: false, erro: "Evento inválido." };
 
   const repo = getRepository();
   const antes = await repo.lerNegocio(sessao.tenantId);
   if (!antes) return { ok: false, erro: "Negócio não encontrado." };
+
+  if (evento === "diagnostico_agendado" || evento === "retro_90d") {
+    // Missão: só vale se for a missão que o servidor está oferecendo agora,
+    // e só paga uma vez por marco (diagnóstico uma vez, retro por trimestre).
+    const missao = missaoAtual(antes, await repo.lerOnboarding(sessao.tenantId));
+    if (missao.evento !== evento) {
+      return { ok: false, erro: "Essa missão não está disponível agora." };
+    }
+    const novo = await repo.registrarMarco(sessao.tenantId, marcoDaMissao(evento, agoraGlobal()));
+    if (!novo) return { ok: false, erro: "Você já concluiu essa missão." };
+  }
 
   if (evento === "funcionario_ia_contratado") {
     if (!contextoId) return { ok: false, erro: "Cargo não especificado." };

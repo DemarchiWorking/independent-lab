@@ -16,7 +16,7 @@ import type { AtributoChave } from "@tokens";
  * No-op em `npm test` normal (early return sem `SEED_DEMO=1`) — só semeia
  * de verdade quando chamado explicitamente:
  *
- *   SEED_DEMO=1 npx vitest run src/scripts/seed-demo.test.ts
+ *   SEED_DEMO=1 SEED_DEMO_SENHA='<senha de 12+>' npx vitest run src/scripts/seed-demo.test.ts
  *
  * Usa `GAMEHUB_DB=file` implicitamente (`getRepository()` lê a env var; sem
  * ela, cai em file por padrão — ver `src/lib/db/index.ts`). Roda direto
@@ -39,9 +39,11 @@ import type { AtributoChave } from "@tokens";
  * produção com dado real.
  */
 
+// A senha vem do ambiente (`SEED_DEMO_SENHA`): uma senha fixa escrita no
+// repositório vira login conhecido de qualquer ambiente onde o seed rodar.
 const CREDENCIAL_DEMO = {
   email: "radiz@demo.labdatadev.local",
-  senha: "SebraeDemo2026!",
+  senha: process.env.SEED_DEMO_SENHA ?? "",
 };
 
 function atributos(vals: Partial<Record<AtributoChave, number>>): Atributos {
@@ -197,7 +199,7 @@ async function semear(): Promise<void> {
       papel: "dono",
       criadoEm: new Date().toISOString(),
     });
-    console.log(`[seed] login de demo: ${CREDENCIAL_DEMO.email} / ${CREDENCIAL_DEMO.senha}`);
+    console.log(`[seed] login de demo: ${CREDENCIAL_DEMO.email} (senha definida em SEED_DEMO_SENHA)`);
   }
 
   // Contabilizy: 1 funcionário de IA
@@ -233,6 +235,12 @@ async function semear(): Promise<void> {
 describe("seed de demo (GH-PITCH-01)", () => {
   it("semeia o bairro de demonstração quando SEED_DEMO=1", async () => {
     if (!process.env.SEED_DEMO) return;
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Seed de demonstração não roda com NODE_ENV=production.");
+    }
+    if (CREDENCIAL_DEMO.senha.length < 12) {
+      throw new Error("Defina SEED_DEMO_SENHA (12+ caracteres) para o login de demo.");
+    }
     await semear();
   });
 });

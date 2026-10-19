@@ -11,13 +11,13 @@ import {
   eixoParaFocar,
   mensagemFoco,
 } from "@/features/mapa/benchmark";
-import type { BenchmarkBairro, DestaqueBairro, Negocio } from "@/lib/db/types";
+import type { BenchmarkBairro, DestaqueBairro, Negocio, VizinhoPublico } from "@/lib/db/types";
 
 interface MercadoScreenProps {
   atributos: Atributos;
   benchmark: BenchmarkBairro;
   destaque: DestaqueBairro | null;
-  vizinhos: Negocio[];
+  vizinhos: VizinhoPublico[];
   bairro: string;
 }
 

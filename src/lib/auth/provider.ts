@@ -16,4 +16,6 @@ export interface AuthProvider {
   registrar(nome: string, email: string, senha: string): Promise<Identidade>;
   /** `null` quando e-mail ou senha não conferem (nunca diferencie os dois). */
   autenticar(email: string, senha: string): Promise<Identidade | null>;
+  /** Desfaz um cadastro cujo restante (negócio, vínculo) falhou. */
+  remover(usuarioId: string): Promise<void>;
 }

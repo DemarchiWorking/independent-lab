@@ -27,8 +27,8 @@ export function nomeCanal(salaTenantId: string): string {
 
 /**
  * `NEXT_PUBLIC_*` é inlined pelo Next.js em build time. Checar antes de
- * chamar `supabaseAnon()` é o que mantém `GAMEHUB_DB=file` (dev local,
- * sem Supabase) funcionando: sem isso, `supabaseAnon()` lançaria por
+ * chamar `supabaseNavegador()` é o que mantém `GAMEHUB_DB=file` (dev local,
+ * sem Supabase) funcionando: sem isso, `supabaseNavegador()` lançaria por
  * variável de ambiente ausente e derrubaria a tela de visita inteira por
  * causa de um recurso opcional.
  */

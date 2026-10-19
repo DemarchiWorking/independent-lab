@@ -1,15 +1,19 @@
-import { promises as fs } from "node:fs";
 import path from "node:path";
-import { hashSenha, verificarSenha } from "./password";
+import { escreverJson, lerJson, pastaDados, travaDados } from "@/lib/db/arquivo";
+import { hashSenha, precisaRehash, verificarSemConta, verificarSenha } from "./password";
 import { novoId } from "./sessao";
 import type { AuthProvider, Identidade } from "./provider";
 
 /**
  * Autenticação local (protótipo): scrypt + salt em `data/auth/credenciais.json`.
  * O arquivo é propriedade DESTE provider — o repositório de domínio não o toca.
+ *
+ * Usa a mesma escrita atômica e a mesma trava do repositório em arquivo
+ * (`lib/db/arquivo.ts`): dois cadastros simultâneos não se apagam mais, e um
+ * arquivo corrompido falha alto em vez de virar uma lista vazia.
  */
 
-const ARQUIVO = path.join(process.cwd(), "data", "auth", "credenciais.json");
+const arquivo = () => path.join(pastaDados(), "auth", "credenciais.json");
 
 interface Credencial {
   email: string;
@@ -17,18 +21,7 @@ interface Credencial {
   hash: string;
 }
 
-async function ler(): Promise<Credencial[]> {
-  try {
-    return JSON.parse(await fs.readFile(ARQUIVO, "utf8")) as Credencial[];
-  } catch {
-    return [];
-  }
-}
-
-async function escrever(lista: Credencial[]): Promise<void> {
-  await fs.mkdir(path.dirname(ARQUIVO), { recursive: true });
-  await fs.writeFile(ARQUIVO, JSON.stringify(lista, null, 2), "utf8");
-}
+const ler = () => lerJson<Credencial[]>(arquivo(), []);
 
 export class LocalAuthProvider implements AuthProvider {
   async emailExiste(email: string): Promise<boolean> {
@@ -36,31 +29,51 @@ export class LocalAuthProvider implements AuthProvider {
     return lista.some((c) => c.email === email.toLowerCase());
   }
 
-  async registrar(
-    _nome: string,
-    email: string,
-    senha: string,
-  ): Promise<Identidade> {
-    const lista = await ler();
+  async registrar(_nome: string, email: string, senha: string): Promise<Identidade> {
     const normalizado = email.toLowerCase();
-    if (lista.some((c) => c.email === normalizado)) {
-      throw new Error("E-mail já cadastrado");
-    }
-    const usuarioId = novoId();
-    lista.push({
-      email: normalizado,
-      usuarioId,
-      hash: await hashSenha(senha),
+    // O hash é caro: calcula fora da trava para não segurar as outras escritas.
+    const hash = await hashSenha(senha);
+    return travaDados.exclusivo(async () => {
+      const lista = await ler();
+      if (lista.some((c) => c.email === normalizado)) {
+        throw new Error("E-mail já cadastrado");
+      }
+      const usuarioId = novoId();
+      lista.push({ email: normalizado, usuarioId, hash });
+      await escreverJson(arquivo(), lista);
+      return { usuarioId };
     });
-    await escrever(lista);
-    return { usuarioId };
   }
 
   async autenticar(email: string, senha: string): Promise<Identidade | null> {
-    const lista = await ler();
-    const cred = lista.find((c) => c.email === email.toLowerCase());
-    if (!cred) return null;
+    const normalizado = email.toLowerCase();
+    const cred = (await ler()).find((c) => c.email === normalizado);
+    if (!cred) {
+      await verificarSemConta(senha);
+      return null;
+    }
     if (!(await verificarSenha(senha, cred.hash))) return null;
+
+    if (precisaRehash(cred.hash)) {
+      // Senha certa e hash antigo: troca pelo formato atual, aproveitando o login.
+      const novoHash = await hashSenha(senha);
+      await travaDados.exclusivo(async () => {
+        const lista = await ler();
+        const alvo = lista.find((c) => c.usuarioId === cred.usuarioId);
+        if (alvo && alvo.hash === cred.hash) {
+          alvo.hash = novoHash;
+          await escreverJson(arquivo(), lista);
+        }
+      });
+    }
     return { usuarioId: cred.usuarioId };
+  }
+
+  async remover(usuarioId: string): Promise<void> {
+    await travaDados.exclusivo(async () => {
+      const lista = await ler();
+      const restante = lista.filter((c) => c.usuarioId !== usuarioId);
+      if (restante.length !== lista.length) await escreverJson(arquivo(), restante);
+    });
   }
 }

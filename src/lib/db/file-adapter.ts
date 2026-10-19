@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
+import { escreverJson, lerJson, pastaDados, pastaTenant, tenantIdValido, travaDados } from "./arquivo";
 import { CIDADES_REGIAO } from "@/lib/regiao";
 import { nivelPorXp, NIVEL_MAX } from "@/lib/gamificacao";
 import { aplicarGanhos, atributosFaltantes } from "@/lib/atributos";
@@ -45,11 +46,12 @@ import type {
  * geografia global + dados isolados por tenant (aqui, uma pasta por tenant).
  */
 
-const ROOT = path.join(process.cwd(), "data");
-const MAPA = path.join(ROOT, "geografia", "mapa.json");
-const INDEX_MEMBROS = path.join(ROOT, "index", "membros.json");
-/** Global (não por tenant) — mesmo "cartaz" para todo mundo, ver MAPA acima. */
-const EVENTOS_GLOBAIS = path.join(ROOT, "eventos-globais.json");
+// Caminhos calculados na hora (não no import): a pasta vem de
+// `GAMEHUB_DATA_DIR`, que em produção aponta para o volume do container.
+const caminhoMapa = () => path.join(pastaDados(), "geografia", "mapa.json");
+const caminhoIndiceMembros = () => path.join(pastaDados(), "index", "membros.json");
+/** Global (não por tenant) — mesmo "cartaz" para todo mundo, ver o mapa acima. */
+const caminhoEventosGlobais = () => path.join(pastaDados(), "eventos-globais.json");
 export const LOTES_POR_QUARTEIRAO = 8;
 
 /** Cidades do ICP primário — fonte única em lib/regiao.ts (espelhada em
@@ -66,21 +68,13 @@ export function slugify(texto: string): string {
     .replace(/^-|-$/g, "");
 }
 
-async function lerJson<T>(arquivo: string, padrao: T): Promise<T> {
-  try {
-    return JSON.parse(await fs.readFile(arquivo, "utf8")) as T;
-  } catch {
-    return padrao;
-  }
-}
+/** Pasta do tenant, com o id validado (ver `pastaTenant`). */
+const tenantDir = pastaTenant;
 
-async function escreverJson(arquivo: string, dados: unknown): Promise<void> {
-  await fs.mkdir(path.dirname(arquivo), { recursive: true });
-  await fs.writeFile(arquivo, JSON.stringify(dados, null, 2), "utf8");
-}
-
-function tenantDir(tenantId: string): string {
-  return path.join(ROOT, "tenants", tenantId);
+/** Marco de recompensa único (ver `registrarMarco`). */
+interface MarcoRegistrado {
+  marcoId: string;
+  registradoEm: string;
 }
 
 function mapaInicial(): Mapa {
@@ -111,7 +105,7 @@ type FuncionarioArmazenado = Omit<FuncionarioContratado, "disponibilidade">;
 
 export class FileRepository implements GameRepository {
   async lerMapa(): Promise<Mapa> {
-    return lerJson<Mapa>(MAPA, mapaInicial());
+    return lerJson<Mapa>(caminhoMapa(), mapaInicial());
   }
 
   async lerMapaView(escopo?: EscopoMapa): Promise<MapaView> {
@@ -278,7 +272,7 @@ export class FileRepository implements GameRepository {
     return melhor;
   }
 
-  /** Aloca o primeiro lote livre e grava o mapa. Single-process: sem corrida. */
+  /** Aloca o primeiro lote livre e grava o mapa. Roda dentro da trava de `criarNegocio`. */
   private async alocarLote(
     cidadeSlug: string,
     cidadeNome: string,
@@ -320,7 +314,7 @@ export class FileRepository implements GameRepository {
     if (!lote) throw new Error("Quarteirão sem lote livre após expansão");
     lote.tenantId = tenantId;
 
-    await escreverJson(MAPA, mapa);
+    await escreverJson(caminhoMapa(), mapa);
     return {
       cidadeSlug: cidade.slug,
       bairroSlug: bairro.slug,
@@ -359,6 +353,8 @@ export class FileRepository implements GameRepository {
   }
 
   async lerNegocio(tenantId: string): Promise<Negocio | null> {
+    // Id vindo de URL (visita, imagem OG, página pública): inválido é "não existe".
+    if (!tenantIdValido(tenantId)) return null;
     return lerJson<Negocio | null>(
       path.join(tenantDir(tenantId), "negocio.json"),
       null,
@@ -366,14 +362,16 @@ export class FileRepository implements GameRepository {
   }
 
   async listarNegociosPublicos(): Promise<Negocio[]> {
-    const raiz = path.join(ROOT, "tenants");
+    const raiz = path.join(pastaDados(), "tenants");
     let pastas: string[];
     try {
       pastas = await fs.readdir(raiz);
     } catch {
       return [];
     }
-    const negocios = await Promise.all(pastas.map((id) => this.lerNegocio(id)));
+    const negocios = await Promise.all(
+      pastas.filter(tenantIdValido).map((id) => this.lerNegocio(id)),
+    );
     return negocios.filter((n): n is Negocio => n !== null && n.perfilPublico);
   }
 
@@ -382,13 +380,13 @@ export class FileRepository implements GameRepository {
       path.join(tenantDir(usuario.tenantId), "membros", `${usuario.id}.json`),
       usuario,
     );
-    const indice = await lerJson<Record<string, string>>(INDEX_MEMBROS, {});
+    const indice = await lerJson<Record<string, string>>(caminhoIndiceMembros(), {});
     indice[usuario.id] = usuario.tenantId;
-    await escreverJson(INDEX_MEMBROS, indice);
+    await escreverJson(caminhoIndiceMembros(), indice);
   }
 
   async lerMembroPorUsuario(usuarioId: string): Promise<Usuario | null> {
-    const indice = await lerJson<Record<string, string>>(INDEX_MEMBROS, {});
+    const indice = await lerJson<Record<string, string>>(caminhoIndiceMembros(), {});
     const tenantId = indice[usuarioId];
     if (!tenantId) return null;
     return lerJson<Usuario | null>(
@@ -420,6 +418,15 @@ export class FileRepository implements GameRepository {
     const atuais = await lerJson<Oferta[]>(arquivo, []);
     atuais.push({ ...oferta, id: randomBytes(8).toString("hex") });
     await escreverJson(arquivo, atuais);
+  }
+
+  async registrarMarco(tenantId: string, marcoId: string): Promise<boolean> {
+    const arquivo = path.join(tenantDir(tenantId), "marcos.json");
+    const atuais = await lerJson<MarcoRegistrado[]>(arquivo, []);
+    if (atuais.some((m) => m.marcoId === marcoId)) return false;
+    atuais.push({ marcoId, registradoEm: new Date().toISOString() });
+    await escreverJson(arquivo, atuais);
+    return true;
   }
 
   async listarLicoesConcluidas(tenantId: string): Promise<LicaoConcluida[]> {
@@ -836,7 +843,9 @@ export class FileRepository implements GameRepository {
 
     const agora = new Date().toISOString();
     const nova: Sede = { tenantId, nivel: 1, criadaEm: agora, atualizadaEm: agora };
-    await escreverJson(arquivo, nova);
+    // Só grava a sede padrão de um negócio que existe: visitar um id
+    // qualquer (página pública de visita, imagem OG) não cria pasta nova.
+    if (await this.lerNegocio(tenantId)) await escreverJson(arquivo, nova);
     return nova;
   }
 
@@ -1011,16 +1020,16 @@ export class FileRepository implements GameRepository {
   }
 
   async listarEventosGlobais(): Promise<EventoGlobal[]> {
-    return lerJson<EventoGlobal[]>(EVENTOS_GLOBAIS, []);
+    return lerJson<EventoGlobal[]>(caminhoEventosGlobais(), []);
   }
 
   async criarEventoGlobal(
     evento: Omit<EventoGlobal, "criadoEm">,
   ): Promise<EventoGlobal> {
-    const atuais = await lerJson<EventoGlobal[]>(EVENTOS_GLOBAIS, []);
+    const atuais = await lerJson<EventoGlobal[]>(caminhoEventosGlobais(), []);
     const novo: EventoGlobal = { ...evento, criadoEm: new Date().toISOString() };
     atuais.push(novo);
-    await escreverJson(EVENTOS_GLOBAIS, atuais);
+    await escreverJson(caminhoEventosGlobais(), atuais);
     return novo;
   }
 
@@ -1073,5 +1082,54 @@ export class FileRepository implements GameRepository {
       await escreverJson(path.join(tenantDir(tenantId), "negocio.json"), negocio);
     }
     return progresso;
+  }
+}
+
+/**
+ * Toda operação que grava roda dentro da trava única (`travaDados`), uma de
+ * cada vez. Sem isso, dois cadastros simultâneos podiam pegar o mesmo lote
+ * ou apagar um ao outro do índice de membros, e duas compras simultâneas
+ * podiam gastar o mesmo saldo. A lista foi levantada a partir do código:
+ * todo método que chama `escreverJson`, direto ou por outro método.
+ * Leituras não entram: a escrita atômica garante que nunca leem um arquivo
+ * pela metade.
+ */
+const OPERACOES_DE_ESCRITA = [
+  "criarNegocio",
+  "vincularMembro",
+  "salvarOnboarding",
+  "criarOferta",
+  "registrarMarco",
+  "concluirLicao",
+  "resgatarConvite",
+  "criarSolicitacaoContato",
+  "aplicarProgresso",
+  "contratarFuncionario",
+  "evoluirFuncionario",
+  "alocarFuncionario",
+  "aceitarTrabalho",
+  "desbloquearNo",
+  "formarParceria",
+  "lerSede",
+  "evoluirSede",
+  "entregarCapitulo",
+  "resolverCapitulo",
+  "comprarMobilia",
+  "evoluirMobilia",
+  "moverMobilia",
+  "criarEventoGlobal",
+  "incrementarProgressoEventos",
+] as const satisfies readonly (keyof FileRepository)[];
+
+{
+  const prototipo = FileRepository.prototype as unknown as Record<
+    string,
+    (this: FileRepository, ...args: unknown[]) => Promise<unknown>
+  >;
+  for (const nome of OPERACOES_DE_ESCRITA) {
+    const original = prototipo[nome];
+    prototipo[nome] = function (this: FileRepository, ...args: unknown[]) {
+      return travaDados.exclusivo(() => original.apply(this, args));
+    };
   }
 }

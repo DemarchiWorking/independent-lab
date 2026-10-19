@@ -305,6 +305,14 @@ export interface ConviteResgatado {
 }
 
 /** Sessão autenticada. */
+/** O que um vizinho pode ver de outro negócio: nome, segmento e nível.
+ *  XP, moeda, atributos e consentimento são privados e ficam no servidor. */
+export type VizinhoPublico = Pick<Negocio, "id" | "nome" | "segmento" | "nivel">;
+
+export function paraVizinhoPublico(n: Negocio): VizinhoPublico {
+  return { id: n.id, nome: n.nome, segmento: n.segmento, nivel: n.nivel };
+}
+
 export interface Sessao {
   usuarioId: string;
   tenantId: string;

@@ -1,13 +1,10 @@
-@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Press+Start+2P&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* --font-ui e --font-pixel vêm do next/font (classes no <html>, ver layout.tsx). */
 :root {
-  --font-ui: "Nunito";
-  --font-body: "Nunito";
-  --font-pixel: "Press Start 2P";
+  --font-body: var(--font-ui);
 }
 
 html,

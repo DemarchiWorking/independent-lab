@@ -1,4 +1,4 @@
-import { supabaseAnon } from "@/lib/supabase/client";
+import { supabaseNavegador } from "@/lib/supabase/navegador";
 import {
   nomeCanal,
   presentesDe,
@@ -20,7 +20,7 @@ export type { VisitantePresente } from "./canalUtil";
  * para a posição do avatar em `GH-WORLD-05`).
  *
  * ⚠️ SEGURANÇA — este é o PRIMEIRO código deste projeto que chama
- * `supabaseAnon()` do lado do cliente. A partir do momento em que ele
+ * o Supabase do lado do cliente (`supabaseNavegador()`). A partir do momento em que ele
  * roda num browser, a anon key fica extraível do bundle e a API REST do
  * Supabase passa a ser alcançável por fora do app. Por isso `GH-MULTI-00`
  * (endurecer a RLS de `negocios`) é BLOQUEANTE e precisa estar aplicado e
@@ -53,7 +53,7 @@ export function entrarNaSala(
 ): () => void {
   if (!supabaseConfigurado()) return () => {};
 
-  const canal = supabaseAnon().channel(nomeCanal(salaTenantId));
+  const canal = supabaseNavegador().channel(nomeCanal(salaTenantId));
 
   canal.on("presence", { event: "sync" }, () => {
     aoMudar(presentesDe(canal.presenceState<VisitantePresente>() as EstadoPresenca));

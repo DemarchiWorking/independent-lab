@@ -43,7 +43,7 @@ tratado como prioridade máxima assim que isso ficou claro. **Está feito:**
   negócios (mesmos nomes já usados em `HubScreen.tsx`) no bairro
   Centro/Mendes, com equipe de IA, parceria, sede evoluída, nó da árvore,
   lição concluída e oferta publicada. Um deles (Radiz Engenharia) ganha
-  login de demo (`radiz@demo.labdatadev.local` / `SebraeDemo2026!`) para o
+  login de demo (`radiz@demo.labdatadev.local`, senha via `SEED_DEMO_SENHA`) para o
   apresentador logar direto nela. **Toda a aritmética de XP/moeda/atributo
   foi conferida manualmente contra o JSON persistido e bateu exata** — é a
   validação de integração mais forte feita nesta sessão inteira, cobrindo

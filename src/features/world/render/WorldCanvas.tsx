@@ -86,6 +86,8 @@ export function WorldCanvas({
       const hospedeiro = hospedeiroRef.current;
       if (!hospedeiro) return;
 
+      // Variante do Pixi sem `new Function`: a CSP do app não libera eval.
+      await import("pixi.js/unsafe-eval");
       const { Application } = await import("pixi.js");
       const { CenaWorld: Cena } = await import("./cena");
 

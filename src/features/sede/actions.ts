@@ -75,7 +75,7 @@ export async function comprarMobilia(
   if (!negocio) return { ok: false, erro: "Negócio não encontrado." };
 
   const capacidade = nivelSede(sede.nivel).slots;
-  if (slot < 0 || slot >= capacidade) {
+  if (!Number.isInteger(slot) || slot < 0 || slot >= capacidade) {
     return { ok: false, erro: "Esse espaço não existe na sua sede atual." };
   }
   if (mobiliaAtual.some((m) => m.slot === slot)) {
@@ -163,7 +163,7 @@ export async function moverMobilia(
   ]);
 
   const capacidade = nivelSede(sede.nivel).slots;
-  if (novoSlot < 0 || novoSlot >= capacidade) {
+  if (!Number.isInteger(novoSlot) || novoSlot < 0 || novoSlot >= capacidade) {
     return { ok: false, erro: "Esse espaço não existe na sua sede atual." };
   }
   const item = mobiliaAtual.find((m) => m.id === itemColocadoId);

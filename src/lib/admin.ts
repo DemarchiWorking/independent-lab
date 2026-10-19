@@ -1,17 +1,12 @@
 /**
- * Quem tem acesso a telas administrativas (ex.: criar eventos globais).
- * Duas regras, qualquer uma basta:
+ * Quem tem acesso a telas administrativas (ex.: criar eventos globais):
+ * só e-mails da allowlist `GAMEHUB_ADMIN_EMAILS` (env, separada por
+ * vírgula), comparados por igualdade exata.
  *
- * 1. Allowlist explícita via `GAMEHUB_ADMIN_EMAILS` (env, separada por
- *    vírgula) — a forma "certa" de adicionar um sócio sem mexer em código.
- * 2. Atalho pessoal do fundador: e-mail contendo "demarchi". Existe só para
- *    não depender de configurar a env var em toda instância nova (local,
- *    preview, VPS) — é uma comparação de SUBSTRING, então
- *    "algo.demarchi@qualquer.com" também passa. Aceitável agora porque (a)
- *    ninguém de fora se cadastra com e-mail sob controle do fundador, e
- *    (b) isto é só a UX de "esconder o menu" — a garantia real de que
- *    escrita em `eventos_globais` só acontece via RPC com a service_role
- *    key (nunca policy de insert direta, ver `0013_eventos_globais.sql`).
+ * Existia um atalho "e-mail contendo demarchi". Como o cadastro não
+ * verifica a posse do e-mail, qualquer pessoa virava admin se cadastrando
+ * como `x@demarchi.qualquer`. Removido: sem a env configurada, ninguém é
+ * admin.
  *
  * MVP deliberado: sem tabela de `roles`, sem checagem no banco. Isso é
  * dívida técnica com plano de saída documentado — ver "Evolução para
@@ -28,7 +23,7 @@ function listaAdmins(): string[] {
 export function souAdmin(email: string): boolean {
   const normalizado = email.trim().toLowerCase();
   if (!normalizado) return false;
-  return listaAdmins().includes(normalizado) || normalizado.includes("demarchi");
+  return listaAdmins().includes(normalizado);
 }
 
 /**

@@ -7,6 +7,7 @@ import { itemMobilia } from "@/features/sede/catalogo";
 import { nivelSede } from "@/features/sede/niveis";
 import { cargoPorId } from "@/features/equipe-ia/catalogo";
 import { PitchPanel } from "@/features/vendas/PitchPanel";
+import type { PitchIA } from "@/features/vendas/pitchVisita";
 import { bloqueiosDeMobilia, chaveCelula } from "./engine/caminho";
 import {
   celulaInicialAvatar,
@@ -53,7 +54,10 @@ const WorldCanvas = dynamic(
 );
 
 interface VisitaScreenProps {
-  negocioVisitado: Negocio;
+  /** Só a fachada pública do vizinho: XP, moeda e atributos ficam no servidor. */
+  negocioVisitado: Pick<Negocio, "id" | "nome">;
+  /** Proposta já escolhida no servidor a partir dos atributos do vizinho. */
+  pitch: PitchIA;
   sede: Sede;
   mobilia: ItemMobiliaColocado[];
   funcionarios: string[];
@@ -64,6 +68,7 @@ interface VisitaScreenProps {
 
 export function VisitaScreen({
   negocioVisitado,
+  pitch,
   sede,
   mobilia,
   funcionarios,
@@ -267,7 +272,7 @@ export function VisitaScreen({
             </p>
           </div>
           <div className="border-t border-[#e6ebf3] pt-3">
-            <PitchPanel negocioVisitado={negocioVisitado} />
+            <PitchPanel pitch={pitch} />
           </div>
         </aside>
       </div>

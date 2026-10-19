@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { lerSessao } from "@/lib/auth/sessao";
+import { textoLimitado } from "@/lib/validacao";
 import { getRepository } from "@/lib/db";
 
 export interface ResultadoOferta {
@@ -25,10 +26,13 @@ export async function publicarOferta(
   const sessao = await lerSessao();
   if (!sessao) return { ok: false, erro: "Sessão expirada. Entre novamente." };
 
-  const t = titulo.trim();
+  const t = textoLimitado(titulo, 120);
+  const d = textoLimitado(descricao, 500);
+  const p = textoLimitado(preco, 40);
+  if (t === null) return { ok: false, erro: "Título muito longo." };
+  if (d === null) return { ok: false, erro: "Descrição muito longa." };
+  if (p === null) return { ok: false, erro: "Preço com no máximo 40 caracteres." };
   if (!t) return { ok: false, erro: "Informe um título para a oferta." };
-  if (t.length > 120) return { ok: false, erro: "Título muito longo." };
-  if (descricao.length > 500) return { ok: false, erro: "Descrição muito longa." };
 
   const repo = getRepository();
   const atuais = await repo.listarOfertas(sessao.tenantId);
@@ -39,8 +43,8 @@ export async function publicarOferta(
   await repo.criarOferta({
     tenantId: sessao.tenantId,
     titulo: t,
-    descricao: descricao.trim(),
-    preco: preco.trim(),
+    descricao: d,
+    preco: p,
     criadaEm: new Date().toISOString(),
   });
 

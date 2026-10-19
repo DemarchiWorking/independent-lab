@@ -1,11 +1,10 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { abrir, selar, textoValido } from "@/lib/auth/assinatura";
 
 /**
  * Token de convite de vizinho (GH-GROW-02) — assinado (HMAC), não guardado
- * no banco: o próprio token carrega tudo que precisa. Mesma técnica de
- * `lib/auth/sessao.ts` (que não exporta seus helpers, por isso duplicada
- * aqui em vez de importada — são dois segredos de propósitos diferentes,
- * mesmo reusando `GAMEHUB_SECRET`).
+ * no banco: o próprio token carrega tudo que precisa. Usa a chave de
+ * propósito "convite" de `lib/auth/assinatura.ts`, diferente da chave da
+ * sessão: um link de convite nunca serve de cookie de login.
  *
  * Só o RESGATE (quando o convidado completa o cadastro) é persistido —
  * ver `ConviteResgatado`/`resgatarConvite` — para nunca recompensar duas
@@ -36,42 +35,20 @@ export interface PayloadConvite {
   criadoEm: string;
 }
 
-function segredo(): string {
-  const s = process.env.GAMEHUB_SECRET;
-  if (s && s.length >= 16) return s;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("GAMEHUB_SECRET obrigatório em produção (mín. 16 chars).");
-  }
-  return "dev-only-secret-labdatadev-gamehub";
-}
-
-function assinar(payload: string): string {
-  return createHmac("sha256", segredo()).update(payload).digest("hex");
-}
-
 export function gerarTokenConvite(dados: PayloadConvite): string {
-  const payload = Buffer.from(JSON.stringify(dados)).toString("base64url");
-  return `${payload}.${assinar(payload)}`;
+  return selar("convite", { typ: "convite", ...dados });
 }
 
-/** `null` se a assinatura não bater OU o convite tiver expirado. */
+/** `null` se a assinatura não bater, o propósito for outro ou o convite tiver expirado. */
 export function lerTokenConvite(token: string): PayloadConvite | null {
-  const [payload, assinatura] = token.split(".");
-  if (!payload || !assinatura) return null;
-
-  const esperada = Buffer.from(assinar(payload), "hex");
-  const recebida = Buffer.from(assinatura, "hex");
-  if (esperada.length !== recebida.length) return null;
-  if (!timingSafeEqual(esperada, recebida)) return null;
-
-  try {
-    const dados = JSON.parse(
-      Buffer.from(payload, "base64url").toString("utf8"),
-    ) as PayloadConvite;
-    const expiraEm = new Date(dados.criadoEm).getTime() + VALIDADE_MS;
-    if (Date.now() > expiraEm) return null;
-    return dados;
-  } catch {
+  const dados = abrir("convite", token);
+  if (!dados || dados.typ !== "convite") return null;
+  const { tenantId, cidadeNome, bairroNome, criadoEm } = dados;
+  if (!textoValido(tenantId, 64) || !textoValido(cidadeNome, 120) || !textoValido(bairroNome, 120)) {
     return null;
   }
+  if (!textoValido(criadoEm, 40)) return null;
+  const criado = new Date(criadoEm).getTime();
+  if (Number.isNaN(criado) || Date.now() > criado + VALIDADE_MS) return null;
+  return { tenantId, cidadeNome, bairroNome, criadoEm };
 }

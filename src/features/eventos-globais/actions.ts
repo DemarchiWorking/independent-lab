@@ -4,17 +4,19 @@ import { revalidatePath } from "next/cache";
 import { lerSessao, novoId } from "@/lib/auth/sessao";
 import { getRepository } from "@/lib/db";
 import { souAdmin } from "@/lib/admin";
-import { EVENTOS } from "@/features/gamificacao/engine";
 import { agoraGlobal } from "@/features/historia/relogio";
 import {
   atingiuMeta,
   eventosVisiveis,
-  janelaValida,
   progressoDe,
   progressoPercentual,
   statusDe,
 } from "./motor";
+import { validarNovoEvento } from "./validacao";
 import type { EventoGlobal, NovoEventoGlobal, ProgressoEventoGlobal, StatusEvento } from "./tipos";
+
+/** O que o jogador recebe de um evento: sem o e-mail de quem criou. */
+export type EventoParaJogador = Omit<EventoGlobal, "criadoPor">;
 
 export interface ResultadoCriarEvento {
   ok: boolean;
@@ -36,31 +38,21 @@ export async function criarEventoGlobal(
     return { ok: false, erro: "Você não tem permissão para criar eventos." };
   }
 
-  const titulo = input.titulo.trim();
-  const descricao = input.descricao.trim();
-  if (!titulo) return { ok: false, erro: "Título obrigatório." };
-  if (!descricao) return { ok: false, erro: "Descrição obrigatória." };
-  if (!(input.objetivo in EVENTOS)) return { ok: false, erro: "Objetivo inválido." };
-  if (!Number.isFinite(input.meta) || input.meta <= 0) {
-    return { ok: false, erro: "Meta deve ser maior que zero." };
-  }
-  if (!janelaValida(input.inicioEm, input.fimEm)) {
-    return { ok: false, erro: "A data de início deve ser antes da data de fim." };
-  }
-  if (input.recompensa.xp < 0 || input.recompensa.moeda < 0) {
-    return { ok: false, erro: "Recompensa não pode ser negativa." };
-  }
+  const erro = validarNovoEvento(input);
+  if (erro) return { ok: false, erro };
 
+  const { xp, moeda, atributo } = input.recompensa;
   const repo = getRepository();
   const evento = await repo.criarEventoGlobal({
     id: novoId(),
-    titulo,
-    descricao,
+    titulo: input.titulo.trim(),
+    descricao: input.descricao.trim(),
     objetivo: input.objetivo,
     meta: input.meta,
     inicioEm: input.inicioEm,
     fimEm: input.fimEm,
-    recompensa: input.recompensa,
+    // Copia campo a campo: nada além do que foi validado chega ao banco.
+    recompensa: atributo ? { xp, moeda, atributo: { chave: atributo.chave, ganho: atributo.ganho } } : { xp, moeda },
     criadoPor: sessao.email,
   });
 
@@ -70,7 +62,7 @@ export async function criarEventoGlobal(
 }
 
 export interface EventoComProgresso {
-  evento: EventoGlobal;
+  evento: EventoParaJogador;
   status: StatusEvento;
   progresso: ProgressoEventoGlobal | undefined;
   percentual: number;
@@ -90,7 +82,7 @@ export async function listarEventosAtivos(): Promise<EventoComProgresso[]> {
     repo.listarProgressoEventos(sessao.tenantId),
   ]);
 
-  return eventosVisiveis(eventos, agora).map((evento) => {
+  return eventosVisiveis(eventos, agora).map(({ criadoPor: _criadoPor, ...evento }) => {
     const progresso = progressoDe(progressos, evento.id);
     const contagem = progresso?.contagem ?? 0;
     return {

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { lerSessao } from "@/lib/auth/sessao";
 import { getRepository } from "@/lib/db";
+import { paraVizinhoPublico } from "@/lib/db/types";
 import { progresso } from "@/lib/gamificacao";
 import { DEGRAUS } from "@/features/onboarding/scoring";
 import { missaoAtual } from "@/features/gamificacao/missoes";
@@ -90,7 +91,7 @@ export default async function HubPage() {
         licoesConcluidas={licoes}
         benchmark={benchmark}
         destaqueBairro={destaqueBairro}
-        vizinhos={vizinhos}
+        vizinhos={vizinhos.map(paraVizinhoPublico)}
         mensagens={mensagens}
       />
     </>

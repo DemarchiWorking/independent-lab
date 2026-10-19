@@ -24,8 +24,8 @@
    **Vitalys Saúde** (o vizinho que vira parceiro ao vivo), **Sabor & Cia
    Alimentos** (deliberadamente "cru" — mostra como é o dia 1).
 5. **Login pronto da Radiz** (única das 6 com conta — as outras 5 são só
-   vizinhos de contexto): `radiz@demo.labdatadev.local` /
-   `SebraeDemo2026!`. Usar para logar direto nela em `/entrar` e mostrar o
+   vizinhos de contexto): `radiz@demo.labdatadev.local`, com a senha
+   que você definir em `SEED_DEMO_SENHA` ao rodar o seed. Usar para logar direto nela em `/entrar` e mostrar o
    `/painel` já rico (conquistas desbloqueadas, ofertas publicadas, sede
    nível 2) sem precisar montar esse estado ao vivo.
 

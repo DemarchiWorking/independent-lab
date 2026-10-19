@@ -1,12 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { getRepository } from "@/lib/db";
 import { getAuthProvider } from "@/lib/auth";
 import { criarSessao, encerrarSessao } from "@/lib/auth/sessao";
+import { SENHA_MAX } from "@/lib/auth/password";
 import { slugify } from "@/lib/db/file-adapter";
+import { Limitador } from "@/lib/limite";
+import { ipDoCliente } from "@/lib/requisicao";
+import { EMAIL_MAX, emailValido, opcaoValida, textoDoForm } from "@/lib/validacao";
 import { calcular } from "@/features/onboarding/scoring";
+import { perguntas } from "@/features/onboarding/perguntas";
 import { itemMobilia } from "@/features/sede/catalogo";
 import { POLITICA_PRIVACIDADE_VERSAO } from "./politica";
 import {
@@ -90,7 +94,7 @@ async function resgatarConviteSeExistir(
     );
 
     if (!dentroDoTeto) {
-      const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim();
+      const ip = await ipDoCliente();
       console.warn(
         `[convite] teto de ${LIMITE_CONVITES_POR_JANELA}/30d atingido — convidante=${dados.tenantId} ip=${ip}`,
       );
@@ -111,9 +115,20 @@ const SEGMENTOS: Segmento[] = [
   "outro",
 ];
 
-function texto(fd: FormData, campo: string): string {
-  return String(fd.get(campo) ?? "").trim();
+/** Valores aceitos em cada pergunta de escolha do onboarding. */
+function opcoesDe(campo: string): string[] {
+  const pergunta = perguntas.find((p) => p.campo === campo);
+  return (pergunta?.opcoes ?? []).filter((o) => !o.locked).map((o) => o.valor);
 }
+
+const MUITAS_TENTATIVAS = "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
+
+// Limites de tentativa (por processo). Login: por IP e por e-mail, para
+// barrar tanto a força bruta numa conta quanto a varredura de muitas contas.
+// Cada tentativa custa um scrypt; sem limite, é também um DoS barato.
+const loginPorIp = new Limitador(10 * 60_000, 30);
+const falhasPorEmail = new Limitador(15 * 60_000, 8);
+const cadastroPorIp = new Limitador(60 * 60_000, 5);
 
 /** Cadastro: conta + 10 respostas → tenant com lote no mapa + sessão. */
 export async function cadastrar(
@@ -122,17 +137,22 @@ export async function cadastrar(
 ): Promise<EstadoForm> {
   const repo = getRepository();
   const auth = getAuthProvider();
+  const texto = (campo: string, max = 80) => textoDoForm(fd, campo, max);
 
-  const nome = texto(fd, "nome");
-  const email = texto(fd, "email").toLowerCase();
-  const senha = String(fd.get("senha") ?? "");
+  const nome = texto("nome");
+  const email = texto("email", EMAIL_MAX).toLowerCase();
+  const senhaBruta = fd.get("senha");
+  const senha = typeof senhaBruta === "string" ? senhaBruta : "";
 
   if (!nome || !email || !senha)
     return { erro: "Preencha nome, e-mail e senha." };
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
+  if (!emailValido(email))
     return { erro: "E-mail inválido." };
   if (senha.length < 8)
     return { erro: "A senha precisa ter pelo menos 8 caracteres." };
+  if (senha.length > SENHA_MAX)
+    return { erro: `A senha pode ter no máximo ${SENHA_MAX} caracteres.` };
+  if (!cadastroPorIp.consumir(await ipDoCliente())) return { erro: MUITAS_TENTATIVAS };
   if (await auth.emailExiste(email))
     return { erro: "Já existe uma conta com esse e-mail." };
 
@@ -146,20 +166,28 @@ export async function cadastrar(
   }
   const perfilPublico = fd.get("perfilPublico") === "on";
 
-  const segmentoBruto = texto(fd, "segmento") as Segmento;
+  // Toda opção é conferida contra a lista da pergunta: um valor fora dela
+  // virava NaN no score e contaminava a média do benchmark do bairro.
+  const captacaoPermitida = opcoesDe("captacao");
   const respostas: Respostas = {
-    nomeNegocio: texto(fd, "nomeNegocio"),
-    segmento: SEGMENTOS.includes(segmentoBruto) ? segmentoBruto : "outro",
-    cidade: texto(fd, "cidade") || "Outra",
-    bairro: texto(fd, "bairro") || "Centro",
-    equipe: (texto(fd, "equipe") || "so-eu") as Respostas["equipe"],
-    presencaDigital: (texto(fd, "presencaDigital") ||
-      "nada") as Respostas["presencaDigital"],
-    captacao: fd.getAll("captacao").map(String),
-    objetivo: (texto(fd, "objetivo") || "mais-leads") as Respostas["objetivo"],
-    gargalo: (texto(fd, "gargalo") || "perco-leads") as Respostas["gargalo"],
-    investimento: (texto(fd, "investimento") ||
-      "nao-sei") as Respostas["investimento"],
+    nomeNegocio: texto("nomeNegocio"),
+    segmento: opcaoValida<Segmento>(texto("segmento", 40), SEGMENTOS, "outro"),
+    cidade: texto("cidade", 60) || "Outra",
+    bairro: texto("bairro", 60) || "Centro",
+    equipe: opcaoValida<Respostas["equipe"]>(texto("equipe", 40), opcoesDe("equipe"), "so-eu"),
+    presencaDigital: opcaoValida<Respostas["presencaDigital"]>(
+      texto("presencaDigital", 40),
+      opcoesDe("presencaDigital"),
+      "nada",
+    ),
+    captacao: [...new Set(fd.getAll("captacao").map(String))].filter((c) => captacaoPermitida.includes(c)),
+    objetivo: opcaoValida<Respostas["objetivo"]>(texto("objetivo", 40), opcoesDe("objetivo"), "mais-leads"),
+    gargalo: opcaoValida<Respostas["gargalo"]>(texto("gargalo", 40), opcoesDe("gargalo"), "perco-leads"),
+    investimento: opcaoValida<Respostas["investimento"]>(
+      texto("investimento", 40),
+      opcoesDe("investimento"),
+      "nao-sei",
+    ),
   };
 
   if (!respostas.nomeNegocio)
@@ -167,45 +195,64 @@ export async function cadastrar(
 
   const resultado = calcular(respostas);
 
-  const negocio = await repo.criarNegocio({
-    nome: respostas.nomeNegocio,
-    segmento: respostas.segmento,
-    cidadeSlug: slugify(respostas.cidade),
-    cidadeNome: respostas.cidade,
-    bairroNome: respostas.bairro,
-    degrauAlvo: resultado.degrauAlvo,
-    xpInicial: resultado.xpInicial,
-    moedaVirtual: 500,
-    atributosIniciais: resultado.atributosIniciais,
-    perfilPublico,
-    consentimentoVersao: POLITICA_PRIVACIDADE_VERSAO,
-  });
+  // A credencial nasce PRIMEIRO. Antes, negócio, lote e recompensa de convite
+  // eram criados antes dela: se o registro falhasse (e-mail duplicado numa
+  // corrida, por exemplo), ficava um negócio órfão no mapa e o convidante
+  // ganhava a recompensa por uma conta que não existia.
+  let identidade: { usuarioId: string };
+  try {
+    identidade = await auth.registrar(nome, email, senha);
+  } catch {
+    return { erro: "Já existe uma conta com esse e-mail." };
+  }
 
-  await repo.salvarOnboarding({
-    tenantId: negocio.id,
-    respostas,
-    scoreFit: resultado.scoreFit,
-    degrauAlvo: resultado.degrauAlvo,
-    servicosRecomendados: resultado.servicosRecomendados,
-    respondidoEm: new Date().toISOString(),
-  });
+  let negocioId: string;
+  try {
+    const negocio = await repo.criarNegocio({
+      nome: respostas.nomeNegocio,
+      segmento: respostas.segmento,
+      cidadeSlug: slugify(respostas.cidade),
+      cidadeNome: respostas.cidade,
+      bairroNome: respostas.bairro,
+      degrauAlvo: resultado.degrauAlvo,
+      xpInicial: resultado.xpInicial,
+      moedaVirtual: 500,
+      atributosIniciais: resultado.atributosIniciais,
+      perfilPublico,
+      consentimentoVersao: POLITICA_PRIVACIDADE_VERSAO,
+    });
+    negocioId = negocio.id;
 
-  await darMesaDeBoasVindas(repo, negocio.id);
-  await resgatarConviteSeExistir(repo, negocio.id, texto(fd, "convite") || null);
+    await repo.salvarOnboarding({
+      tenantId: negocio.id,
+      respostas,
+      scoreFit: resultado.scoreFit,
+      degrauAlvo: resultado.degrauAlvo,
+      servicosRecomendados: resultado.servicosRecomendados,
+      respondidoEm: new Date().toISOString(),
+    });
 
-  const identidade = await auth.registrar(nome, email, senha);
-  await repo.vincularMembro({
-    id: identidade.usuarioId,
-    tenantId: negocio.id,
-    nome,
-    email,
-    papel: "dono",
-    criadoEm: new Date().toISOString(),
-  });
+    await repo.vincularMembro({
+      id: identidade.usuarioId,
+      tenantId: negocio.id,
+      nome,
+      email,
+      papel: "dono",
+      criadoEm: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error("[cadastro] falhou depois de criar a credencial; desfazendo", e);
+    await auth.remover(identidade.usuarioId).catch(() => undefined);
+    return { erro: "Não foi possível concluir o cadastro. Tente de novo em instantes." };
+  }
+
+  // Extras cosméticos e de convite: só depois de a conta existir de verdade.
+  await darMesaDeBoasVindas(repo, negocioId);
+  await resgatarConviteSeExistir(repo, negocioId, texto("convite", 4096) || null);
 
   await criarSessao({
     usuarioId: identidade.usuarioId,
-    tenantId: negocio.id,
+    tenantId: negocioId,
     nome,
     email,
   });
@@ -220,13 +267,23 @@ export async function entrar(
   const repo = getRepository();
   const auth = getAuthProvider();
 
-  const email = texto(fd, "email").toLowerCase();
-  const senha = String(fd.get("senha") ?? "");
+  const email = textoDoForm(fd, "email", EMAIL_MAX).toLowerCase();
+  const senhaBruta = fd.get("senha");
+  const senha = typeof senhaBruta === "string" ? senhaBruta : "";
   if (!email || !senha) return { erro: "Informe e-mail e senha." };
+
+  const ip = await ipDoCliente();
+  if (falhasPorEmail.bloqueado(email) || !loginPorIp.consumir(ip)) {
+    return { erro: MUITAS_TENTATIVAS };
+  }
 
   // mensagem genérica: nunca revela se o e-mail existe
   const identidade = await auth.autenticar(email, senha);
-  if (!identidade) return { erro: "E-mail ou senha incorretos." };
+  if (!identidade) {
+    falhasPorEmail.registrar(email);
+    return { erro: "E-mail ou senha incorretos." };
+  }
+  falhasPorEmail.limparChave(email);
 
   const membro = await repo.lerMembroPorUsuario(identidade.usuarioId);
   if (!membro) return { erro: "Conta sem negócio vinculado." };

@@ -24,19 +24,7 @@ import { InventarioPanel } from "./InventarioPanel";
 import { LateralMenu, type LateralItem } from "@/components/ui/LateralMenu";
 import { RecompensaProvider } from "@/features/gamificacao/RecompensaContext";
 import type { Missao } from "@/features/gamificacao/missoes";
-import type {
-  Atributos,
-  BenchmarkBairro,
-  DestaqueBairro,
-  Endereco,
-  FuncionarioContratado,
-  ItemMobiliaColocado,
-  LicaoConcluida,
-  MapaView,
-  Negocio,
-  Sede,
-  SolicitacaoContato,
-} from "@/lib/db/types";
+import type { Atributos, BenchmarkBairro, DestaqueBairro, Endereco, FuncionarioContratado, ItemMobiliaColocado, LicaoConcluida, MapaView, Negocio, Sede, SolicitacaoContato, VizinhoPublico } from "@/lib/db/types";
 
 type CoreView =
   | "hub"
@@ -134,7 +122,7 @@ interface GameShellProps {
    *  vizinhos. Presente = habilita a aba "Mercado". */
   benchmark?: BenchmarkBairro;
   destaqueBairro?: DestaqueBairro | null;
-  vizinhos?: Negocio[];
+  vizinhos?: VizinhoPublico[];
   /** Mensagens recebidas pela vitrine pública — alimentam o celular. */
   mensagens?: SolicitacaoContato[];
 }

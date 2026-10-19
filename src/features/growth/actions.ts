@@ -1,8 +1,10 @@
 "use server";
 
-import { headers } from "next/headers";
 import { getRepository } from "@/lib/db";
 import { lerSessao } from "@/lib/auth/sessao";
+import { Limitador } from "@/lib/limite";
+import { ipDoCliente } from "@/lib/requisicao";
+import { textoLimitado } from "@/lib/validacao";
 import { gerarTokenConvite } from "./convite";
 
 export interface ResultadoContato {
@@ -43,36 +45,12 @@ export async function gerarLinkConvite(): Promise<ResultadoLinkConvite> {
   return { ok: true, url: `/cadastro?convite=${token}` };
 }
 
-const JANELA_MS = 10 * 60_000; // 10 minutos
-const LIMITE_NA_JANELA = 3;
-
 /**
- * Rate limit em memória (por processo) — mesmo espírito "sem infra que não
- * precisa" do resto do projeto (ver AGENTS.md): esta app roda 1 processo
- * PM2 atrás do Nginx, não múltiplas instâncias atrás de load balancer, então
- * um Map local já resolve o caso real. Se um dia isso escalar horizontalmente,
- * vira Redis — não antes.
+ * Limite de mensagens por (negócio visitado, IP do visitante): 3 a cada 10
+ * minutos. Ver `lib/limite.ts` (Map com expiração) e `lib/requisicao.ts`
+ * (IP confiável atrás do Caddy).
  */
-const tentativas = new Map<string, number[]>();
-
-function limitado(chave: string): boolean {
-  const agora = Date.now();
-  const historico = (tentativas.get(chave) ?? []).filter((t) => agora - t < JANELA_MS);
-  tentativas.set(chave, historico);
-  return historico.length >= LIMITE_NA_JANELA;
-}
-
-function registrar(chave: string): void {
-  const historico = tentativas.get(chave) ?? [];
-  historico.push(Date.now());
-  tentativas.set(chave, historico);
-}
-
-async function ip(): Promise<string> {
-  const h = await headers();
-  // atrás do Nginx (ver deploy/README.md) — primeiro IP da lista é o cliente real
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "desconhecido";
-}
+const contatoPorIp = new Limitador(10 * 60_000, 3);
 
 /**
  * Envia uma solicitação de contato a partir da página pública de um negócio
@@ -88,15 +66,16 @@ export async function enviarSolicitacaoContato(
   contatoRemetente: string,
   mensagem: string,
 ): Promise<ResultadoContato> {
-  const nome = nomeRemetente.trim();
-  const contato = contatoRemetente.trim();
-  const texto = mensagem.trim();
+  const nome = textoLimitado(nomeRemetente, 80);
+  const contato = textoLimitado(contatoRemetente, 120);
+  const texto = textoLimitado(mensagem, 2000);
+  if (nome === null || contato === null || texto === null) {
+    return { ok: false, erro: "Nome até 80, contato até 120 e mensagem até 2000 caracteres." };
+  }
   if (!nome || !contato || !texto) {
     return { ok: false, erro: "Preencha nome, contato e mensagem." };
   }
-  if (texto.length > 2000) {
-    return { ok: false, erro: "Mensagem muito longa." };
-  }
+  if (typeof tenantId !== "string") return { ok: false, erro: "Negócio não encontrado." };
 
   const repo = getRepository();
   const negocio = await repo.lerNegocio(tenantId);
@@ -104,8 +83,7 @@ export async function enviarSolicitacaoContato(
     return { ok: false, erro: "Negócio não encontrado." };
   }
 
-  const chave = `${tenantId}:${await ip()}`;
-  if (limitado(chave)) {
+  if (!contatoPorIp.consumir(`${tenantId}:${await ipDoCliente()}`)) {
     return {
       ok: false,
       erro: "Muitas mensagens em pouco tempo. Tente novamente mais tarde.",
@@ -118,7 +96,6 @@ export async function enviarSolicitacaoContato(
     contatoRemetente: contato,
     mensagem: texto,
   });
-  registrar(chave);
 
   return { ok: true };
 }

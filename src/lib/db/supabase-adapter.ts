@@ -527,6 +527,17 @@ export class SupabaseRepository implements GameRepository {
     };
   }
 
+  /** Atômica via RPC `registrar_marco` (`0027_marcos.sql`): o `unique`
+   *  garante que só a primeira chamada devolve `true`. */
+  async registrarMarco(tenantId: string, marcoId: string): Promise<boolean> {
+    const { data, error } = await this.db.rpc("registrar_marco", {
+      p_tenant_id: Number(tenantId),
+      p_marco_id: marcoId,
+    });
+    if (error) throw new Error(`registrarMarco: ${error.message}`);
+    return data === true;
+  }
+
   async listarLicoesConcluidas(tenantId: string): Promise<LicaoConcluida[]> {
     const { data, error } = await this.db
       .from("licoes_concluidas")

@@ -5,6 +5,9 @@ import type { ContextoConquistas } from "@/features/conquistas/catalogo";
 
 export const runtime = "nodejs";
 
+/** A imagem muda pouco; cache evita refazer 5 leituras + render a cada acesso. */
+const CACHE = { "Cache-Control": "public, max-age=3600, s-maxage=3600" };
+
 /**
  * Imagem OG dinâmica de uma conquista (GH-GROW-03) — o dono decide quando
  * compartilhar (link gerado só a partir do painel, nunca postado sozinho
@@ -12,7 +15,8 @@ export const runtime = "nodejs";
  * negócio e o texto da conquista — nunca XP/moeda/atributos brutos.
  *
  * Pública de propósito (sem sessão): é assim que redes sociais conseguem
- * buscar a imagem ao gerar o preview do link compartilhado.
+ * buscar a imagem ao gerar o preview do link compartilhado. Por isso só
+ * responde para negócios com `perfilPublico`, e a imagem é cacheada.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -22,10 +26,13 @@ export async function GET(request: Request) {
   const conquista = conquistaId ? conquistaPorId(conquistaId) : undefined;
   const negocio = tenantId ? await getRepository().lerNegocio(tenantId) : null;
 
-  if (!conquista || !negocio) {
+  // Negócio que não optou por perfil público não aparece em imagem pública:
+  // antes, qualquer pessoa listava os nomes de todos os negócios por aqui.
+  if (!conquista || !negocio || !negocio.perfilPublico) {
     return new ImageResponse(<Moldura>Conquista não encontrada</Moldura>, {
       width: 1200,
       height: 630,
+      headers: CACHE,
     });
   }
 
@@ -48,6 +55,7 @@ export async function GET(request: Request) {
     return new ImageResponse(<Moldura>Conquista ainda não desbloqueada</Moldura>, {
       width: 1200,
       height: 630,
+      headers: CACHE,
     });
   }
 
@@ -68,7 +76,7 @@ export async function GET(request: Request) {
         </div>
       </Moldura>
     ),
-    { width: 1200, height: 630 },
+    { width: 1200, height: 630, headers: CACHE },
   );
 }
 

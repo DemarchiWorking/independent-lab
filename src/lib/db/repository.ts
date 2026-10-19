@@ -273,6 +273,15 @@ export interface GameRepository {
     bonusAtributos?: Partial<Record<AtributoChave, number>>,
   ): Promise<ItemMobiliaColocado>;
 
+  /** ---- Marcos de recompensa únicos (auditoria 2026-10) ---- */
+  /**
+   * Registra um marco do negócio (ex.: "diagnostico_agendado") e devolve
+   * `true` só na PRIMEIRA vez. Atômica: duas chamadas simultâneas nunca
+   * devolvem `true` as duas. É a guarda que impede pagar a mesma recompensa
+   * em laço pelo dispatcher genérico `recompensar()`.
+   */
+  registrarMarco(tenantId: string, marcoId: string): Promise<boolean>;
+
   /** ---- Lições (GH-EDU-01) ---- */
   listarLicoesConcluidas(tenantId: string): Promise<LicaoConcluida[]>;
   /**
