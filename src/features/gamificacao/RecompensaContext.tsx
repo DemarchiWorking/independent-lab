@@ -93,10 +93,18 @@ function ToastView({
   onFechar: () => void;
 }) {
   return (
-    <AnimatePresence>
+    <>
+      {/* Leitor de tela: a região viva existe SEMPRE no DOM (uma região criada
+          junto com a mensagem muitas vezes não é anunciada). O toast visual é
+          escondido do leitor para não ser lido duas vezes. */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {toast ? textoDoToast(toast) : ""}
+      </p>
+      <AnimatePresence>
       {toast ? (
         <motion.div
           key="toast"
+          aria-hidden="true"
           initial={{ opacity: 0, y: 24, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.95 }}
@@ -157,6 +165,20 @@ function ToastView({
           </div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+      </AnimatePresence>
+    </>
   );
+}
+
+/** O mesmo conteúdo do toast, em texto corrido, para o leitor de tela. */
+function textoDoToast(toast: Toast): string {
+  if (toast.tipo === "demo") return "Entre na sua conta para completar de verdade.";
+  if (toast.tipo === "erro") return toast.msg;
+  const { r } = toast;
+  const partes = [EVENTOS[toast.evento].label, `mais ${r.ganhoXp} XP`];
+  if (r.ganhoMoeda) partes.push(`mais ${r.ganhoMoeda} moedas`);
+  if (r.subiuNivel) partes.push(`nível ${r.nivel}`);
+  if (r.subiuDegrau) partes.push(`degrau ${r.degrauAtual}`);
+  if (r.atributoGanho) partes.push(`mais ${r.atributoGanho.ganho} de ${r.atributoGanho.label}`);
+  return partes.join(", ");
 }

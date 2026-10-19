@@ -49,7 +49,7 @@ export function HexTile({
       {...pressable}
       onClick={onClick}
       aria-pressed={selected}
-      className="w-[84px] text-center focus-visible:outline-none"
+      className="w-[84px] rounded-md text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal"
     >
       {/* wrapper SEM clip-path: o badge de "inalcançável" precisa ficar fora
           da área recortada pelo hexágono (`clip-hex`), senão o

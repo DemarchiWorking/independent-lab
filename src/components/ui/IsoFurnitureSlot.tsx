@@ -43,7 +43,7 @@ export function IsoFurnitureSlot({
       onClick={onClick}
       {...pressable}
       style={{ left: x, top: y, width: w, height: h }}
-      className="absolute focus-visible:outline-none"
+      className="absolute rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal"
       aria-label={ocupado ? `Espaço ${slot + 1} ocupado` : `Espaço ${slot + 1} livre`}
     >
       {/* piso de madeira do slot */}
@@ -51,7 +51,7 @@ export function IsoFurnitureSlot({
         style={{ clipPath: DIAMANTE }}
         className={cn(
           "absolute inset-0 border transition-colors",
-          ocupado ? "border-[#a77f52] bg-[#c79b6e]" : "border-white/25 bg-white/10",
+          ocupado ? "border-piso-borda bg-piso" : "border-white/25 bg-white/10",
         )}
       />
 

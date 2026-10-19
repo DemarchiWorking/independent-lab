@@ -42,7 +42,7 @@ export function IsoLot({
       onClick={onClick}
       {...(ocupado ? pressable : {})}
       style={{ left: x, top: y, width: w, height: h }}
-      className="absolute focus-visible:outline-none"
+      className="absolute rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal"
       aria-label={ocupado ? `Lote ${numero} ocupado` : `Lote ${numero} livre`}
     >
       {/* base do terreno */}
@@ -50,7 +50,7 @@ export function IsoLot({
         style={{ clipPath: DIAMANTE }}
         className={cn(
           "absolute inset-0 border",
-          ocupado ? "bg-[#c79b6e] border-[#a77f52]" : "bg-[#1b2b4d] border-line",
+          ocupado ? "bg-piso border-piso-borda" : "bg-[#1b2b4d] border-line",
         )}
       />
 

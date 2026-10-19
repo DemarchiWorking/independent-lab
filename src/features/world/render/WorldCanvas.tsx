@@ -81,6 +81,7 @@ export function WorldCanvas({
   useEffect(() => {
     let cancelado = false;
     let appLocal: import("pixi.js").Application | null = null;
+    let desligar: (() => void) | null = null;
 
     async function montar() {
       const hospedeiro = hospedeiroRef.current;
@@ -92,6 +93,10 @@ export function WorldCanvas({
       const { CenaWorld: Cena } = await import("./cena");
 
       if (cancelado) return;
+
+      // As etiquetas só saem nítidas se a fonte já estiver carregada quando o
+      // texto é rasterizado. Falha aqui (navegador sem a API) não pode travar a cena.
+      await document.fonts?.ready.catch(() => undefined);
 
       const geo = estadoRef.current.geo;
       const { largura, altura } = Cena.tamanhoCanvas(geo);
@@ -123,8 +128,48 @@ export function WorldCanvas({
           if (avatarId === donoRef.current) pararRef.current?.(celula);
         },
       );
+      cena.definirFonte(getComputedStyle(hospedeiro).fontFamily);
+      cena.definirFoco(donoRef.current);
       cena.sincronizar(estadoRef.current);
+      cena.ajustarTamanho(hospedeiro.clientWidth);
       cenaRef.current = cena;
+
+      let ultimaLargura = hospedeiro.clientWidth;
+
+      // A sala acompanha a largura do container (janela, painel lateral,
+      // rotação do celular) e a densidade de pixels (zoom, trocar de monitor).
+      const observador = new ResizeObserver(([entrada]) => {
+        const largura = Math.round(entrada.contentRect.width);
+        if (largura !== ultimaLargura) {
+          ultimaLargura = largura;
+          cena.ajustarTamanho(largura);
+        }
+      });
+      observador.observe(hospedeiro);
+
+      const semMovimento = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const aoMudarMovimento = () => cena.definirMovimentoReduzido(semMovimento.matches);
+      aoMudarMovimento();
+      semMovimento.addEventListener("change", aoMudarMovimento);
+
+      let densidade: MediaQueryList | null = null;
+      const aoMudarDensidade = () => {
+        cena.ajustarTamanho(hospedeiro.clientWidth);
+        ouvirDensidade();
+      };
+      const ouvirDensidade = () => {
+        densidade?.removeEventListener("change", aoMudarDensidade);
+        densidade = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+        densidade.addEventListener("change", aoMudarDensidade, { once: true });
+      };
+      ouvirDensidade();
+
+      desligar = () => {
+        observador.disconnect();
+        semMovimento.removeEventListener("change", aoMudarMovimento);
+        densidade?.removeEventListener("change", aoMudarDensidade);
+      };
+
       setPronto(true);
 
       // Gancho de depuração (nunca em produção): o Ticker do Pixi depende de
@@ -144,6 +189,7 @@ export function WorldCanvas({
 
     return () => {
       cancelado = true;
+      desligar?.();
       cenaRef.current?.destruir();
       cenaRef.current = null;
       appLocal?.destroy(true, { children: true });
@@ -160,16 +206,17 @@ export function WorldCanvas({
     cenaRef.current?.sincronizar(estado);
   }, [estado, pronto]);
 
-  // Sem ResizeObserver de propósito: o canvas tem o tamanho nativo da sala e o
-  // CSS (`width:100%` + `height:auto`) faz o ajuste à tela preservando a
-  // proporção. Escalar também pela raiz do Pixi multiplicava as duas reduções.
+  // o boneco que o jogador controla pode mudar entre telas (dono × visitante)
+  useEffect(() => {
+    if (pronto) cenaRef.current?.definirFoco(avatarDonoId);
+  }, [avatarDonoId, pronto]);
 
   return (
     <div
       ref={hospedeiroRef}
       data-testid="world-canvas"
       data-pronto={pronto ? "1" : "0"}
-      className="w-full touch-manipulation select-none"
+      className="w-full min-w-0 touch-manipulation select-none"
       // Canvas é opaco para leitor de tela. O `img` + descrição textual garante
       // ao menos que a cena seja anunciada; a operação real da sede continua
       // possível 100% por teclado pelos botões do painel lateral (loja,

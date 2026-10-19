@@ -47,7 +47,7 @@ export function LateralMenu<T extends string>({
         const bloqueado = item.disponivel === false;
 
         const classe = cn(
-          "group relative grid h-9 w-9 place-items-center rounded-md shadow-hard transition-colors",
+          "group relative grid h-11 w-11 place-items-center rounded-md shadow-hard transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal",
           ativo
             ? "bg-orange text-ink"
             : bloqueado
@@ -58,14 +58,14 @@ export function LateralMenu<T extends string>({
 
         const conteudo = (
           <>
-            <Icon name={bloqueado ? "lock" : item.icon} size={17} />
+            <Icon name={bloqueado ? "lock" : item.icon} size={20} />
 
             {/* tooltip — só no hover, some em telas pequenas para não atrapalhar */}
             <span
               className={cn(
-                "pointer-events-none absolute left-11 hidden whitespace-nowrap rounded-sm bg-night/90 px-2 py-1",
+                "pointer-events-none absolute left-14 hidden whitespace-nowrap rounded-sm bg-night/90 px-2 py-1",
                 "font-pixel text-[8px] uppercase text-white opacity-0 transition-opacity",
-                "group-hover:opacity-100 sm:block",
+                "group-hover:opacity-100 group-focus-visible:opacity-100 sm:block",
               )}
             >
               {item.label}

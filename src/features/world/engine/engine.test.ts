@@ -18,6 +18,7 @@ import {
   dentroDaSala,
   distribuirAvatares,
   geometriaSala,
+  orientacaoDaCelula,
   slotParaCelula,
 } from "./sala";
 import { acharCaminho, bloqueiosDeMobilia, chaveCelula } from "./caminho";
@@ -357,5 +358,24 @@ describe("caminho — pathfinding do avatar", () => {
     expect(
       acharCaminho({ cx: -1, cy: 0 }, { cx: 1, cy: 1 }, { geo, bloqueadas: new Set() }),
     ).toBeNull();
+  });
+});
+
+describe("sala — orientação do móvel", () => {
+  it("quem está na parede da direita (cy = 0) olha para cy", () => {
+    for (const cx of [0, 1, 3]) expect(orientacaoDaCelula({ cx, cy: 0 })).toBe("cy");
+  });
+
+  it("quem está na parede da esquerda (cx = 0, cy > 0) olha para cx", () => {
+    for (const cy of [1, 2, 5]) expect(orientacaoDaCelula({ cx: 0, cy })).toBe("cx");
+  });
+
+  it("todo slot de mobília tem uma frente visível, em todos os níveis", () => {
+    for (const nivel of Object.keys(NIVEIS_SEDE).map(Number)) {
+      const geo = geometriaSala(nivel);
+      for (const celula of celulasDeSlot(geo).slice(0, geo.slots)) {
+        expect(["cx", "cy"]).toContain(orientacaoDaCelula(celula));
+      }
+    }
   });
 });

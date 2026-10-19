@@ -17,6 +17,22 @@ import type { IconName } from "@/components/ui/Icon";
  * — nunca hex avulso.
  */
 
+/**
+ * Silhueta com que o item é desenhado na sala (`world/render/desenho.ts`).
+ * É separada de `categoria` de propósito: a categoria agrupa por função na
+ * loja, a forma decide o desenho. Antes a forma vinha da categoria e três
+ * itens saíam errados (a Estação Dupla era um rack, o Quadro de Metas uma
+ * planta, a Estante Executiva um sofá).
+ */
+export type FormaMovel =
+  | "mesa"
+  | "estacao-dupla"
+  | "rack"
+  | "sofa"
+  | "planta"
+  | "quadro"
+  | "estante";
+
 export interface ItemMobilia {
   id: string;
   nome: string;
@@ -25,6 +41,7 @@ export interface ItemMobilia {
   cor: string;
   preco: number;
   categoria: "trabalho" | "conforto" | "decoracao" | "tecnologia";
+  forma: FormaMovel;
   descricao: string;
   bonus: {
     tecnologia?: number;
@@ -41,6 +58,7 @@ export const CATALOGO_MOBILIA: ItemMobilia[] = [
     cor: "bg-cat-media",
     preco: 400,
     categoria: "trabalho",
+    forma: "mesa",
     descricao: "O básico que sustenta tudo. Sem mesa, não tem escritório.",
     bonus: { processo: 1 },
   },
@@ -51,6 +69,7 @@ export const CATALOGO_MOBILIA: ItemMobilia[] = [
     cor: "bg-cat-growth",
     preco: 900,
     categoria: "tecnologia",
+    forma: "estacao-dupla",
     descricao: "Dois monitores, o dobro da produtividade — ou do café derramado.",
     bonus: { tecnologia: 2 },
   },
@@ -61,6 +80,7 @@ export const CATALOGO_MOBILIA: ItemMobilia[] = [
     cor: "bg-teal",
     preco: 2500,
     categoria: "tecnologia",
+    forma: "rack",
     descricao: "Zumbindo discreto no canto. É nele que tudo roda de verdade.",
     bonus: { tecnologia: 3 },
   },
@@ -71,6 +91,7 @@ export const CATALOGO_MOBILIA: ItemMobilia[] = [
     cor: "bg-cat-ads",
     preco: 1200,
     categoria: "conforto",
+    forma: "sofa",
     descricao: "Cliente que senta confortável negocia melhor. É ciência.",
     bonus: { presenca: 2 },
   },
@@ -81,6 +102,7 @@ export const CATALOGO_MOBILIA: ItemMobilia[] = [
     cor: "bg-cat-social",
     preco: 250,
     categoria: "decoracao",
+    forma: "planta",
     descricao: "Prova de vida no escritório — literalmente.",
     bonus: { presenca: 1 },
   },
@@ -91,6 +113,7 @@ export const CATALOGO_MOBILIA: ItemMobilia[] = [
     cor: "bg-orange",
     preco: 600,
     categoria: "decoracao",
+    forma: "quadro",
     descricao: "Onde os números viram gráfico e o gráfico vira orgulho.",
     bonus: { processo: 2 },
   },
@@ -101,6 +124,7 @@ export const CATALOGO_MOBILIA: ItemMobilia[] = [
     cor: "bg-cat-media",
     preco: 1800,
     categoria: "conforto",
+    forma: "estante",
     descricao: "Livros que ninguém lê, mas que impressionam quem visita.",
     bonus: { presenca: 1, processo: 1 },
   },

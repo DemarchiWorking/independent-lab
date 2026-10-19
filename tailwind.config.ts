@@ -25,6 +25,7 @@ const config: Config = {
         coral: { DEFAULT: color.brand.coral, dark: color.brand.coralDark },
         alert: color.alert.bannerBg,
         cat: color.category,
+        piso: { DEFAULT: color.world.pisoClaro, escuro: color.world.pisoEscuro, borda: color.world.pisoBorda },
         attr: color.attribute,
       },
       borderRadius: {

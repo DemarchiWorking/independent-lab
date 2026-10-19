@@ -18,6 +18,7 @@ import { cargoPorId } from "@/features/equipe-ia/catalogo";
 import { bloqueiosDeMobilia, chaveCelula } from "./engine/caminho";
 import {
   celulaInicialAvatar,
+  dentroDaSala,
   distribuirAvatares,
   geometriaSala,
   slotParaCelula,
@@ -142,7 +143,8 @@ export function WorldScreen({
         cx: m.celula.cx,
         cy: m.celula.cy,
         cor: corDoItem(m.item.cor),
-        categoria: m.item.categoria,
+        forma: m.item.forma,
+        nivel: m.colocado.nivel,
         selecionado:
           modo.tipo === "mover" && modo.itemColocadoId === m.colocado.id,
       })),
@@ -230,12 +232,19 @@ export function WorldScreen({
         return;
       }
 
+      // fora da sala não há o que andar (a mensagem de "mobília no caminho"
+      // seria enganosa aqui)
+      if (!dentroDaSala(celula.cx, celula.cy, geo)) {
+        setAviso("Isso fica fora da sala — clique no piso para andar.");
+        return;
+      }
+
       // chão livre: o boneco caminha até lá
       if (!canvasRef.current?.andarPara(celula)) {
         setAviso("Não dá para chegar aí — tem mobília no caminho.");
       }
     },
-    [modo, destinosLivres, moveisPosicionados, executar],
+    [modo, destinosLivres, moveisPosicionados, executar, geo],
   );
 
   const comprar = useCallback(
@@ -311,7 +320,7 @@ export function WorldScreen({
 
       <div className="grid gap-3 lg:grid-cols-[1fr_220px]">
         {/* O PALCO — canvas Pixi */}
-        <div className="overflow-hidden rounded-md bg-gradient-to-b from-[#0b1830] to-[#132241] p-3">
+        <div className="overflow-hidden rounded-md bg-gradient-to-b from-night to-card2 p-3">
           <WorldCanvas
             ref={canvasRef}
             estado={estadoCena}

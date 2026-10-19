@@ -82,6 +82,21 @@ export function celulaParaSlot(cx: number, cy: number, geo: GeometriaSala): numb
   return idx >= 0 && idx < geo.slots ? idx : null;
 }
 
+/**
+ * Para que lado a frente do móvel aponta: `cx` olha para a direita da tela
+ * (cx crescendo), `cy` para a esquerda (cy crescendo). Só essas duas faces
+ * aparecem para quem olha a sala, então um móvel nunca "vira as costas".
+ *
+ * Os móveis ficam encostados nas paredes do fundo, e a frente aponta para o
+ * miolo: quem está na parede da direita (cy = 0) olha para cy; quem está na
+ * parede da esquerda (cx = 0, cy > 0) olha para cx.
+ */
+export type Orientacao = "cx" | "cy";
+
+export function orientacaoDaCelula(celula: Celula): Orientacao {
+  return celula.cy === 0 ? "cy" : "cx";
+}
+
 /** A célula existe dentro da sala? */
 export function dentroDaSala(cx: number, cy: number, geo: GeometriaSala): boolean {
   return cx >= 0 && cy >= 0 && cx < geo.cols && cy < geo.rows;

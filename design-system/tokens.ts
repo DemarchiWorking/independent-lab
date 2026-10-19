@@ -40,6 +40,19 @@ export const color = {
     locked: "#E86A6A",
   },
   /**
+   * Cenário do World (sala isométrica): madeira do piso, as duas paredes do
+   * fundo e os tons de pele dos bonecos. O renderer só converte para número
+   * (`render/cores.ts`) — esta é a única definição dessas cores.
+   */
+  world: {
+    pisoClaro: "#B98B5A",
+    pisoEscuro: "#A87A4A",
+    pisoBorda: "#7A5530",
+    paredeDireita: "#2FA7A2",
+    paredeEsquerda: "#23838A",
+    pele: ["#F1C7A1", "#E8B08A", "#C98B5E", "#9A6A44", "#6B4428"],
+  },
+  /**
    * Os 5 eixos da economia de atributos do negócio (ver
    * docs/analise-prints/telas/economia-de-atributos.md) — o sistema que
    * amarra marketplace, árvore, mobília e Funcionários de IA. Cores

@@ -11,6 +11,7 @@ import type { PitchIA } from "@/features/vendas/pitchVisita";
 import { bloqueiosDeMobilia, chaveCelula } from "./engine/caminho";
 import {
   celulaInicialAvatar,
+  dentroDaSala,
   distribuirAvatares,
   geometriaSala,
   slotParaCelula,
@@ -151,7 +152,8 @@ export function VisitaScreen({
         cx: m.celula.cx,
         cy: m.celula.cy,
         cor: corDoItem(m.item.cor),
-        categoria: m.item.categoria,
+        forma: m.item.forma,
+        nivel: m.colocado.nivel,
         selecionado: false,
       })),
       avatares: [
@@ -213,6 +215,10 @@ export function VisitaScreen({
 
   const aoClicarCelula = (celula: Celula) => {
     setAviso(null);
+    if (!dentroDaSala(celula.cx, celula.cy, geo)) {
+      setAviso("Isso fica fora da sala — clique no piso para andar.");
+      return;
+    }
     if (!canvasRef.current?.andarPara(celula)) {
       setAviso("Não dá para chegar aí — tem mobília no caminho.");
     }
@@ -243,7 +249,7 @@ export function VisitaScreen({
       ) : null}
 
       <div className="grid gap-3 lg:grid-cols-[1fr_260px]">
-        <div className="overflow-hidden rounded-md bg-gradient-to-b from-[#0b1830] to-[#132241] p-3">
+        <div className="overflow-hidden rounded-md bg-gradient-to-b from-night to-card2 p-3">
           <WorldCanvas
             ref={canvasRef}
             estado={estadoCena}
