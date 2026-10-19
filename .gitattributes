@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Scripts e imagem rodam em Linux: LF sempre, mesmo em checkout no Windows.
+*.sh text eol=lf
+Dockerfile text eol=lf
+deploy/compose.yml text eol=lf
