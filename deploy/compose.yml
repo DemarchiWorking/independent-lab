@@ -1,0 +1,80 @@
+# independent-lab na VPS compartilhada.
+#
+# Regras desta stack (a VPS tem ~40 containers de outros projetos):
+#   - NÃO publica nenhuma porta no host. Só o Caddy da Vitrine alcança o app,
+#     pela rede externa "vitrine_web-net".
+#   - Isolamento: sistema de arquivos somente leitura, sem capabilities, sem
+#     escalar privilégio, com teto de memória, CPU e processos.
+#   - Dados em /opt/independent-lab/data (volume), fora da imagem.
+#
+# Uso (feito pelo deploy/publicar.sh):
+#   IMAGEM=independent-lab:<sha> docker compose -p independent-lab -f compose.yml up -d
+
+name: independent-lab
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  app:
+    image: ${IMAGEM:?defina IMAGEM (ex.: independent-lab:abc1234)}
+    container_name: independent-lab-app
+    restart: unless-stopped
+    env_file: /opt/independent-lab/.env
+    environment:
+      NODE_ENV: production
+      GAMEHUB_DATA_DIR: /data
+    volumes:
+      - /opt/independent-lab/data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/.next/cache:size=64m,uid=10001,gid=10001
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1.0
+    pids_limit: 200
+    init: true
+    logging: *logging
+    networks: [lab-net, vitrine_web-net]
+
+  # Cópia diária compactada de /data, com retenção de BACKUP_DIAS dias.
+  # O arquivo fica em /opt/independent-lab/backups; copie essa pasta para fora
+  # da VPS (ver deploy/README.md, "Backup fora da VPS").
+  backup:
+    image: alpine:3.22
+    container_name: independent-lab-backup
+    restart: unless-stopped
+    environment:
+      BACKUP_DIAS: ${BACKUP_DIAS:-14}
+    volumes:
+      - /opt/independent-lab/data:/data:ro
+      - /opt/independent-lab/backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        while true; do
+          arq="/backups/dados-$$(date +%Y%m%d-%H%M%S).tar.gz"
+          tar -czf "$$arq" -C /data . && chmod 600 "$$arq"
+          find /backups -name 'dados-*.tar.gz' -mtime +"$$BACKUP_DIAS" -delete
+          echo "backup ok: $$arq"
+          sleep 86400
+        done
+    mem_limit: 64m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+    networks: [lab-net]
+
+networks:
+  lab-net:
+  vitrine_web-net:
+    external: true

@@ -65,7 +65,7 @@ prints de referência: [`docs/design/`](docs/design/).
 ## Comandos
 
 ```bash
-npm run dev         # localhost:8081, GAMEHUB_DB=file (sem infra)
+npm run dev         # 127.0.0.1:8081, GAMEHUB_DB=file; gera o GAMEHUB_SECRET local sozinho
 npm run typecheck   # tsc --noEmit — gate obrigatório
 npm test            # vitest — gate obrigatório
 npm run build       # gate obrigatório antes de qualquer deploy
@@ -110,49 +110,35 @@ typecheck, teste e build não pegariam.
 
 ## Operando na VPS (produção)
 
-Arquitetura: **Nginx** (80/443, público) → **PM2** (`next start`, só em
-`127.0.0.1:8081`) → app. Sem Docker — deliberado, para uma VPS pequena que
-precisa estar no ar rápido. Guia humano completo:
-[`deploy/README.md`](deploy/README.md).
+Arquitetura: **Caddy** da Vitrine (dono da porta 443, faz o HTTPS) →
+**container `independent-lab-app`** (Next.js standalone, usuário não-root,
+sem porta publicada no host). A VPS é **compartilhada** com ~40 containers
+de outros projetos: este projeto não instala Nginx, certbot, ufw nem mexe em
+Docker ou portas dos outros. Guia completo: [`deploy/README.md`](deploy/README.md).
+Relatório da auditoria: [`docs/seguranca/RELATORIO-2026-10.md`](docs/seguranca/RELATORIO-2026-10.md).
 
-### "Ativar para a internet inteira" (primeiro deploy)
+### Publicar (primeira vez e atualizações)
 
-```bash
-ssh hostinger          # ou o alias/host configurado para a VPS
-cd ~/labdatadev-gamehub
-./deploy/vps-setup.sh                               # só HTTP
-./deploy/vps-setup.sh app.seudominio.com.br voce@email.com   # com HTTPS
-```
-
-Isso instala Node/PM2/Nginx, configura firewall (só 22/80/443 públicos — o
-app nunca fica exposto direto), gera `.env` com `GAMEHUB_SECRET`, builda e
-sobe o processo. **Idempotente** — pode rodar de novo sem quebrar.
-
-### Esteira de melhoria contínua (toda atualização depois da primeira)
+Roda na SUA máquina, via `ssh hostinger`. Pede confirmação digitada.
 
 ```bash
-ssh hostinger "cd ~/labdatadev-gamehub && ./deploy/deploy.sh"
+./deploy/publicar.sh           # constrói na VPS, troca a versão, rollback sozinho se falhar
+./deploy/borda-caddy.sh        # só na 1ª vez (e depois de reinstalar a Vitrine): liga o HTTPS
 ```
 
-Ou automático: push na `main` → `.github/workflows/deploy.yml` roda
-typecheck+test, e só então SSHa na VPS e chama `deploy/deploy.sh` — que
-**também** roda typecheck+test+build antes de tocar no processo em produção
-(gate duplo, de propósito). Se qualquer verificação falhar, a versão antiga
-continua no ar.
+`publicar.sh` confere árvore limpa, roda typecheck e testes, constrói a
+imagem na VPS com `nice`, faz snapshot dos dados, sobe o container e só
+considera pronto quando `/api/health` responde com o sha NOVO. Não há deploy
+automático por CI: uma chave de deploy no GitHub daria root em todos os
+projetos da VPS. O CI (`.github/workflows/ci.yml`) só verifica.
 
-**Ciclo esperado de melhoria contínua:**
-```
-mudar código → npm run typecheck/test/build local → commit → push
-   → CI valida de novo → deploy.sh valida de novo → PM2 reload → healthcheck
-   → (se falhar em qualquer ponto, produção não muda)
-```
-
-### Operação do dia a dia
+### Operação do dia a dia (na VPS)
 
 ```bash
-pm2 status                        # está no ar?
-pm2 logs labdatadev-gamehub       # logs em tempo real
-sudo nginx -t                     # valida config antes de recarregar
+docker ps --filter name=independent-lab             # está no ar? (healthy)
+docker logs -f independent-lab-app                  # logs em tempo real
+curl -s https://lab.2-25-146-39.sslip.io/api/health # versão e uptime
+ls /opt/independent-lab/backups                     # backup diário + um antes de cada deploy
 ```
 
 ### Modular e personalizável — como estender sem quebrar nada
@@ -172,13 +158,37 @@ sudo nginx -t                     # valida config antes de recarregar
 ### Segurança — o que NÃO fazer num agente operando aqui
 
 - Nunca commitar `.env` (já no `.gitignore` — confira antes de `git add -A`).
-- Nunca expor a porta 8081 direto (o processo já sobe em `127.0.0.1` — não
-  mude isso em `deploy/ecosystem.config.js` sem motivo forte).
-- Nunca rodar `git push --force`, `git reset --hard` na VPS, ou apagar
-  `data/` sem confirmar com o usuário antes — `data/` tem cadastros reais.
-- Nunca pular o gate (`typecheck`/`test`/`build`) "para ir mais rápido" — é
-  exatamente o que existe para nunca sujeitar a versão pública a mudança
-  quebrada.
+- Nunca publicar uma porta do container no host (`ports:` no compose): o
+  único caminho público é o Caddy. E nunca mexer em Nginx, Docker, firewall
+  ou portas de outro projeto da VPS para "facilitar".
+- Nunca apagar `/opt/independent-lab/data` ou `.env` sem confirmar com o
+  usuário: `data/` tem cadastros reais e trocar `GAMEHUB_SECRET` desconecta
+  todo mundo e invalida todos os convites.
+- Nunca rodar `vps-hardening.sh --aplicar` nem `borda-caddy.sh` sem o
+  usuário pedir: mexem em SSH e na borda HTTPS de toda a VPS.
+- Nunca pular o gate (`typecheck`/`test`/`build`/`npm audit`) "para ir mais
+  rápido".
+- Nunca reintroduzir segredo padrão, senha escrita no código ou
+  `process.env[nome]` dinâmico em código de browser.
+
+### Regras de segurança do código (auditoria 2026-10)
+
+- **Sessão e convite** usam chaves diferentes (`lib/auth/assinatura.ts`): um
+  token de um propósito nunca vale no outro. Todo token novo ganha propósito
+  próprio e `exp`.
+- **Server actions recebem dado de qualquer cliente.** Todo texto tem teto de
+  tamanho (`lib/validacao.ts`), toda opção é conferida contra a lista, e todo
+  id vindo do cliente é validado (`pastaTenant` exige 24 hex).
+- **Recompensa só no servidor e só uma vez:** `recompensar()` aceita só
+  `EVENTOS_DO_CLIENTE` (`features/gamificacao/guarda.ts`); missão paga uma
+  vez por marco (`repo.registrarMarco`). Evento novo com valor entra com
+  guarda própria, nunca solto no dispatcher.
+- **Modo arquivo:** toda escrita passa por `lib/db/arquivo.ts` (atômica,
+  com trava, falha alto se o JSON estiver corrompido). Método novo que grava
+  entra em `OPERACOES_DE_ESCRITA` no fim de `file-adapter.ts`. Exige UMA
+  instância do app.
+- **Browser só recebe fachada pública** (`VizinhoPublico`, `PitchIA`): XP,
+  moeda, atributos e consentimento ficam no servidor.
 
 ## Armadilhas conhecidas
 
