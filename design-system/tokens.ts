@@ -21,10 +21,12 @@ export const color = {
     light: "#F8FAFC", // fundo claro (árvore/grid iso)
     panel: "#FFFFFF", // painel de modal
     line: "#22345C", // hairline no dark
+    lineLight: "#E2E8F0", // hairline em documento claro
   },
   text: {
     ink: "#0A1628", // texto principal
-    muted: "#94A3B8", // texto secundário
+    muted: "#94A3B8", // texto secundário (sobre fundo escuro)
+    mutedOnLight: "#475569", // texto secundário sobre fundo claro (contraste AA)
     onOrange: "#0A1628", // texto sobre laranja (contraste AA)
   },
   alert: {

@@ -55,6 +55,14 @@ const nextConfig = {
   outputFileTracingRoot: fileURLToPath(new URL(".", import.meta.url)),
   /** Servidor mínimo para o container (`.next/standalone/server.js`). */
   output: "standalone",
+  /**
+   * A rota que gera as imagens dos carrosséis lê as fontes (TTF) do disco em
+   * tempo de execução. O rastreamento automático do build não enxerga esse
+   * `readFile`, então o Next não copiaria as fontes para o container.
+   */
+  outputFileTracingIncludes: {
+    "/api/entregavel/[tipo]": ["./src/assets/fonts/**/*"],
+  },
   /** Não anuncia "X-Powered-By: Next.js". */
   poweredByHeader: false,
   /**

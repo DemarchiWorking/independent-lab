@@ -2,6 +2,10 @@ import { defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
 
 export default defineConfig({
+  // O tsconfig usa `jsx: preserve` (o Next faz a transformação). No Vitest o
+  // transformador (oxc, no Vite atual) precisa converter o JSX, senão qualquer
+  // teste que importe um .tsx falha.
+  oxc: { jsx: { runtime: "automatic" } },
   test: {
     include: ["src/**/*.test.ts"],
     environment: "node",

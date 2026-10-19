@@ -1,153 +1,213 @@
-import type { CenaReel, PerfilNegocio, RoteiroReel } from "./tipos";
-import { GARGALO_TEXTO, OBJETIVO_TEXTO, vocabulario } from "./vocabulario";
+import { contextoPublico, type ContextoPublico } from "./contexto";
+import { baseadoEm, metaDoDocumento, secao } from "./documento";
+import { capitalizar, hashtag, minusculaInicial, truncar } from "./linguagem";
+import { perfilDeMercado } from "./mercado";
+import type {
+  CenaReel,
+  ContextoNegocio,
+  Documento,
+  PerfilMercado,
+  RoteiroReel,
+} from "./tipos";
 
 /**
- * Roteiro de Reels a partir do perfil (entregável do Editor de Vídeo de
- * IA). Puro — ver cabeçalho de `canvas.ts`.
+ * Roteiro de vídeo curto (Reels, TikTok, Shorts) — entregável do Editor de
+ * Vídeo IA.
  *
- * Por que ROTEIRO e não vídeo renderizado: o que trava o empresário de
- * PME não é a edição, é não saber *o que dizer nos primeiros 3 segundos*.
- * Um roteiro cena a cena, com o que falar e o que aparecer na tela, ele
- * grava no celular hoje. Um MP4 genérico gerado por máquina, não — sairia
- * com a cara de todo mundo e sem o rosto dele, que é justamente o ativo
- * de um negócio regional. Prometer "vídeo pronto" aqui seria vender o que
- * não se entrega (mesma disciplina de honestidade de
- * `docs/pitch/NARRATIVA-IMPACTO.md`).
+ * Por que ROTEIRO e não vídeo renderizado: o que trava o empresário não é a
+ * edição, é não saber o que dizer nos três primeiros segundos. Um roteiro cena
+ * a cena, com o que falar, o que mostrar e o texto que aparece na tela, ele
+ * grava no celular hoje — com o rosto dele, que é o maior ativo de um negócio
+ * local. A geração de vídeo por IA é um caminho opcional, descrito em
+ * `docs/integracoes/GOOGLE-VIDEO-API.md`.
  *
- * Estrutura de 3 atos em vídeo curto — gancho / desenvolvimento / CTA —
- * com o gancho carregando a dor do nicho, porque é o único trecho que a
- * plataforma usa para decidir se entrega o vídeo para mais gente.
+ * Estrutura de vídeo curto: gancho, conteúdo útil, apresentação e convite. O
+ * gancho carrega a dor DO CLIENTE (não a do dono), porque é o único trecho que
+ * a plataforma usa para decidir se entrega o vídeo a mais gente.
+ *
+ * Material público: só lê o contexto público (ver `contexto.ts`).
  */
 
-/** Segundos por cena — o roteiro nasce no ritmo certo de vídeo curto. */
-const SEGUNDOS_POR_CENA = 6;
+/** Segundos por cena — o roteiro nasce no ritmo de vídeo curto. */
+export const SEGUNDOS_POR_CENA = 6;
 
-export function gerarReel(perfil: PerfilNegocio): RoteiroReel {
-  const v = vocabulario(perfil.segmento);
-  const { respostas, nivelAgente } = perfil;
-  const nivel2 = nivelAgente >= 2;
-  const nivel3 = nivelAgente >= 3;
-  const gargalo = GARGALO_TEXTO[respostas.gargalo];
+/** Texto de tela: curto o bastante para ler em um relance. */
+const LIMITE_LEGENDA_TELA = 42;
 
-  // A janela de tempo é DERIVADA da posição, nunca escrita à mão: as cenas
-  // de nível 2 e 3 entram no meio do roteiro, e um tempo fixo faria as
-  // cenas seguintes mentirem o cronômetro assim que o agente evoluísse.
+export function gerarReel(ctx: ContextoNegocio): RoteiroReel {
+  const pub = contextoPublico(ctx);
+  const p = perfilDeMercado(pub.nicho);
+  const nivel = ctx.nivel;
+
   const cenas: CenaReel[] = [];
-  const cena = (papel: string, fala: string, imagem: string) => {
+  // A janela de tempo é DERIVADA da posição: cenas de nível 2 e 3 entram no
+  // meio do roteiro, e um tempo escrito à mão faria as seguintes mentirem.
+  const cena = (papel: string, fala: string, imagem: string, legenda: string) => {
     const i = cenas.length;
     cenas.push({
       tempo: `${i * SEGUNDOS_POR_CENA}–${(i + 1) * SEGUNDOS_POR_CENA}s`,
       papel,
       fala,
       imagem,
+      legenda: truncar(legenda, LIMITE_LEGENDA_TELA),
     });
   };
 
-  // Construção de CÓPULA ("isso: <dor>"), não de conjugação. As dores do
-  // vocabulário são um misto de infinitivo ("perder prazo de edital") e de
-  // sintagma nominal ("agenda cheia sem sobrar tempo"); qualquer tentativa
-  // de flexionar a primeira palavra acerta metade dos segmentos e produz
-  // frase quebrada na outra metade. Cópula aceita as duas formas.
+  const dor = p.dores[0];
+  const dica = p.dicas[0];
+
   cena(
     "Gancho",
-    `Se você tem ${v.oQueVende} aqui em ${perfil.cidade}, você já passou por isso: ${v.dorTipica}.`,
-    "Você falando de frente para a câmera, sem introdução e sem logo — o corte já começa na frase.",
+    `${capitalizar(dor)}? Se você é de ${pub.cidade}, este vídeo é para você.`,
+    "Você de frente para a câmera, sem introdução e sem logo. O corte já começa na frase.",
+    `${capitalizar(dor)}?`,
   );
   cena(
-    "Dor",
-    `O que mais trava negócio como o meu é ${v.dorTipica}. E quase sempre não é falta de trabalho: é falta de organização.`,
-    "Plano do dia a dia real do negócio (mesa, obra, atendimento, bancada). Nada de banco de imagens.",
+    "Dica",
+    `Uma dica rápida: ${minusculaInicial(dica.pontos[0])}.`,
+    "Mostre o que está falando: o objeto, o documento, o local. Se não tiver o que mostrar, fique em quadro e use o gesto.",
+    "Dica rápida",
   );
 
-  if (nivel2) {
+  if (nivel >= 2) {
+    cena(
+      "Segunda dica",
+      `E mais uma: ${minusculaInicial(dica.pontos[1] ?? dica.pontos[0])}.`,
+      "Mude o enquadramento ou o cenário para manter o ritmo. Corte de um ângulo para outro a cada cena.",
+      "Mais uma dica",
+    );
+  }
+
+  cena(
+    "Apresentação",
+    `Aqui é ${pub.nome}, em ${pub.cidade}. A gente trabalha com ${p.oQueVende}.`,
+    "Você de novo em quadro, em um lugar que mostre o negócio: balcão, bancada, obra, consultório, cozinha.",
+    `${pub.nome} · ${pub.cidade}`,
+  );
+
+  if (nivel >= 3) {
     cena(
       "Prova",
-      `${capitalizar(v.argumentoChave)}.`,
-      "Mostre UMA evidência concreta: um documento, uma tela, um antes/depois. Uma só — duas confundem.",
+      "Olha um exemplo real do que a gente faz.",
+      `Mostre uma evidência concreta, uma só: ${minusculaInicial(p.provas[0])}.`,
+      "Exemplo real",
     );
   }
 
   cena(
-    "Virada",
-    nivel2
-      ? `Aqui na ${perfil.nomeNegocio} a gente resolveu isso atacando ${gargalo}.`
-      : `Na ${perfil.nomeNegocio} a gente trabalha com ${v.oQueVende} — e o processo é o que faz a diferença.`,
-    "Você de novo em quadro. Mudança de cenário ou de enquadramento marca a virada.",
+    "Convite",
+    `Quer conversar? Chama no WhatsApp ou comenta QUERO que eu te respondo.`,
+    "Close no seu rosto, com texto grande na tela. Convite para comentar costuma gerar mais alcance que \"link na bio\".",
+    "Chama no WhatsApp",
   );
 
-  if (nivel3) {
-    cena(
-      "Objeção",
-      "E não, isso não é coisa de empresa grande. É exatamente o que dá pra fazer sendo pequeno e ganhar tempo.",
-      "Texto na tela repetindo a frase — quem assiste sem som precisa pegar essa parte.",
-    );
-  }
+  const ganchosAlternativos =
+    nivel >= 2
+      ? [
+          `Ninguém te conta isso sobre ${p.oQueVende} em ${pub.cidade}.`,
+          `${capitalizar(p.dores[1] ?? dor)}? Veja como evitar.`,
+          "Antes de fechar com alguém, confira isto.",
+        ]
+      : [];
 
-  cena(
-    "CTA",
-    `Se você é de ${perfil.cidade} e quer ${OBJETIVO_TEXTO[respostas.objetivo]}, comenta “${palavraChave(respostas.objetivo)}” que eu te explico.`,
-    "Close no seu rosto + texto grande com a palavra do comentário. CTA de comentário rende mais alcance que “link na bio”.",
-  );
-
-  const ganchosAlternativos = nivel2
-    ? [
-        `Ninguém te conta isso sobre ${v.oQueVende} em ${perfil.cidade}.`,
-        `O que me custou dinheiro por anos: ${v.dorTipica}.`,
-        `3 sinais de que o problema não é falta de cliente — é ${gargalo}.`,
-      ]
-    : [];
-
-  const reaproveitamento = nivel3
-    ? [
-        "Corte só o gancho (0–6s) e suba como Story com enquete — mede o interesse antes de investir mais.",
-        "Transforme as cenas de Dor e Prova num carrossel de 3 telas para LinkedIn/Instagram.",
-        "O texto da cena de Objeção vira o primeiro parágrafo do próximo e-mail para a base.",
-        "Se o vídeo passar da média de alcance, use exatamente ele como criativo de anúncio — não regrave.",
-      ]
-    : [];
+  const reaproveitamento =
+    nivel >= 3
+      ? [
+          "Corte só o gancho (primeira cena) e publique como Story com enquete, para medir o interesse",
+          "Transforme as dicas em um carrossel de três telas, com o pacote do Social Media IA",
+          "Use o texto das cenas como legenda e como mensagem para clientes que autorizaram receber novidades",
+          "Se o vídeo passar da média de alcance da sua conta, use esse mesmo vídeo como criativo de anúncio",
+        ]
+      : [];
 
   return {
-    titulo: `Roteiro de Reels — ${perfil.nomeNegocio}`,
-    subtitulo: `${v.oQueVende} · ${perfil.cidade}`,
+    titulo: `Roteiro de vídeo curto: ${pub.nome}`,
+    subtitulo: `${p.rotulo} · ${pub.cidade}`,
+    meta: {
+      ...metaDoDocumento(ctx, { cargo: "Editor(a) de Vídeo IA", circulacao: "publico" }),
+      baseadoEm: baseadoEm(ctx, false),
+    },
     duracaoSegundos: cenas.length * SEGUNDOS_POR_CENA,
     cenas,
-    legenda: montarLegenda(perfil, v.dorTipica, gargalo),
-    hashtags: [v.hashtag, `#${slugTag(perfil.cidade)}`, "#pmebrasil", "#valedocafe"],
+    legenda: legendaDoVideo(pub, p, dor),
+    hashtags: etiquetas(pub, p),
     ganchosAlternativos,
     reaproveitamento,
+    capturaChecklist: [
+      "Grave na vertical (9:16), com o celular firme ou apoiado",
+      "Limpe a lente da câmera antes de começar",
+      "Prefira luz natural, de frente para a janela, nunca com a janela atrás de você",
+      "Grave em lugar silencioso: o áudio pesa mais que a imagem",
+      "Fale devagar e olhe para a câmera, não para a tela",
+      "Faça duas tentativas de cada cena e escolha a melhor",
+      "Peça autorização a quem aparecer no vídeo",
+      "Use só música livre de direitos autorais, do banco da própria plataforma",
+    ],
+    formatos: [
+      "9:16 (Reels, TikTok e Shorts): formato principal, grave neste",
+      "1:1 (feed do Instagram e do LinkedIn): corte a partir do 9:16, deixando o rosto no centro",
+      "16:9 (YouTube e anúncios): só se você gravar na horizontal",
+    ],
   };
 }
 
-function montarLegenda(perfil: PerfilNegocio, dor: string, gargalo: string): string {
-  return (
-    `${capitalizar(dor)} é o que mais aparece quando converso com quem tem negócio ` +
-    `em ${perfil.cidade}.\n\n` +
-    `Não é falta de competência. Quase sempre é ${gargalo}.\n\n` +
-    `Comenta aqui embaixo se isso acontece com você também — respondo um por um.`
-  );
+function legendaDoVideo(pub: ContextoPublico, p: PerfilMercado, dor: string): string {
+  return [
+    `${capitalizar(dor)}? Foi por isso que eu gravei este vídeo.`,
+    `Se você é de ${pub.cidade} e precisa de ${p.oQueVende}, chama ${pub.nome} no WhatsApp.`,
+    "Comenta QUERO que eu te respondo.",
+  ].join("\n\n");
 }
 
-/** Palavra que o espectador comenta — curta, sem acento, fácil de digitar
- *  no celular (uma palavra errada no CTA derruba a conversão do Reel). */
-function palavraChave(objetivo: PerfilNegocio["respostas"]["objetivo"]): string {
-  const mapa: Record<PerfilNegocio["respostas"]["objetivo"], string> = {
-    "mais-leads": "LEADS",
-    organizar: "ORDEM",
-    "vender-mais": "VENDER",
-    aparecer: "REGIAO",
-    automatizar: "TEMPO",
+function etiquetas(pub: ContextoPublico, p: PerfilMercado): string[] {
+  const todas = [...p.hashtags, hashtag(pub.cidade), "#apoielocal"].filter(Boolean);
+  return [...new Set(todas)].slice(0, 6);
+}
+
+/** O roteiro como documento, para os renderers de HTML e Markdown. */
+export function reelParaDocumento(roteiro: RoteiroReel): Documento {
+  const secoes = [
+    secao(
+      "roteiro",
+      `Roteiro: ${roteiro.duracaoSegundos} segundos, ${roteiro.cenas.length} cenas`,
+      roteiro.cenas.map((c) => ({
+        tipo: "cena" as const,
+        tempo: c.tempo,
+        papel: c.papel,
+        fala: c.fala,
+        imagem: c.imagem,
+        legenda: c.legenda,
+      })),
+      "O vídeo deve funcionar sem som: o texto de tela de cada cena precisa fazer sentido sozinho.",
+    ),
+    secao("legenda", "Legenda da publicação", [
+      { tipo: "mensagem", rotulo: "Legenda", texto: roteiro.legenda },
+      { tipo: "mensagem", rotulo: "Hashtags", texto: roteiro.hashtags.join(" ") },
+    ]),
+    secao("captura", "Checklist antes de gravar", [{ tipo: "checklist", itens: roteiro.capturaChecklist }]),
+    secao("formatos", "Formatos de entrega", [{ tipo: "lista", itens: roteiro.formatos }]),
+  ];
+  if (roteiro.ganchosAlternativos.length > 0) {
+    secoes.push(
+      secao("ganchos", "Ganchos alternativos (teste um por vídeo)", [
+        { tipo: "lista", itens: roteiro.ganchosAlternativos },
+      ]),
+    );
+  }
+  if (roteiro.reaproveitamento.length > 0) {
+    secoes.push(
+      secao("reaproveitamento", "Reaproveitamento sem regravar", [
+        { tipo: "lista", itens: roteiro.reaproveitamento },
+      ]),
+    );
+  }
+  return {
+    tipo: "reel",
+    titulo: roteiro.titulo,
+    subtitulo: roteiro.subtitulo,
+    meta: roteiro.meta,
+    secoes,
+    dados: { roteiro },
   };
-  return mapa[objetivo];
 }
 
-function slugTag(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-}
-
-function capitalizar(texto: string): string {
-  return texto.charAt(0).toUpperCase() + texto.slice(1);
-}
