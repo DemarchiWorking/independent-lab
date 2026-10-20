@@ -35,6 +35,13 @@ export type ResultadoValidacao = { ok: true; conteudo: ConteudoIA } | { ok: fals
 
 const MAX_PROBLEMAS = 25;
 
+/**
+ * `artigo-antes-do-nome` existe para pegar o chute de gênero do GERADOR de regras ("a Mercado
+ * Fiel"). Um modelo decide pelo contexto, e "O Studio Bela Cabelos atende..." é português
+ * natural: reprovar por isso só geraria recusa desnecessária. O prompt pede para evitar o artigo.
+ */
+const CODIGO_DO_GERADOR = "artigo-antes-do-nome";
+
 /** Para o log: só códigos, nunca o conteúdo. */
 export const problemasParaLog = (ps: readonly Problema[]): string[] => [...new Set(ps.map((p) => `${p.codigo}@${p.onde}`))].slice(0, MAX_PROBLEMAS);
 
@@ -334,6 +341,7 @@ function validarDocumento(saida: unknown, o: OpcoesValidacao): ResultadoValidaca
   // mesmo linter dos geradores
   const publico = base.meta.circulacao === "publico";
   for (const p of auditarDocumento(doc, { nomeNegocio: o.nomeNegocio, publico, permitirColchetes: false })) {
+    if (p.codigo === CODIGO_DO_GERADOR) continue;
     c.add(p.codigo, p.onde, p.trecho);
   }
 
@@ -421,6 +429,7 @@ function validarPacote(saida: unknown, o: OpcoesValidacao): ResultadoValidacao {
 
   // Rascunhos (com [campos]) são permitidos nas pautas; o resto vale como em qualquer material público.
   for (const p of auditarDocumento(doc, { nomeNegocio: o.nomeNegocio, publico: true, permitirColchetes: true })) {
+    if (p.codigo === CODIGO_DO_GERADOR) continue;
     c.add(p.codigo, p.onde, p.trecho);
   }
 

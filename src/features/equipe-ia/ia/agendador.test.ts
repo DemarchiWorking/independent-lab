@@ -4,9 +4,9 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ciclo } from "../../../../ia-worker/worker.mjs";
 import { executarTick, iniciarAgendador, pararAgendador } from "./agendador";
-import { garantirConfig, gravarConfig } from "./config";
+import { gravarConfig } from "./config";
 import { listarIds, pastaIA } from "./fila";
-import { bemComportado, criarTenant, esvaziarFila, servidorApi, worker } from "./teste-ambiente-ia";
+import { bemComportado, criarTenant, esvaziarFila, garantirConfigDeTeste as garantirConfig, MODOS, servidorApi, usarModo, worker } from "./teste-ambiente-ia";
 import { solicitarRefino } from "./servico-ia";
 import { lerRegistro } from "./versoes";
 
@@ -29,6 +29,9 @@ afterEach(async () => {
   process.env.GAMEHUB_DATA_DIR = anterior;
   await rm(pasta, { recursive: true, force: true });
 });
+
+describe.each(MODOS)("[modo %s]", (modo) => {
+  beforeEach(() => usarModo(modo));
 
 describe("agendador", () => {
   it("coleta a cada passo e varre de hora em hora, melhorando quando a fila está vazia", async () => {
@@ -159,4 +162,5 @@ describe("agendador", () => {
     pararAgendador();
     expect(globalThis.__iaAgendador).toBeUndefined();
   });
+});
 });

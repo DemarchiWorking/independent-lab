@@ -76,7 +76,7 @@ export declare function classificarHttp(
   corpo: unknown,
   cabecalhos?: { get(nome: string): string | null },
 ): DecisaoDeFalha;
-export declare function classificarCli(texto: unknown): DecisaoDeFalha;
+export declare function classificarCli(texto: unknown, apiStatus?: number): DecisaoDeFalha;
 export declare function custoEstimado(config: ConfigIA | null, modelo: string, uso: UsoTokens): number;
 export declare function extrairJson(texto: unknown): unknown;
 

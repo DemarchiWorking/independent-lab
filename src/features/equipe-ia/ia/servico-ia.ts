@@ -181,6 +181,7 @@ export async function solicitarRefino(
   tipo: TipoEntregavel,
   prioridade: PrioridadeIA,
   agora: Date = new Date(),
+  opcoes: { automatico?: boolean } = {},
 ): Promise<Solicitacao> {
   const config = await lerConfig();
   if (!config.ativa) return { ok: false, motivo: "desativada", mensagem: "O refinamento por IA está desligado no momento. O seu material continua disponível." };
@@ -195,7 +196,8 @@ export async function solicitarRefino(
   const aberto = await pedidoAberto(tenantId, tipo);
   if (aberto) return { ok: true, estado: aberto.estado === "processando" ? "processando" : "na-fila", posicao: aberto.posicao, jaEstava: true };
 
-  if (prioridade === "usuario") {
+  // A primeira geração automática não gasta o teto de pedidos do dono: ele não pediu nada.
+  if (prioridade === "usuario" && !opcoes.automatico) {
     const usados = await pedidosHoje(tenantId, agora);
     if (usados >= config.limites.pedidosPorNegocioDia) {
       return {
@@ -225,10 +227,42 @@ export async function solicitarRefino(
   });
   if (!id) return { ok: false, motivo: "entrada-grande", mensagem: "Os dados do negócio ficaram grandes demais para o refinamento. Reduza o texto das ofertas." };
 
-  if (prioridade === "usuario") await contarPedido(tenantId, agora);
+  if (prioridade === "usuario" && !opcoes.automatico) await contarPedido(tenantId, agora);
   await marcarTentativa(tenantId, tipo, agora);
   const agoraAberto = await pedidoAberto(tenantId, tipo);
   return { ok: true, estado: "na-fila", posicao: agoraAberto?.posicao ?? 1, jaEstava: false };
+}
+
+/** Espera mínima entre duas tentativas automáticas no mesmo material (abrir a tela não pode virar laço). */
+const ESPERA_ENTRE_AUTOMATICAS_MS = 30 * 60_000;
+
+/**
+ * "Quem entra recebe a melhor documentação": se o dono autorizou a IA e este material
+ * ainda não tem versão de IA para os dados de hoje, a geração começa sozinha, na
+ * primeira vez que ele abre o material ou logo depois de autorizar. Prioridade de usuário
+ * (passa na frente da melhoria contínua), sem gastar o teto de pedidos dele.
+ *
+ * Não insiste: respeita falhas seguidas e uma espera mínima entre tentativas. Nunca
+ * lança: é um benefício extra, não pode atrapalhar a tela.
+ */
+export async function garantirPrimeiraGeracao(repo: GameRepository, tenantId: string, tipo: TipoEntregavel, agora: Date = new Date()): Promise<boolean> {
+  try {
+    if (!(await lerConfig()).ativa) return false;
+    if (!(await temConsentimento(tenantId))) return false;
+    const info = await contextoDoTenant(repo, tenantId, tipo, agora);
+    if (!info) return false;
+    const registro = await lerRegistro(tenantId, tipo);
+    if (versaoVigente(registro, hashContexto(info.ctx), GERADOR_IA_VERSAO)) return false;
+    if (registro.falhasSeguidas >= FALHAS_SEGUIDAS_LIMITE) return false;
+    const ultima = registro.ultimaTentativaEm ? new Date(registro.ultimaTentativaEm).getTime() : 0;
+    if (agora.getTime() - ultima < ESPERA_ENTRE_AUTOMATICAS_MS) return false;
+    if (await pedidoAberto(tenantId, tipo)) return false;
+    const r = await solicitarRefino(repo, tenantId, tipo, "usuario", agora, { automatico: true });
+    return r.ok && !r.jaEstava;
+  } catch (e) {
+    console.warn(JSON.stringify({ evento: "ia-primeira-geracao-falhou", tipo, erro: e instanceof Error ? e.name : "erro" }));
+    return false;
+  }
 }
 
 // --------------------------------------------------------------------- estado

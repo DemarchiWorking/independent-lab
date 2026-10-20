@@ -134,19 +134,42 @@ export function classificarHttp(status, corpo, cabecalhos) {
   return { codigo: "invalido", mensagem };
 }
 
-/** Mesma decisão para o `claude -p`, que devolve texto, não códigos HTTP. */
-export function classificarCli(texto) {
+/**
+ * Mesma decisão para o `claude -p`, que devolve texto e, na saída JSON, um
+ * `api_error_status` (o código HTTP que a API devolveu à CLI). Formatos reais
+ * vistos: "Failed to authenticate. API Error: 401 OAuth access token has expired"
+ * e "OAuth session expired and could not be refreshed", ambos com
+ * `is_error: true` e `subtype: "success"`.
+ *
+ * Limite da assinatura (janela de 5 horas ou semanal): a CLI avisa com texto, e
+ * o horário de volta pode vir como época depois de "|" ou como hora do relógio
+ * (sem fuso). Só a época é confiável; sem ela espera 60 min e tenta de novo, o
+ * que não custa nada: uma chamada recusada não gasta limite.
+ */
+export function classificarCli(texto, apiStatus) {
   const t = String(texto ?? "");
-  if (/(usage|rate)[ -]?limit|limit reached|too many requests|\b429\b/i.test(t)) {
+  const status = Number(apiStatus) || 0;
+
+  const limite = status === 429 || /rate[ -]?limit|too many requests|\b429\b/i.test(t) || (/limit/i.test(t) && /(reached|exceeded|reset|resets|hit)/i.test(t));
+  if (limite) {
     const reset = /\|\s*(\d{10})\b/.exec(t);
     const epoch = reset ? Number(reset[1]) * 1000 - Date.now() : null;
     const esperaMs = epoch && epoch > 0 ? Math.min(epoch, 6 * 60 * MIN) : 60 * MIN;
     return { codigo: "limite", esperaMs, mensagem: t.slice(0, 200) };
   }
-  if (/not logged in|login|authenticat|unauthori[sz]ed|expired|invalid (api key|token)|\b401\b|\b403\b/i.test(t)) {
+  // O modelo não existe ou não faz parte do plano: vale para todo pedido daquele modelo,
+  // então pausa e avisa o admin em vez de gastar as tentativas de cada pedido.
+  if (status === 404 || /model.{0,40}(not found|not available|does not exist|not supported|invalid)|issue with the selected model|invalid model/i.test(t)) {
+    return { codigo: "config", mensagem: t.slice(0, 200) };
+  }
+  if (
+    status === 401 ||
+    status === 403 ||
+    /not logged in|please run \/login|authenticat|unauthori[sz]ed|expired|could not be refreshed|re-?authenticate|invalid (api key|token|bearer)|\b401\b|\b403\b/i.test(t)
+  ) {
     return { codigo: "auth", mensagem: t.slice(0, 200) };
   }
-  if (/overloaded|\b529\b|\b5\d\d\b|econnreset|socket hang up|network/i.test(t)) {
+  if (status === 529 || status >= 500 || /overloaded|\b529\b|\b5\d\d\b|econnreset|socket hang up|enotfound|fetch failed|timed out|network/i.test(t)) {
     return { codigo: "sobrecarga", mensagem: t.slice(0, 200) };
   }
   return { codigo: "interno", mensagem: t.slice(0, 200) };
@@ -281,7 +304,9 @@ export function ambienteDoCli(env, casa) {
     USERPROFILE: casa,
     TMPDIR: casa,
     TEMP: casa,
-    CLAUDE_CONFIG_DIR: path.join(casa, ".claude"),
+    // Sem login persistente, a pasta de configuração é descartável (junto com a casa).
+    // Com IA_CLAUDE_CONFIG_DIR, é a pasta onde o operador fez `claude auth login`.
+    CLAUDE_CONFIG_DIR: env.IA_CLAUDE_CONFIG_DIR || path.join(casa, ".claude"),
     CLAUDE_CODE_OAUTH_TOKEN: env.CLAUDE_CODE_OAUTH_TOKEN ?? "",
     DISABLE_AUTOUPDATER: "1",
     NO_COLOR: "1",
@@ -293,13 +318,29 @@ export function ambienteDoCli(env, casa) {
 }
 
 /**
- * Uma chamada ao `claude -p`. Sem `--bare` de propósito: o modo bare ignora o
- * token OAuth. Sem ferramentas, sem MCP, sem comandos e sem sessão salva: o
- * modelo só devolve texto. A chave de API, se existisse, venceria a assinatura
- * em `-p`: por isso `ambienteDoCli` nunca a repassa.
+ * Uma chamada ao `claude -p` com a assinatura Pro/Max (modo principal).
+ *
+ * Sem `--bare`: ele ignora o token OAuth. Com `--safe-mode`: desliga CLAUDE.md,
+ * hooks, plugins e MCP do ambiente, mas mantém a autenticação. Sem ferramentas,
+ * sem comandos e sem sessão salva: o modelo só devolve texto. A chave de API, se
+ * existisse, venceria a assinatura em `-p`: por isso `ambienteDoCli` nunca a
+ * repassa.
+ *
+ * A credencial é o token de `claude setup-token` (vale 1 ano) ou uma pasta de
+ * login (`IA_CLAUDE_CONFIG_DIR`).
  */
-export async function chamarCli({ pedido, env, bin = "claude", argsIniciais = [], spawnImpl = spawn, sinal }) {
-  if (!env.CLAUDE_CODE_OAUTH_TOKEN) return { falha: { codigo: "config", mensagem: "CLAUDE_CODE_OAUTH_TOKEN ausente" } };
+export async function chamarCli(opcoes) {
+  const { pedido, env } = opcoes;
+  if (!env.CLAUDE_CODE_OAUTH_TOKEN && !env.IA_CLAUDE_CONFIG_DIR) {
+    return { falha: { codigo: "config", mensagem: "falta CLAUDE_CODE_OAUTH_TOKEN (ou IA_CLAUDE_CONFIG_DIR com o login feito)" } };
+  }
+  const primeira = await executarCli(opcoes, true);
+  // Se a CLI recusar o esquema, repete sem ele: o prompt já exige JSON e o app valida tudo.
+  if (primeira.falha?.esquema && pedido.schema) return executarCli(opcoes, false);
+  return primeira;
+}
+
+async function executarCli({ pedido, env, bin = "claude", argsIniciais = [], spawnImpl = spawn, sinal }, comEsquema) {
   const casa = await fs.mkdtemp(path.join(os.tmpdir(), "ia-worker-"));
   try {
     const arquivoSistema = path.join(casa, "sistema.txt");
@@ -310,18 +351,19 @@ export async function chamarCli({ pedido, env, bin = "claude", argsIniciais = []
       "--output-format",
       "json",
       "--no-session-persistence",
+      "--safe-mode",
       "--tools",
       "",
       "--disable-slash-commands",
       "--strict-mcp-config",
       "--max-turns",
-      "3",
+      "5",
       "--model",
       pedido.modelo,
       "--system-prompt-file",
       arquivoSistema,
     ];
-    if (pedido.schema) args.push("--json-schema", JSON.stringify(pedido.schema));
+    if (pedido.schema && comEsquema) args.push("--json-schema", JSON.stringify(pedido.schema));
 
     const resultado = await new Promise((resolve) => {
       let filho;
@@ -363,15 +405,19 @@ export async function chamarCli({ pedido, env, bin = "claude", argsIniciais = []
     } catch {
       /* saída que não é JSON: classifica pelo texto */
     }
-    if (!json || typeof json !== "object") return { falha: classificarCli(`${resultado.out}\n${resultado.err}`) };
+    const textoBruto = `${json?.result ?? resultado.out}\n${resultado.err}`;
+    const recusouEsquema = comEsquema && /json[- ]schema/i.test(textoBruto);
+    const comMarca = (falha) => (recusouEsquema ? { ...falha, esquema: true } : falha);
+    if (!json || typeof json !== "object") return { falha: comMarca(classificarCli(textoBruto)) };
 
     const u = json.usage ?? {};
     const uso = {
       entrada: (Number(u.input_tokens) || 0) + (Number(u.cache_read_input_tokens) || 0) + (Number(u.cache_creation_input_tokens) || 0),
       saida: Number(u.output_tokens) || 0,
     };
+    // `is_error: true` vem até com `subtype: "success"`: o campo que manda é `is_error`.
     if (json.is_error || resultado.codigo !== 0) {
-      return { falha: classificarCli(`${json.result ?? ""}\n${resultado.err}`), uso };
+      return { falha: comMarca(classificarCli(textoBruto, json.api_error_status)), uso };
     }
     if (json.subtype === "error_max_turns") return { falha: { codigo: "truncado", mensagem: "limite de turnos" }, uso };
     if (pedido.schema) {
@@ -394,7 +440,8 @@ export async function chamarCli({ pedido, env, bin = "claude", argsIniciais = []
 export function modosDisponiveis(env, cliPronto) {
   const modos = [];
   if (env.ANTHROPIC_API_KEY) modos.push("api");
-  if (env.IA_PERMITIR_ASSINATURA === "1" && env.CLAUDE_CODE_OAUTH_TOKEN && cliPronto) modos.push("assinatura");
+  // (a ordem não importa: a escolha do modo é do admin, em config.json)
+  if (env.IA_PERMITIR_ASSINATURA === "1" && (env.CLAUDE_CODE_OAUTH_TOKEN || env.IA_CLAUDE_CONFIG_DIR) && cliPronto) modos.push("assinatura");
   return modos;
 }
 
@@ -502,6 +549,17 @@ function contadoresVazios(agora) {
   return { dia: diaUtc(agora), jobs: 0, falhas: 0, entradaTokens: 0, saidaTokens: 0, custoUsd: 0 };
 }
 
+/** `IA_CLAUDE_ARGS`: JSON com argumentos que vão antes dos do worker (wrapper do claude, testes). */
+function argumentosIniciais(texto) {
+  if (!texto) return [];
+  try {
+    const v = JSON.parse(texto);
+    return Array.isArray(v) && v.every((x) => typeof x === "string") ? v : [];
+  } catch {
+    return [];
+  }
+}
+
 export function criarEstado({ pasta, env = process.env, relogio = () => new Date(), sleep = dormir, fetchImpl = fetch, spawnImpl = spawn, bin, argsIniciais }) {
   const inicio = relogio();
   return {
@@ -512,7 +570,7 @@ export function criarEstado({ pasta, env = process.env, relogio = () => new Date
     fetchImpl,
     spawnImpl,
     bin: bin ?? env.IA_CLAUDE_BIN ?? "claude",
-    argsIniciais: argsIniciais ?? [],
+    argsIniciais: argsIniciais ?? argumentosIniciais(env.IA_CLAUDE_ARGS),
     iniciadoEm: inicio.toISOString(),
     cliPronto: null,
     pausa: null, // { ate: Date, motivo }
@@ -654,7 +712,10 @@ export async function ciclo(est) {
   }
 
   const lim = config.limites ?? {};
-  if (est.hoje.custoUsd >= (lim.gastoMaxUsdDia ?? Infinity)) {
+  // O teto em dólar é do modo API (é o que cobra). Na assinatura o "custo" é só uma
+  // equivalência em API, nunca cobrada: quem limita é o número de pedidos por dia e o
+  // próprio limite do plano, que o worker respeita (pausa e volta quando liberar).
+  if (config.modo === "api" && est.hoje.custoUsd >= (lim.gastoMaxUsdDia ?? Infinity)) {
     est.pausa = { ate: proximaMeiaNoiteUtc(agora), motivo: "gasto-diario" };
     await gravarBatimento(est, config);
     return { acao: "pausado", motivo: "gasto-diario" };

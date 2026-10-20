@@ -33,9 +33,12 @@ export function AdminIAForm({ config, modelos, modosDisponiveis }: Props) {
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [modo, setModo] = useState<ModoIA>(config.modo);
+  // A assinatura Pro é o modo principal; este toggle liga os créditos de API.
+  const [usarApi, setUsarApi] = useState(config.modo === "api");
+  const modo: ModoIA = usarApi ? "api" : "assinatura";
 
-  const assinaturaDisponivel = modosDisponiveis.includes("assinatura") || config.modo === "assinatura";
+  const assinaturaDisponivel = modosDisponiveis.includes("assinatura");
+  const apiDisponivel = modosDisponiveis.includes("api");
 
   function salvar(fd: FormData) {
     setErro(null);
@@ -97,46 +100,49 @@ export function AdminIAForm({ config, modelos, modosDisponiveis }: Props) {
       <fieldset className="sm:col-span-2">
         <legend className="mb-1 text-xs font-bold">Como a IA se autentica na Anthropic</legend>
         <div className="space-y-2">
-          <label className="flex items-start gap-2 rounded-sm border border-[#c7cedb] p-2 text-sm">
-            <input type="radio" name="modo-visivel" checked={modo === "api"} onChange={() => setModo("api")} className="mt-1 h-4 w-4" />
-            <span>
-              <b>API com créditos (padrão, recomendado)</b>
-              <small className="block text-[11px] text-soft">Chave do Console da Anthropic, só no worker. Segue os termos da Anthropic e aceita teto mensal de gasto no Console.</small>
-            </span>
-          </label>
-          <label className={`flex items-start gap-2 rounded-sm border p-2 text-sm ${assinaturaDisponivel ? "border-[#c7cedb]" : "border-[#e0e5ee] opacity-60"}`}>
+          <div className={`rounded-sm border p-2 text-sm ${usarApi ? "border-[#e0e5ee] opacity-60" : "border-teal"}`}>
+            <b>Assinatura Claude Pro (modo principal){usarApi ? "" : " · ativo"}</b>
+            <small className="block text-[11px] text-soft">
+              {assinaturaDisponivel
+                ? "Pronta neste worker. Quando o limite de uso do plano (janela de 5 horas ou semanal) esgota, o worker pausa e volta sozinho."
+                : "Indisponível neste worker: falta CLAUDE_CODE_OAUTH_TOKEN (gerado com claude setup-token), o claude instalado ou IA_PERMITIR_ASSINATURA=1. Veja docs/equipe-ia/IA-OPERACAO.md."}
+            </small>
+            <small className="mt-1 block rounded-sm bg-orange/20 px-1.5 py-1 text-[11px] font-bold text-ink">
+              Atenção: a Anthropic não permite rotear requisições dos usuários de um produto por credencial Pro/Max e pode agir sem aviso. O limite do plano é pensado para uso
+              individual, e os dados dos seus clientes passam por uma conta de consumidor (desative o uso para treinamento nas configurações de privacidade dessa conta). Use uma
+              conta separada da que você usa para trabalhar.{" "}
+              <a href="https://code.claude.com/docs/en/legal-and-compliance" target="_blank" rel="noopener noreferrer" className="underline">
+                Ver os termos
+              </a>
+              .
+            </small>
+          </div>
+
+          <label className={`flex items-start gap-2 rounded-sm border p-2 text-sm ${apiDisponivel ? "border-[#c7cedb]" : "border-[#e0e5ee] opacity-70"}`}>
             <input
-              type="radio"
-              name="modo-visivel"
-              checked={modo === "assinatura"}
-              disabled={!assinaturaDisponivel}
-              onChange={() => setModo("assinatura")}
-              className="mt-1 h-4 w-4"
+              type="checkbox"
+              role="switch"
+              aria-checked={usarApi}
+              checked={usarApi}
+              disabled={!apiDisponivel && !usarApi}
+              onChange={(e) => setUsarApi(e.target.checked)}
+              className="mt-1 h-5 w-5"
             />
             <span>
-              <b>Assinatura Claude Pro/Max (por sua conta e risco)</b>
+              <b>Usar créditos de API em vez da assinatura{usarApi ? " · ativo" : ""}</b>
               <small className="block text-[11px] text-soft">
-                {assinaturaDisponivel
-                  ? "Disponível neste worker."
-                  : "Indisponível: o worker precisa de CLAUDE_CODE_OAUTH_TOKEN, do claude instalado e de IA_PERMITIR_ASSINATURA=1."}
-              </small>
-              <small className="mt-1 block rounded-sm bg-orange/20 px-1.5 py-1 text-[11px] font-bold text-ink">
-                A Anthropic não permite rotear requisições dos usuários de um produto por credencial Pro/Max e pode agir sem aviso.
-                O limite do plano também é pensado para uso individual. Os dados dos seus clientes passariam por uma conta de consumidor.{" "}
-                <a href="https://code.claude.com/docs/en/legal-and-compliance" target="_blank" rel="noopener noreferrer" className="underline">
-                  Ver os termos
-                </a>
-                .
+                {apiDisponivel
+                  ? "Chave de API presente no worker. Cobra por uso e segue os termos da Anthropic para produtos. Desligue para voltar à assinatura."
+                  : "Ainda sem créditos: para liberar, coloque ANTHROPIC_API_KEY em /opt/independent-lab/.env.ia (Claude Console, com limite mensal de gasto) e reinicie o worker."}
               </small>
             </span>
           </label>
+
           <label className="flex items-start gap-2 rounded-sm border border-[#e0e5ee] p-2 text-sm opacity-60">
             <input type="checkbox" disabled checked={false} readOnly className="mt-1 h-4 w-4" />
             <span>
-              <b>Créditos extra e cobrança por requisição</b>
-              <small className="block text-[11px] text-soft">
-                Desativado por enquanto. O uso de cada negócio já é registrado (tokens e custo estimado), pronto para uma cobrança futura.
-              </small>
+              <b>Cobrança por requisição aos clientes</b>
+              <small className="block text-[11px] text-soft">Desativada por enquanto. O uso de cada negócio já é registrado (tokens e custo estimado), pronto para uma cobrança futura.</small>
             </span>
           </label>
         </div>
@@ -195,7 +201,7 @@ export function AdminIAForm({ config, modelos, modosDisponiveis }: Props) {
       </label>
 
       <label className={rotulo}>
-        Teto de gasto por dia (US$, estimado)
+        Teto de gasto por dia (US$, só no modo API)
         <input name="gastoMaxUsdDia" type="number" min={0} max={1000} step="0.5" defaultValue={config.limites.gastoMaxUsdDia} required className={campo} />
       </label>
 

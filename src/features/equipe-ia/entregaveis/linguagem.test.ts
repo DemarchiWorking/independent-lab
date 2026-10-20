@@ -102,3 +102,11 @@ describe("linguagem", () => {
     expect(semAcento("Piraí ç ã")).toBe("Pirai c a");
   });
 });
+
+describe("minusculaInicial: o que não pode perder a maiúscula", () => {
+  it("valor em reais e sigla ficam como estão; frase comum perde só a primeira letra", () => {
+    expect(minusculaInicial("R$ 500 a R$ 1.500 por mês")).toBe("R$ 500 a R$ 1.500 por mês");
+    expect(minusculaInicial("CNPJ ou MEI ativo")).toBe("CNPJ ou MEI ativo");
+    expect(minusculaInicial("Responder em até 5 minutos")).toBe("responder em até 5 minutos");
+  });
+});

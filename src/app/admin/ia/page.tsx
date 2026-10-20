@@ -80,14 +80,18 @@ export default async function AdminIAPage() {
       <p className="mb-1 font-pixel text-[11px] uppercase tracking-[3px] text-teal">labdatadev · gamehub · admin</p>
       <h1 className="mb-1 text-xl font-extrabold text-white">Inteligência artificial</h1>
       <p className="mb-4 text-xs text-white/70">
-        Fila, uso e configuração dos Funcionários de IA. Valores em dólar são estimativas com a tabela de preços do código; a fatura da Anthropic é a fonte oficial.
+        Fila, uso e configuração dos Funcionários de IA. Valores em dólar são estimativas com a tabela de preços do código{config.modo === "assinatura" ? " e, na assinatura, só uma equivalência em API: nada é cobrado por token" : "; a fatura da Anthropic é a fonte oficial"}.
       </p>
 
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Cartao titulo="Worker">
           <Linha rotulo="Estado" valor={vivo ? (pausadoAte ? "Pausado" : batimento?.ocupadoCom ? "Processando" : "Ativo, ocioso") : "Parado"} />
           <Linha rotulo="Último batimento" valor={quando(batimento?.batimentoEm ?? null)} />
-          <Linha rotulo="Modos disponíveis" valor={batimento?.modosDisponiveis.length ? batimento.modosDisponiveis.join(", ") : "nenhum"} />
+          <Linha rotulo="Modo ativo" valor={config.modo === "assinatura" ? "Assinatura Claude Pro" : "Créditos de API"} />
+          <Linha rotulo="Modos prontos" valor={batimento?.modosDisponiveis.length ? batimento.modosDisponiveis.map((m) => (m === "assinatura" ? "assinatura" : "API")).join(", ") : "nenhum"} />
+          {batimento && !batimento.modosDisponiveis.includes(config.modo) ? (
+            <p className="rounded-sm bg-orange/20 px-1.5 py-1 text-[11px] font-bold">O modo ativo não tem credencial neste worker: a IA espera. Rode docker exec independent-lab-ia-worker node /app/verificar.mjs.</p>
+          ) : null}
           {pausadoAte ? <Linha rotulo={`Pausa (${batimento?.motivoPausa ?? "?"})`} valor={`até ${quando(pausadoAte)}`} /> : null}
           {!vivo ? <p className="rounded-sm bg-orange/20 px-1.5 py-1 text-[11px] font-bold">Sem batimento há mais de 90 s. Confira o container ia-worker (deploy/README.md).</p> : null}
         </Cartao>
@@ -110,7 +114,7 @@ export default async function AdminIAPage() {
 
         <Cartao titulo={`Uso hoje (${dia})`}>
           <ResumoDeUso a={livroHoje.total} />
-          <Linha rotulo="Teto do dia" valor={usd(config.limites.gastoMaxUsdDia)} />
+          {config.modo === "api" ? <Linha rotulo="Teto do dia (modo API)" valor={usd(config.limites.gastoMaxUsdDia)} /> : <Linha rotulo="Teto de pedidos do dia" valor={mil(config.limites.jobsPorDia)} />}
         </Cartao>
 
         <Cartao titulo={`Uso no mês (${dia.slice(0, 7)})`}>

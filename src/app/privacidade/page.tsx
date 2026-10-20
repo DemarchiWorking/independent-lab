@@ -94,11 +94,12 @@ export default function PrivacidadePage() {
           vídeo) são refinados só com informações públicas do negócio.
         </p>
         <p>
-          O envio é feito pela API comercial da Anthropic, que, pelos termos
-          informados por ela, não usa o conteúdo enviado pela API para
-          treinar modelos, salvo se o cliente permitir. O texto devolvido
-          passa por verificação automática antes de aparecer para você, e
-          você sempre pode usar o material sem IA.
+          O envio é feito pela conta da operadora na Anthropic, pelo Claude
+          Code (assinatura) ou pela API comercial, conforme a configuração do
+          serviço. Na conta usada, mantemos desativada a opção que permite à
+          Anthropic usar o conteúdo enviado para treinar modelos. O texto
+          devolvido passa por verificação automática antes de aparecer para
+          você, e você sempre pode usar o material sem IA.
         </p>
         <p>
           Você autoriza na caixa opcional do cadastro (que vem desmarcada) ou

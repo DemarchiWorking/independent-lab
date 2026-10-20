@@ -146,10 +146,10 @@ const VARIANTES: Record<string, Record<string, unknown>> = {
 };
 
 export const BLOCOS_POR_TIPO: Record<Exclude<TipoEntregavel, "carrossel">, readonly string[]> = {
-  canvas: ["paragrafo", "destaque", "lista", "checklist", "tabela", "canvas", "cartoes"],
-  pop: ["paragrafo", "destaque", "lista", "checklist", "passos", "tabela", "cartoes"],
+  canvas: ["paragrafo", "destaque", "lista", "checklist", "passos", "tabela", "canvas", "cartoes"],
+  pop: ["paragrafo", "destaque", "lista", "checklist", "passos", "mensagem", "tabela", "cartoes"],
   comercial: ["paragrafo", "destaque", "lista", "checklist", "passos", "mensagem", "tabela", "cartoes"],
-  reel: ["paragrafo", "destaque", "lista", "checklist", "mensagem", "cena"],
+  reel: ["paragrafo", "destaque", "lista", "checklist", "passos", "mensagem", "cena"],
 };
 
 export function esquemaDeDocumento(tipo: Exclude<TipoEntregavel, "carrossel">): Record<string, unknown> {
@@ -231,7 +231,8 @@ REGRAS INEGOCIÁVEIS
 7. Mantenha o que o documento base tem de correto: melhore, não destrua. Todas as seções do documento base continuam, com os mesmos "id". Você pode acrescentar até 4 seções novas, com id começando por "ia-", se agregarem de verdade.
 8. Específico vence genérico. Use a cidade, o bairro, as ofertas e as parcerias dos dados. Se uma frase serviria para qualquer negócio, reescreva até servir só para este.
 9. Cada recomendação é acionável: quem faz, o quê, quando ou com que frequência, e como saber que deu certo.
-10. Quando o cadastro não foi respondido, não adivinhe: escreva de forma útil para qualquer negócio do mercado e peça ao dono que responda o cadastro.`;
+10. Quando o cadastro não foi respondido, não adivinhe: escreva de forma útil para qualquer negócio do mercado e peça ao dono que responda o cadastro.
+11. O gênero do nome do negócio é incerto: prefira o nome sozinho ("Studio Bela Cabelos atende...") ou uma expressão como "o salão", "a empresa" ou "o negócio", em vez de artigo + nome.`;
 
 const TAREFA: Record<TipoEntregavel, string> = {
   canvas: `TAREFA: Modelo de Negócio (Business Model Canvas) e plano de ação deste negócio.

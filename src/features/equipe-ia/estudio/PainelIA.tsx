@@ -99,7 +99,7 @@ export function PainelIA({ tipo, aoNovaVersao }: Props) {
       const novo = "estado" in corpo ? corpo.estado : corpo;
       setEstado(novo);
       if (acao === "pedir") setMensagem("Pedido enviado. Você pode continuar usando o material enquanto a IA trabalha.");
-      if (acao === "autorizar") setMensagem("Autorizado. Agora você pode pedir o refinamento.");
+      if (acao === "autorizar") setMensagem("Autorizado. A IA já começou a preparar a versão refinada deste material; você pode continuar usando a versão atual enquanto isso.");
       if (acao === "revogar") {
         setMensagem("Autorização revogada e o que a IA gerou foi apagado. O material de regras continua disponível.");
         versaoVista.current = 0;
@@ -137,7 +137,7 @@ export function PainelIA({ tipo, aoNovaVersao }: Props) {
             .
           </p>
           <button type="button" onClick={() => void enviar("autorizar")} disabled={ocupado} className={`${botao} bg-orange text-ink`}>
-            Autorizar o uso de IA no meu negócio
+            Autorizar e gerar a versão refinada com IA
           </button>
         </div>
       ) : (
@@ -156,7 +156,7 @@ export function PainelIA({ tipo, aoNovaVersao }: Props) {
                 {estado.completo ? " Este material já recebeu todos os refinos automáticos para os dados atuais." : " A IA continua melhorando automaticamente quando está livre."}
               </>
             ) : (
-              <>Este material ainda está na versão de regras. Peça o refinamento ou deixe a melhoria automática cuidar disso.</>
+              <>Este material está na versão de regras. A IA prepara a versão refinada automaticamente; se não começar, peça abaixo.</>
             )}
           </p>
 

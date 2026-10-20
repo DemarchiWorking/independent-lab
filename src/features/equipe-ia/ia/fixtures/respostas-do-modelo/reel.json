@@ -1,0 +1,63 @@
+{
+  "titulo": "Roteiro de vídeo curto: Studio Bela Cabelos",
+  "subtitulo": "Um vídeo de 30 segundos para mostrar o salão e chamar para o atendimento · Centro, Mendes",
+  "secoes": [
+    {
+      "id": "roteiro",
+      "titulo": "Roteiro: 30 segundos, 5 cenas",
+      "intro": "O vídeo precisa funcionar sem som: o texto na tela de cada cena tem que fazer sentido sozinho. Grave cada cena separada e junte depois.",
+      "blocos": [
+        { "tipo": "cena", "tempo": "0–4s", "papel": "Gancho", "fala": "Cabelo ressecado, sem brilho, mesmo depois de ir ao salão? Fica até o final que eu te mostro o que muda.", "imagem": "Você de frente para a câmera, sem introdução e sem logotipo, com o salão desfocado ao fundo. O corte já começa na frase.", "legenda": "Cabelo ressecado mesmo no salão?" },
+        { "tipo": "cena", "tempo": "4–11s", "papel": "Dica", "fala": "Primeiro: água morna, nunca muito quente. A água quente resseca o fio e desbota a cor. Termine o banho com a água mais fria que você aguentar.", "imagem": "Mostre o gesto: uma mão regulando o chuveiro ou a torneira do lavatório do salão. Se não puder, fique em quadro e use as mãos para mostrar morna e quente.", "legenda": "Água morna, nunca muito quente" },
+        { "tipo": "cena", "tempo": "11–18s", "papel": "Dica", "fala": "Segundo: hidrate no ritmo certo. Hidratar demais ou de menos atrapalha, então siga o intervalo que a sua cabeleireira indicou para o seu cabelo.", "imagem": "Close em um frasco de produto profissional e em uma mão aplicando no cabelo de uma cliente que autorizou aparecer. Luz natural de frente.", "legenda": "Hidrate no ritmo indicado" },
+        { "tipo": "cena", "tempo": "18–25s", "papel": "Apresentação", "fala": "Eu sou do Studio Bela Cabelos, aqui no Centro de Mendes. A gente faz corte, coloração e hidratação profunda, e antes de começar conversa sobre o que será feito.", "imagem": "Você em quadro dentro do salão, com a cadeira e o espelho atrás. Sorria e fale devagar, olhando para a câmera.", "legenda": "Studio Bela Cabelos · Mendes" },
+        { "tipo": "cena", "tempo": "25–30s", "papel": "Convite", "fala": "Quer cuidar do seu cabelo? Comenta QUERO que eu te respondo com os horários disponíveis.", "imagem": "Close no seu rosto, com texto grande na tela. Convidar para comentar costuma gerar mais alcance do que pedir para clicar no link do perfil.", "legenda": "Comenta QUERO" }
+      ]
+    },
+    {
+      "id": "legenda",
+      "titulo": "Legenda da publicação",
+      "intro": "",
+      "blocos": [
+        { "tipo": "mensagem", "rotulo": "Legenda", "quando": "", "texto": "Cabelo ressecado mesmo depois de ir ao salão? Dois cuidados simples já ajudam: água morna e hidratação no ritmo certo.\n\nSe você é de Mendes e quer cuidar do cabelo com quem conversa antes de começar, chama o Studio Bela Cabelos.\n\nComenta QUERO que eu te respondo com os horários." },
+        { "tipo": "mensagem", "rotulo": "Hashtags", "quando": "", "texto": "#cuidadoscomocabelo #salaodebeleza #hidratacaocapilar #mendes #beleza #apoielocal" }
+      ]
+    },
+    {
+      "id": "captura",
+      "titulo": "Checklist antes de gravar",
+      "intro": "",
+      "blocos": [
+        {
+          "tipo": "checklist",
+          "itens": [
+            "Grave na vertical (9:16), com o celular firme ou apoiado",
+            "Limpe a lente da câmera antes de começar",
+            "Prefira luz natural, de frente para a janela, nunca com a janela atrás de você",
+            "Grave em um horário em que o salão esteja silencioso: o áudio pesa mais que a imagem",
+            "Fale devagar e olhe para a câmera, não para a tela",
+            "Faça duas tentativas de cada cena e escolha a melhor",
+            "Peça autorização por escrito a quem aparecer no vídeo, inclusive clientes ao fundo",
+            "Use só música livre de direitos autorais, do banco da própria plataforma"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "formatos",
+      "titulo": "Formatos de entrega",
+      "intro": "",
+      "blocos": [
+        {
+          "tipo": "lista",
+          "itens": [
+            "9:16 (Reels, TikTok e Shorts): formato principal, grave neste",
+            "1:1 (feed do Instagram e do LinkedIn): corte a partir do 9:16, deixando o rosto no centro",
+            "16:9 (YouTube e anúncios): só se você gravar na horizontal"
+          ],
+          "ordenada": false
+        }
+      ]
+    }
+  ]
+}

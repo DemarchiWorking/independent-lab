@@ -26,10 +26,16 @@ export const MODELOS_PADRAO: Readonly<Record<string, PrecoModelo>> = {
 export const MODELO_USUARIO_PADRAO = "claude-sonnet-5-5";
 export const MODELO_LOTE_PADRAO = "claude-haiku-5-5";
 
+/**
+ * Padrões pensados para a assinatura Pro (modo principal): ela tem janela de uso
+ * (5 horas e semanal), então a melhoria contínua é discreta e deixa folga para
+ * o próprio dono usar o Claude. No modo API o gasto é que limita; suba os números
+ * na tela se quiser mais velocidade.
+ */
 export const LIMITES_PADRAO: LimitesIA = {
   pedidosPorNegocioDia: 6,
-  melhoriasPorVarredura: 10,
-  jobsPorDia: 300,
+  melhoriasPorVarredura: 4,
+  jobsPorDia: 120,
   gastoMaxUsdDia: 5,
   refinosPorDocumento: 2,
 };
@@ -38,8 +44,9 @@ export function configPadrao(agora: Date = new Date()): ConfigIA {
   return {
     contrato: VERSAO_CONTRATO,
     ativa: true,
-    // API é o padrão: segue os termos da Anthropic. Assinatura é opção do admin.
-    modo: "api",
+    // A assinatura Claude Pro é o modo principal. A API (créditos) é um toggle do admin,
+    // para quando houver créditos. Atenção aos termos da Anthropic: ver IA-OPERACAO.md.
+    modo: "assinatura",
     melhoriaContinua: true,
     modeloUsuario: MODELO_USUARIO_PADRAO,
     modeloLote: MODELO_LOTE_PADRAO,
@@ -79,7 +86,7 @@ export function normalizarConfig(bruto: unknown, agora: Date = new Date()): Conf
   return {
     ...base,
     ativa: typeof c.ativa === "boolean" ? c.ativa : base.ativa,
-    modo: c.modo === "assinatura" ? "assinatura" : "api",
+    modo: c.modo === "api" ? "api" : "assinatura",
     melhoriaContinua: typeof c.melhoriaContinua === "boolean" ? c.melhoriaContinua : base.melhoriaContinua,
     modeloUsuario: modelo(c.modeloUsuario, base.modeloUsuario),
     modeloLote: modelo(c.modeloLote, base.modeloLote),
@@ -139,7 +146,7 @@ export interface EdicaoAdmin {
 
 export type ResultadoEdicao = { ok: true; config: ConfigIA; mudancas: string[] } | { ok: false; erro: string };
 
-const ROTULO_MODO: Record<ModoIA, string> = { api: "API (créditos)", assinatura: "Assinatura" };
+const ROTULO_MODO: Record<ModoIA, string> = { api: "créditos de API", assinatura: "assinatura Claude Pro" };
 
 /**
  * Valida o que a tela enviou e produz a nova configuração. O modo assinatura
@@ -179,12 +186,17 @@ export function aplicarEdicaoAdmin(
   const ruim = (Object.entries(limites) as Array<[keyof LimitesIA, number]>).find(([, v]) => v < 0);
   if (ruim) return { ok: false, erro: `Limite inválido: ${ROTULO_LIMITE[ruim[0]]}.` };
 
-  if (e.modo === "assinatura" && atual.modo !== "assinatura") {
+  // Trocar de modo só vale se o worker diz que tem a credencial do modo novo: sem isso ele
+  // pararia em silêncio. Sem batimento do worker não dá para saber, então também recusa.
+  if (e.modo !== atual.modo) {
     const disponiveis = opcoes.batimento?.modosDisponiveis ?? [];
-    if (!disponiveis.includes("assinatura")) {
+    if (!disponiveis.includes(e.modo)) {
       return {
         ok: false,
-        erro: "O worker não tem o modo assinatura disponível (falta o token, o claude instalado ou IA_PERMITIR_ASSINATURA=1). Nada foi alterado.",
+        erro:
+          e.modo === "api"
+            ? "O worker ainda não tem créditos de API (falta ANTHROPIC_API_KEY em .env.ia, ou o worker está parado). Nada foi alterado."
+            : "O worker não tem a assinatura disponível (falta o token, o claude instalado ou IA_PERMITIR_ASSINATURA=1, ou o worker está parado). Nada foi alterado.",
       };
     }
   }
@@ -226,6 +238,6 @@ export const ROTULO_LIMITE: Record<keyof LimitesIA, string> = {
   pedidosPorNegocioDia: "pedidos por negócio por dia",
   melhoriasPorVarredura: "melhorias por varredura",
   jobsPorDia: "pedidos por dia (total)",
-  gastoMaxUsdDia: "teto de gasto por dia (US$)",
+  gastoMaxUsdDia: "teto de gasto por dia, só no modo API (US$)",
   refinosPorDocumento: "refinos por documento",
 };

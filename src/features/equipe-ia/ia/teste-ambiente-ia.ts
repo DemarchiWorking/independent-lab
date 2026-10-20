@@ -1,10 +1,14 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { ciclo, criarEstado } from "../../../../ia-worker/worker.mjs";
 import { atributosVazios } from "@/lib/atributos";
 import { FileRepository } from "@/lib/db/file-adapter";
 import type { NovoNegocio } from "@/lib/db/repository";
 import type { Documento } from "../entregaveis/tipos";
+import type { ConfigIA, ModoIA } from "./contrato";
+import { garantirConfig, gravarConfig } from "./config";
 import { pastaIA } from "./fila";
 import { autorizarIA } from "./servico-ia";
 import { documentoComoSaida, secaoExtra } from "./teste-util-ia";
@@ -16,6 +20,29 @@ import { documentoComoSaida, secaoExtra } from "./teste-util-ia";
  */
 
 export const POLITICA_NOVA = "2026-10-20";
+
+// ----------------------------------------------------------------- modo de teste
+
+/** A assinatura Pro é o modo principal; a API é o toggle. As suítes de ponta a ponta rodam nos dois. */
+export const MODOS: readonly ModoIA[] = ["assinatura", "api"];
+
+let modoAtual: ModoIA = "assinatura";
+
+/** Escolhe o modo que `garantirConfigDeTeste` grava e que `worker()` usa. */
+export function usarModo(modo: ModoIA): void {
+  modoAtual = modo;
+}
+
+/** `garantirConfig` do app, com o modo do teste em curso (o padrão do app é a assinatura). */
+export async function garantirConfigDeTeste(): Promise<ConfigIA> {
+  const c = await garantirConfig();
+  if (c.modo === modoAtual) return c;
+  const nova = { ...c, modo: modoAtual };
+  await gravarConfig(nova);
+  return nova;
+}
+
+const CLI_FALSO = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../../ia-worker/teste/claude-falso.mjs");
 
 export function novoNegocio(nome: string, consentimentoVersao: string): NovoNegocio {
   return {
@@ -91,8 +118,23 @@ export async function servidorApi(modelo: Modelo): Promise<Servidor> {
   return { url: `http://127.0.0.1:${porta}`, entradas, fechar: () => new Promise<void>((ok) => srv.close(() => ok())) };
 }
 
+/**
+ * O worker de verdade. No modo API chama o servidor falso por HTTP; na assinatura roda o
+ * "claude" falso como processo (com as mesmas flags da CLI real), e ele repassa o prompt ao
+ * mesmo servidor. Assim as duas pontas passam pela mesma "inteligência" de teste.
+ */
 export function worker(url: string, relogio?: () => Date) {
-  return criarEstado({ pasta: pastaIA(), env: { ANTHROPIC_API_KEY: "sk-ant-teste", ANTHROPIC_BASE_URL: url }, ...(relogio ? { relogio } : {}) });
+  const comum = relogio ? { relogio } : {};
+  if (modoAtual === "api") {
+    return criarEstado({ pasta: pastaIA(), env: { ANTHROPIC_API_KEY: "sk-ant-teste", ANTHROPIC_BASE_URL: url }, ...comum });
+  }
+  return criarEstado({
+    pasta: pastaIA(),
+    env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, IA_PERMITIR_ASSINATURA: "1", CLAUDE_CODE_OAUTH_TOKEN: "token-de-teste" },
+    bin: process.execPath,
+    argsIniciais: [CLI_FALSO, "--servidor", url],
+    ...comum,
+  });
 }
 
 export async function esvaziarFila(est: ReturnType<typeof worker>): Promise<number> {

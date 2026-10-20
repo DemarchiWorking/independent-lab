@@ -204,8 +204,10 @@ ls /opt/independent-lab/backups                     # backup diário + um antes 
   dado não confiável: nada vai para a tela sem `ia/validar.ts`, e texto do
   usuário entra no prompt como dado (JSON em tag, `<` escapado). Só envia
   dados de quem deu consentimento **específico** (`ia/consentimento`).
-  Mudou o prompt? Suba `GERADOR_IA_VERSAO`. O padrão é **API**; o modo
-  assinatura contraria os termos da Anthropic e é dupla confirmação.
+  Mudou o prompt? Suba `GERADOR_IA_VERSAO`. O modo principal é a
+  **assinatura Claude Pro** (`claude -p` no worker); o toggle de créditos de API
+  só libera com `ANTHROPIC_API_KEY` no worker. Pro contraria os termos da
+  Anthropic (risco assumido pelo dono, aviso visível em `/admin/ia`).
   Configuração só por `souAdminIA` (`lib/admin.ts`), validada no servidor.
 
 ## Armadilhas conhecidas

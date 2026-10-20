@@ -79,31 +79,53 @@ Cada arquivo tem **um escritor**, toda gravação é atômica (temporário +
 `rename`), e o worker devolve o pedido à fila se cair no meio. O worker apaga
 resultado que ninguém coletou em 24 h.
 
-## 3. Credencial: API por padrão, assinatura opcional
+## 3. Credencial: Claude Pro (principal), créditos de API (opcional)
 
-| | **API (padrão)** | **Assinatura Pro/Max (opcional)** |
+| | **Assinatura Claude Pro (principal)** | **Créditos de API (opcional)** |
 |---|---|---|
-| Como autentica | `ANTHROPIC_API_KEY` do Claude Console, no worker | `CLAUDE_CODE_OAUTH_TOKEN` (de `claude setup-token`) e `claude -p` |
-| Termos da Anthropic | Permitido para produtos | **Não permitido** para atender usuários de um produto |
-| Teto de gasto | Limite mensal na organização do Console (vale de verdade) | Limite do plano, pensado para uso individual |
-| Para ligar | Colocar a chave em `.env.ia` | Imagem com `INSTALAR_CLAUDE_CLI=1`, `IA_PERMITIR_ASSINATURA=1`, token, e escolher na tela |
+| Como autentica | `CLAUDE_CODE_OAUTH_TOKEN` (de `claude setup-token`, vale 1 ano) ou `IA_CLAUDE_CONFIG_DIR`, e `claude -p` | `ANTHROPIC_API_KEY` do Claude Console, no worker |
+| Custo | Dentro do plano; sem cobrança por token | Por uso, com teto diário em US$ e limite mensal no Console |
+| Limites | Janela de 5 h e limite semanal do plano: o worker **pausa** e volta sozinho (padrão 60 min); os pedidos voltam à fila | Teto de gasto do dia (`gastoMaxUsdDia`) |
+| Termos da Anthropic | **Aviso:** não permitem rotear usuários de um produto por Pro/Max | Permitido para produtos |
+| Para ligar | Imagem com `INSTALAR_CLAUDE_CLI=1`, `IA_PERMITIR_ASSINATURA=1` e o token em `.env.ia` | Chave em `.env.ia`, reiniciar o worker e marcar **Usar créditos de API** em `/admin/ia` |
 
-**Por que o padrão é API.** A página de termos do Claude Code
-([legal-and-compliance](https://code.claude.com/docs/en/legal-and-compliance),
-consultada em 20/10/2026) diz que a Anthropic não permite rotear requisições
-de usuários de um produto por credenciais Free, Pro ou Max, e que pode agir
-sem aviso. Atender os clientes desta plataforma pela assinatura da VPS é
-exatamente esse uso, e o risco recai sobre a conta inteira (a mesma que
-trabalha com o Claude Code). O modo assinatura existe porque foi pedido, mas é
-de **dupla confirmação**: o operador precisa definir `IA_PERMITIR_ASSINATURA=1`
-no worker **e** o admin precisa escolhê-lo na tela, que mostra o aviso. O
-worker nunca troca de modo sozinho.
+**Como funciona.** A assinatura Pro é o modo principal e vem ligada. O toggle em
+`/admin/ia` (só o admin da IA) troca para créditos de API quando você tiver uma
+chave; sem a chave no worker o toggle fica bloqueado e explica o motivo. Cada
+troca entra no histórico com quem fez e quando. O worker nunca troca de modo
+sozinho, e o modo escolhido vale mesmo que as duas credenciais existam.
+
+**Risco assumido (decisão do dono, 20/10/2026).** A página de termos do Claude
+Code ([legal-and-compliance](https://code.claude.com/docs/en/legal-and-compliance),
+consultada em 20/10/2026) diz que a Anthropic não permite rotear requisições de
+usuários de um produto por credenciais Free, Pro ou Max, e que pode agir sem
+aviso. O risco recai sobre a conta inteira. Por isso a tela mostra o aviso o
+tempo todo e a recomendação é **usar uma conta Claude separada da de trabalho**
+e **desativar o uso dos dados para treinamento** nas configurações de
+privacidade dessa conta (os dados dos clientes passam por uma conta de
+consumidor). Para sair do risco, basta pôr créditos de API e ligar o toggle.
+
+**Primeira vez, na VPS (você executa):**
+
+1. Entre numa conta Claude Pro **separada** e desligue "ajudar a melhorar o Claude".
+2. Gere o token: `claude setup-token` (guarde-o; vale 1 ano).
+3. Em `/opt/independent-lab/.env.ia`: `CLAUDE_CODE_OAUTH_TOKEN=...` e `IA_PERMITIR_ASSINATURA=1` (`chmod 600`).
+4. Publique com `INSTALAR_CLAUDE_CLI=1` (imagem do worker com a CLI).
+5. Confira de verdade: `node ia-worker/verificar.mjs --chamada` (faz uma chamada real e diz o que falta).
+6. Abra `/admin/ia`: deve mostrar "Modo ativo: Assinatura Claude Pro".
+
+**Geração automática.** Quem autoriza o uso de IA recebe a primeira versão
+refinada sozinha (sem outro clique). Depois a melhoria contínua refina, no
+máximo `refinosPorDocumento` vezes por material, só quando a fila está vazia e o
+worker está vivo; mudar o contexto da conta invalida a versão e gera outra.
 
 O modo assinatura roda `claude -p` sem `--bare` (que ignora o token OAuth), sem
 ferramentas, sem MCP, sem comandos e sem sessão salva, num diretório de casa
 vazio por pedido, e **nunca repassa** `ANTHROPIC_API_KEY` (em `-p`, a chave de
 API vence a assinatura em silêncio). As flags foram testadas contra a CLI real
 v2.1.226 sem gastar token (token inválido: a CLI aceita todas e responde 401).
+**Ainda não houve uma chamada real ao modelo** (o login da CLI nesta máquina
+expirou): a ponte foi validada com uma CLI e uma API simuladas.
 
 ### Créditos extra e cobrança por requisição
 
@@ -202,7 +224,7 @@ tela avisa que os dados passariam por uma conta de consumidor.
 | O que a tela ou o guardião mostra | Causa | O que fazer |
 |---|---|---|
 | Worker "Parado" | Container caiu ou travou | O guardião reinicia; veja `docker logs independent-lab-ia-worker` |
-| Pausa `auth` | A Anthropic recusou a chave | Confira `ANTHROPIC_API_KEY` em `.env.ia`; `docker restart` |
+| Pausa `auth` | A Anthropic recusou a credencial | Pro: refaça `claude setup-token` e confira `CLAUDE_CODE_OAUTH_TOKEN`; API: confira `ANTHROPIC_API_KEY`. Depois `docker restart` |
 | Pausa `gasto` | Sem saldo ou limite do Console | Ajuste no Console; o worker retoma sozinho |
 | Pausa `gasto-diario` | Teto do dia da tela atingido | Sobe o teto na tela ou espera a meia-noite UTC |
 | Pausa `limite` | Limite de requisições da Anthropic | Espera sozinho; para volume alto, peça aumento de limite |

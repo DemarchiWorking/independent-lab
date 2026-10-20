@@ -69,10 +69,11 @@ services:
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
-    mem_limit: 384m
-    memswap_limit: 384m
-    cpus: 0.5
-    pids_limit: 128
+    # A CLI do Claude Code é um processo Node (300 a 500 MB com a conversa carregada).
+    mem_limit: 768m
+    memswap_limit: 768m
+    cpus: 1.0
+    pids_limit: 256
     init: true
     logging: *logging
     # Só a rede própria: sem a rede do Caddy, sem porta no host.

@@ -110,12 +110,12 @@ Guia completo: [`docs/equipe-ia/IA-OPERACAO.md`](../docs/equipe-ia/IA-OPERACAO.m
 | Passo | Quem | Como |
 |---|---|---|
 | Subir app + worker | `publicar.sh` | Constrói as duas imagens na VPS e confere o batimento do worker |
-| Colocar a chave | você | `nano /opt/independent-lab/.env.ia` (`ANTHROPIC_API_KEY`), depois `docker restart independent-lab-ia-worker`. Crie a chave no Console **com limite mensal de gasto** |
+| Colocar a credencial | você | **Pro (principal):** `claude setup-token` numa conta separada e `CLAUDE_CODE_OAUTH_TOKEN` + `IA_PERMITIR_ASSINATURA=1` em `/opt/independent-lab/.env.ia`, publicar com `INSTALAR_CLAUDE_CLI=1`, validar com `node ia-worker/verificar.mjs --chamada`. **API (opcional):** `ANTHROPIC_API_KEY` no mesmo arquivo, com limite mensal no Console. Depois `docker restart independent-lab-ia-worker` |
 | Criar a conta de admin da IA | você | Em produção o cadastro recusa `admin@admin.com`. Ponha `GAMEHUB_LIBERAR_CADASTRO_ADMIN=1` no `.env`, reinicie o app, cadastre-se, **remova a linha** e reinicie |
 | Guardião de hora em hora | `instalar-guardiao.sh` | Timer do systemd (ou cron: `0 * * * * /opt/independent-lab/ia-guardiao.sh`) |
 | Escolher modelo, limites, modo | você | `/admin/ia`, só com o e-mail do admin da IA |
 
-O worker sobe mesmo sem chave: a tela `/admin/ia` mostra "modo sem credencial" e o material de regras continua funcionando. O modo assinatura (`INSTALAR_CLAUDE_CLI=1`) é opcional e **contraria os termos da Anthropic** quando atende usuários de um produto: leia o guia antes.
+O worker sobe mesmo sem credencial: a tela `/admin/ia` mostra "modo sem credencial" e o material de regras continua funcionando. O modo principal é a assinatura Claude Pro; o toggle de créditos de API em `/admin/ia` só libera quando há `ANTHROPIC_API_KEY` no worker. Atender usuários de um produto pela assinatura **contraria os termos da Anthropic** (risco assumido pelo dono): leia o guia antes.
 
 ```bash
 docker logs --tail 50 independent-lab-ia-worker

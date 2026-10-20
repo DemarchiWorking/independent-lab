@@ -4,7 +4,7 @@ import { getRepository } from "@/lib/db";
 import { Limitador } from "@/lib/limite";
 import { mesmaOrigem } from "@/lib/origem";
 import { CATALOGO_HABILIDADES, type TipoEntregavel } from "@/features/equipe-ia/habilidades";
-import { autorizarIA, coletarSePreciso, contextoDoTenant, estadoIA, revogarIA, solicitarRefino } from "@/features/equipe-ia/ia/servico-ia";
+import { autorizarIA, coletarSePreciso, contextoDoTenant, estadoIA, garantirPrimeiraGeracao, revogarIA, solicitarRefino } from "@/features/equipe-ia/ia/servico-ia";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,6 +58,8 @@ async function tratar(request: Request, params: Promise<{ tipo: string }>, corpo
 
   if (corpo === null) {
     await coletarSePreciso(repo);
+    // Abrir o material de quem autorizou a IA começa a primeira geração sozinha.
+    await garantirPrimeiraGeracao(repo, sessao.tenantId, tipoEntregavel, agora);
     return resposta(await estadoIA(repo, sessao.tenantId, tipoEntregavel, info.ctx, agora));
   }
 
@@ -70,6 +72,8 @@ async function tratar(request: Request, params: Promise<{ tipo: string }>, corpo
     }
     case "autorizar":
       await autorizarIA(sessao.tenantId, sessao.usuarioId, agora);
+      // Autorizar já inicia a geração deste material: o dono não precisa pedir.
+      await garantirPrimeiraGeracao(repo, sessao.tenantId, tipoEntregavel, agora);
       return resposta(await estadoIA(repo, sessao.tenantId, tipoEntregavel, info.ctx, agora));
     case "revogar":
       await revogarIA(sessao.tenantId);

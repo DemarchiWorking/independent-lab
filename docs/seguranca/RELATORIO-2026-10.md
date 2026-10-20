@@ -198,17 +198,17 @@ Os materiais passaram a poder ser **refinados por IA** a partir do contexto
 registrado de cada conta, a pedido e por uma melhoria contínua de hora em hora.
 Guia completo: [`../equipe-ia/IA-OPERACAO.md`](../equipe-ia/IA-OPERACAO.md).
 
-### Decisão que precisa do seu olho: a assinatura Pro
+### Decisão assumida: a assinatura Pro é o modo principal
 
-O pedido original era usar a assinatura Claude Pro da VPS por padrão. A página
-oficial de termos do Claude Code
-([legal-and-compliance](https://code.claude.com/docs/en/legal-and-compliance),
+Você pediu a assinatura Claude Pro da VPS como modo principal, com um toggle
+para créditos de API (que ainda não existem). A página oficial de termos do
+Claude Code ([legal-and-compliance](https://code.claude.com/docs/en/legal-and-compliance),
 20/10/2026) diz que a Anthropic **não permite** rotear requisições dos usuários
 de um produto por credenciais Free, Pro ou Max, e que pode agir sem aviso. O
-risco recai sobre a conta inteira. Você escolheu: **API como padrão e a
-assinatura como opção do admin**. A assinatura existe, mas exige duas
-confirmações (`IA_PERMITIR_ASSINATURA=1` no worker e a escolha na tela, que
-mostra o aviso) e nunca é ligada sozinha.
+risco recai sobre a conta inteira. Ficou como você decidiu: **Pro principal**,
+com o aviso sempre visível em `/admin/ia`, recomendação de conta separada e do
+treinamento desativado, e o toggle para API assim que houver chave. Exige
+`IA_PERMITIR_ASSINATURA=1` no worker e nunca troca de modo sozinho.
 
 ### Superfície nova e controles
 

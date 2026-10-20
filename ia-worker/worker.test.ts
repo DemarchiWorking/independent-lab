@@ -598,6 +598,8 @@ describe("modo assinatura (claude -p)", () => {
     expect(s.args).toContain("--no-session-persistence");
     expect(s.args).toContain("--disable-slash-commands");
     expect(s.args).toContain("--strict-mcp-config");
+    expect(s.args).toContain("--safe-mode");
+    expect(s.args[s.args.indexOf("--max-turns") + 1]).toBe("5");
     expect(s.args).not.toContain("--bare");
     expect(s.args[s.args.indexOf("--tools") + 1]).toBe("");
     expect(s.args).toContain("--json-schema");
@@ -650,5 +652,101 @@ describe("modo assinatura (claude -p)", () => {
     await gravarConfig({ modo: "assinatura" });
     await colocar("pendente", pedido("c7"));
     expect(await ciclo(est)).toMatchObject({ acao: "pausado", motivo: "modo-indisponivel" });
+  });
+});
+
+// ============================================================ assinatura como modo principal
+
+describe("assinatura Pro: formatos reais de erro e operação", () => {
+  const cabecalho = { get: () => null };
+  void cabecalho;
+
+  it("classifica os formatos reais que a CLI devolve (is_error com subtype 'success')", () => {
+    // vistos na CLI 2.1.226 com login vencido
+    expect(classificarCli("Failed to authenticate. API Error: 401 OAuth access token has expired. Re-authenticate to continue.", 401).codigo).toBe("auth");
+    expect(classificarCli("Failed to authenticate: OAuth session expired and could not be refreshed").codigo).toBe("auth");
+    // janela de 5 horas e limite semanal: sem época, espera 60 min (tentar de novo não gasta nada)
+    const janela = classificarCli("5-hour limit reached ∙ resets 3pm", 429);
+    expect(janela).toMatchObject({ codigo: "limite", esperaMs: 60 * 60_000 });
+    expect(classificarCli("Weekly limit reached ∙ resets Mon 9am").codigo).toBe("limite");
+    expect(classificarCli("Claude usage limit reached. Your limit will reset at 3pm").codigo).toBe("limite");
+    // modelo que a conta não tem: vale para todo pedido, então pausa em vez de gastar tentativas
+    expect(classificarCli("There's an issue with the selected model (claude-haiku-5-5). It may not exist or you may not have access to it.", 404).codigo).toBe("config");
+    expect(classificarCli("API Error: 529 overloaded_error", 529).codigo).toBe("sobrecarga");
+    expect(classificarCli("algo estranho").codigo).toBe("interno");
+  });
+
+  const envCli = (extra: Ambiente = {}): Ambiente => ({
+    PATH: process.env.PATH,
+    SystemRoot: process.env.SystemRoot,
+    CLAUDE_CODE_OAUTH_TOKEN: "oauth-teste",
+    IA_PERMITIR_ASSINATURA: "1",
+    ...extra,
+  });
+  const estado = (extra: Ambiente = {}) => criarEstado({ pasta, env: envCli(extra), bin: process.execPath, argsIniciais: [CLI_FALSO] });
+
+  it("a credencial pode ser a pasta de login em vez do token (claude auth login feito pelo operador)", () => {
+    const e = ambienteDoCli({ IA_CLAUDE_CONFIG_DIR: "/login", PATH: "/bin" }, "/tmp/casa");
+    expect(e.CLAUDE_CONFIG_DIR).toBe("/login");
+    expect(e.HOME).toBe("/tmp/casa"); // o resto continua isolado
+    expect(ambienteDoCli({ PATH: "/bin" }, "/tmp/casa").CLAUDE_CONFIG_DIR).toContain("casa");
+    expect(modosDisponiveis({ IA_PERMITIR_ASSINATURA: "1", IA_CLAUDE_CONFIG_DIR: "/login" }, true)).toEqual(["assinatura"]);
+    expect(modosDisponiveis({ IA_PERMITIR_ASSINATURA: "1" }, true)).toEqual([]);
+  });
+
+  it("IA_CLAUDE_ARGS põe argumentos antes dos do worker (wrapper do claude); lixo é ignorado", () => {
+    expect(criarEstado({ pasta, env: { IA_CLAUDE_ARGS: '["--a","b"]' } }).argsIniciais).toEqual(["--a", "b"]);
+    for (const ruim of ["{", "[1,2]", '"texto"', "", undefined]) expect(criarEstado({ pasta, env: { IA_CLAUDE_ARGS: ruim } }).argsIniciais).toEqual([]);
+  });
+
+  it("se a CLI recusa o esquema, repete sem ele e aceita o JSON do texto", async () => {
+    const est = estado();
+    await gravarConfig({ modo: "assinatura" });
+    await colocar("pendente", pedido("e1", { entrada: JSON.stringify({ modo: "esquema-recusado" }) }));
+    expect((await ciclo(est)).acao).toBe("processou");
+    expect((await ler<ResultadoIA>("concluido", "e1")).saida).toEqual({ sem: "esquema" });
+  });
+
+  it("limite da janela de 5 horas: pausa 60 minutos, devolve o pedido à fila e não conta como falha do pedido", async () => {
+    const est = estado();
+    await gravarConfig({ modo: "assinatura" });
+    await colocar("pendente", pedido("l1", { entrada: JSON.stringify({ modo: "limite-novo" }) }));
+    await ciclo(est);
+    expect(await existe("pendente", "l1")).toBe(true);
+    expect((await ler<PedidoIA>("pendente", "l1")).tentativas).toBe(0);
+    const hb = await ler<EstadoWorker>("worker");
+    expect(hb.motivoPausa).toBe("limite");
+    const espera = new Date(hb.pausadoAte ?? 0).getTime() - Date.now();
+    expect(espera).toBeGreaterThan(55 * 60_000);
+    expect(espera).toBeLessThanOrEqual(60 * 60_000);
+  });
+
+  it("modelo que a assinatura não tem: pausa por configuração e o pedido espera na fila", async () => {
+    const est = estado();
+    await gravarConfig({ modo: "assinatura" });
+    await colocar("pendente", pedido("m1", { entrada: JSON.stringify({ modo: "modelo-indisponivel" }) }));
+    await ciclo(est);
+    expect(await existe("pendente", "m1")).toBe(true);
+    expect((await ler<EstadoWorker>("worker")).motivoPausa).toBe("config");
+  });
+
+  it("o teto de gasto em dólar vale só no modo API: na assinatura o custo é equivalência, nunca cobrada", async () => {
+    const est = estado();
+    await gravarConfig({ modo: "assinatura", limites: { ...CONFIG.limites, gastoMaxUsdDia: 0.001 } });
+    await colocar("pendente", pedido("a1", { entrada: JSON.stringify({ modo: "ok" }), criadoEm: "2026-10-20T08:00:00.000Z" }));
+    await colocar("pendente", pedido("a2", { entrada: JSON.stringify({ modo: "ok" }), criadoEm: "2026-10-20T09:00:00.000Z" }));
+    expect((await ciclo(est)).acao).toBe("processou");
+    expect((await ciclo(est)).acao).toBe("processou"); // passou do "teto" em dólar e segue: não é cobrado
+    expect(await existe("concluido", "a2")).toBe(true);
+    expect((await ler<EstadoWorker>("worker")).motivoPausa).toBeNull();
+  });
+
+  it("o teto de pedidos por dia vale nos dois modos", async () => {
+    const est = estado();
+    await gravarConfig({ modo: "assinatura", limites: { ...CONFIG.limites, jobsPorDia: 1 } });
+    await colocar("pendente", pedido("j1", { entrada: JSON.stringify({ modo: "ok" }) }));
+    await colocar("pendente", pedido("j2", { entrada: JSON.stringify({ modo: "ok" }) }));
+    await ciclo(est);
+    expect(await ciclo(est)).toMatchObject({ acao: "pausado", motivo: "limite-diario" });
   });
 });

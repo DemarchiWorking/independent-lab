@@ -155,7 +155,7 @@ export const NICHOS: readonly Nicho[] = [
       custos: [
         "Produtos e descartáveis",
         "Aluguel do espaço ou cota de cadeira",
-        "Comissões e salários",
+        "Comissões sobre os serviços, quando há profissionais parceiros",
         "Água, luz e manutenção de equipamentos",
       ],
       documentos: [

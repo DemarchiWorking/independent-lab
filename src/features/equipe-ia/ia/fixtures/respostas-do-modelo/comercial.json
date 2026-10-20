@@ -1,0 +1,245 @@
+{
+  "titulo": "Kit Comercial: Studio Bela Cabelos",
+  "subtitulo": "Como responder rápido, qualificar cada contato e acompanhar quem ainda não decidiu · Centro, Mendes",
+  "secoes": [
+    {
+      "id": "como-usar",
+      "titulo": "Como usar este kit",
+      "intro": "",
+      "blocos": [
+        { "tipo": "paragrafo", "texto": "O kit existe para você responder rápido, entender quem é cada contato e acompanhar quem ainda não decidiu, sem perder cliente por falta de tempo. O seu foco dos próximos 90 dias é gerar mais oportunidades, e o ponto de partida é um só: a resposta não pode demorar." },
+        { "tipo": "destaque", "titulo": "A venda continua sendo sua", "texto": "A automação cuida do primeiro atendimento, da qualificação e do acompanhamento. Quem negocia valor, conversa sobre condições e fecha o atendimento é uma pessoa, você ou alguém da sua equipe.", "tom": "info" },
+        { "tipo": "destaque", "titulo": "O seu ponto de partida", "texto": "Você declarou que perde contatos pela demora. Quando a resposta demora, o contato esfria e a cliente procura outro salão. Comece pela seção \"Atendimento em 5 minutos\": é onde está o maior ganho.", "tom": "atencao" },
+        { "tipo": "paragrafo", "texto": "Nas mensagens, o que está entre chaves, como {nome_do_cliente}, é o que só você sabe. Troque antes de enviar. O restante já está preenchido com os dados do seu negócio." },
+        {
+          "tipo": "tabela",
+          "colunas": ["Campo", "O que colocar"],
+          "linhas": [
+            ["{nome_do_cliente}", "Nome de quem está falando com você"],
+            ["{seu_nome}", "O seu nome, ou o de quem atende"],
+            ["{quem_indicou}", "Quem indicou a cliente, quando for o caso"],
+            ["{servico}", "O serviço combinado"],
+            ["{valor}", "O valor do orçamento"],
+            ["{prazo}", "O tempo que o serviço leva"],
+            ["{data}", "Uma data (de validade, de horário ou de entrega)"],
+            ["{horario}", "Um horário marcado"],
+            ["{link_avaliacao}", "O link direto para avaliar o salão no Google"],
+            ["{horario_de_atendimento}", "Seus dias e horários de atendimento"],
+            ["{endereco}", "O endereço do salão"],
+            ["{formas_de_pagamento}", "As formas de pagamento aceitas"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cliente-bom",
+      "titulo": "Quem é a sua cliente boa",
+      "intro": "Saber para quem você fala decide o que escrever e onde aparecer.",
+      "blocos": [
+        {
+          "tipo": "cartoes",
+          "cartoes": [
+            { "titulo": "Quem compra", "itens": ["Moradoras do Centro e dos bairros vizinhos que cuidam do cabelo toda semana ou todo mês", "Noivas, formandas e quem tem uma ocasião especial chegando", "Quem procura um profissional de confiança depois de uma experiência ruim", "Empresas e equipes que contratam serviços em pacote"] },
+            { "titulo": "Quando procura", "itens": ["Uma ocasião especial se aproximando", "Vontade de mudar o visual", "Indicação de uma amiga", "Cabelo que precisa de manutenção ou de tratamento"] },
+            { "titulo": "O que mais incomoda", "itens": ["Agenda que não encaixa na rotina", "Resultado diferente do que foi combinado", "Espera longa mesmo com horário marcado", "Preço que muda sem aviso"] },
+            { "titulo": "Onde encontrar", "itens": ["Instagram, com antes e depois e vídeos curtos", "Mensagem direta, com agenda e lembrete", "Perfil da Empresa no Google, com fotos e avaliações", "Parcerias com lojas de noivas, fotógrafos e organizadores de eventos"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "qualificacao",
+      "titulo": "Quem é uma cliente boa: critérios de qualificação",
+      "intro": "",
+      "blocos": [
+        { "tipo": "paragrafo", "texto": "Contato é qualquer pessoa que demonstrou interesse, mas nem todo contato está pronto para marcar. Estas quatro perguntas, adaptadas do método BANT (necessidade, orçamento, prazo e decisão), ajudam a saber quem merece atenção primeiro. Faça as perguntas em conversa, nunca como formulário." },
+        {
+          "tipo": "tabela",
+          "colunas": ["Critério", "Pergunta", "Sinal de cliente boa", "Pontos"],
+          "linhas": [
+            ["Necessidade", "Qual serviço você quer fazer?", "Descreve com clareza o que deseja", "3"],
+            ["Prazo", "Para quando você precisa?", "Precisa em até 30 dias", "3"],
+            ["Valor", "Você já tem um valor em mente para isso?", "O valor combina com a nossa oferta", "2"],
+            ["Decisão", "Você decide sozinha ou mais alguém participa?", "Decide ou participa da decisão", "2"]
+          ]
+        },
+        {
+          "tipo": "tabela",
+          "colunas": ["Pontuação", "Classe", "O que fazer"],
+          "linhas": [
+            ["8 a 10", "Quente", "Responda na hora e proponha dois horários"],
+            ["5 a 7", "Morna", "Envie as informações e retome em 2 dias"],
+            ["0 a 4", "Fria", "Entre na cadência longa e não insista"]
+          ]
+        },
+        { "tipo": "destaque", "titulo": "", "texto": "Os pontos são um guia, não uma sentença. Se a sua intuição diz que o contato é bom, trate como bom e ajuste os pontos depois das primeiras semanas, conforme o que realmente vira atendimento. Se a pessoa estiver fora da região que você atende, avise com educação e, se puder, indique alguém.", "tom": "info" }
+      ]
+    },
+    {
+      "id": "atendimento",
+      "titulo": "Atendimento em 5 minutos (WhatsApp Business)",
+      "intro": "",
+      "blocos": [
+        { "tipo": "paragrafo", "texto": "A meta é responder em até 5 minutos no horário comercial. O WhatsApp Business, que é gratuito, tem o que você precisa: mensagem de saudação, mensagem de ausência, respostas rápidas, etiquetas e catálogo." },
+        { "tipo": "mensagem", "rotulo": "Mensagem de saudação", "quando": "Envia sozinha quando uma cliente nova escreve.", "texto": "Olá! Aqui é o Studio Bela Cabelos. Obrigada pelo contato! Me conta o que você gostaria de fazer, que já te respondo com os horários disponíveis." },
+        { "tipo": "mensagem", "rotulo": "Mensagem de ausência", "quando": "Envia sozinha fora do horário de atendimento.", "texto": "Olá! Aqui é o Studio Bela Cabelos. No momento não estamos atendendo. Nosso horário é {horario_de_atendimento}. Deixe a sua mensagem que respondemos assim que voltarmos, já com horários para você escolher." },
+        {
+          "tipo": "tabela",
+          "colunas": ["Atalho", "Quando usar", "Texto"],
+          "linhas": [
+            ["/orcamento", "Cliente pediu valor", "Posso te passar o valor certinho. Me conta: qual serviço você quer fazer e para quando?"],
+            ["/horario", "Perguntam o horário", "Atendemos {horario_de_atendimento}."],
+            ["/endereco", "Perguntam onde fica", "Estamos em Mendes, no Centro: {endereco}."],
+            ["/pagamento", "Perguntam como pagar", "Aceitamos {formas_de_pagamento}."],
+            ["/obrigado", "Ao encerrar o atendimento", "Obrigada pelo contato! Qualquer dúvida é só chamar. Studio Bela Cabelos."]
+          ]
+        },
+        { "tipo": "paragrafo", "texto": "Para criar cada atalho no WhatsApp Business, abra as ferramentas comerciais, escolha respostas rápidas e cole o texto da tabela." },
+        { "tipo": "lista", "itens": ["Etiquetas sugeridas: Novo contato, Orçamento enviado, Negociando, Agendada, Pós-atendimento, Sem resposta", "Catálogo: comece com as ofertas que você já publicou no hub (Hidratação profunda, Coloração e mechas e Corte feminino), cada uma com foto, descrição e valor"], "ordenada": false }
+      ]
+    },
+    {
+      "id": "mensagens",
+      "titulo": "Mensagens prontas",
+      "intro": "Copie, troque os campos entre chaves e envie. Se preferir, escreva do seu jeito: o que importa é a estrutura.",
+      "blocos": [
+        { "tipo": "mensagem", "rotulo": "Primeiro contato por indicação", "quando": "Quando alguém indicou a cliente e você faz o primeiro contato.", "texto": "Olá, {nome_do_cliente}! Aqui é {seu_nome}, do Studio Bela Cabelos. {quem_indicou} comentou que você procura cuidar do cabelo. Posso te ajudar? Me conta rapidinho o que você tem em mente." },
+        { "tipo": "mensagem", "rotulo": "Quando perguntam o preço logo de cara", "quando": "Quando a cliente escreve só \"quanto custa?\".", "texto": "Oi, {nome_do_cliente}! O valor depende de alguns detalhes e eu quero te passar um número certo, não um chute. Como referência, a Hidratação profunda é R$ 120 e o Corte feminino é R$ 80. Posso te fazer duas perguntas rápidas para montar o seu orçamento?" },
+        { "tipo": "mensagem", "rotulo": "Envio do orçamento", "quando": "Logo depois de entender o que a cliente precisa.", "texto": "{nome_do_cliente}, segue o orçamento:\n\n{servico}\nValor: {valor}\nTempo de atendimento: {prazo}\nVálido até: {data}\n\nQualquer dúvida estou por aqui. Posso reservar um horário para você?" },
+        { "tipo": "mensagem", "rotulo": "Retorno depois de 2 dias", "quando": "Dois dias depois do orçamento, se a cliente não respondeu.", "texto": "Oi, {nome_do_cliente}! Passando para saber se ficou alguma dúvida sobre o orçamento. Se quiser, ajusto alguma coisa para caber melhor para você. Se preferir não receber mais mensagens, é só responder SAIR." },
+        { "tipo": "mensagem", "rotulo": "Encerramento gentil", "quando": "Dez dias depois do orçamento, sem resposta.", "texto": "Oi, {nome_do_cliente}. Vou encerrar por aqui para não te incomodar. Se mudar de ideia ou quiser cuidar do cabelo, é só me chamar. Obrigada pela atenção! Se preferir não receber mais mensagens, é só responder SAIR." },
+        { "tipo": "mensagem", "rotulo": "Confirmação de horário", "quando": "Um dia antes do horário marcado.", "texto": "Oi, {nome_do_cliente}! Confirmando o seu horário: {data}, às {horario}. Responda SIM para confirmar. Se precisar remarcar, me avise com antecedência para eu oferecer o horário a outra pessoa." },
+        { "tipo": "mensagem", "rotulo": "Pós-atendimento e pedido de avaliação", "quando": "Um ou dois dias depois do atendimento.", "texto": "Oi, {nome_do_cliente}! Como ficou o cabelo? Se você gostou, uma avaliação no Google ajuda muito um salão pequeno como o Studio Bela Cabelos: {link_avaliacao}. Muito obrigada!" }
+      ]
+    },
+    {
+      "id": "script",
+      "titulo": "Script de ligação ou conversa no salão",
+      "intro": "",
+      "blocos": [
+        { "tipo": "mensagem", "rotulo": "Abertura", "quando": "Ao ligar ou ao receber a cliente.", "texto": "Oi, {nome_do_cliente}, tudo bem? Aqui é {seu_nome}, do Studio Bela Cabelos. Você pediu informações e eu queria entender melhor o que você procura para te passar o valor certo. Tem dois minutinhos?" },
+        { "tipo": "paragrafo", "texto": "Descoberta: faça as perguntas em forma de conversa e escute mais do que fala." },
+        { "tipo": "lista", "itens": ["Qual serviço você quer fazer?", "Você tem uma referência de como quer ficar?", "Tem alergia ou sensibilidade a algum produto?", "Qual o melhor dia e horário para você?"], "ordenada": false },
+        { "tipo": "paragrafo", "texto": "Apresentação: mostre a oferta mais próxima do que a cliente pediu, entre Hidratação profunda, Coloração e mechas e Corte feminino, e use uma prova real: fotos de antes e depois, com autorização de quem aparece nelas." },
+        { "tipo": "paragrafo", "texto": "Objeções: ouça até o fim, reconheça o ponto e responda com um exemplo." },
+        {
+          "tipo": "tabela",
+          "colunas": ["Quando a cliente diz", "Você pode responder"],
+          "linhas": [
+            ["Está caro.", "Entendo. Posso explicar o que está incluído no valor? Se precisar, monto uma opção que caiba melhor e mostro o que muda em cada uma."],
+            ["Vou pensar.", "Claro. Para eu te ajudar a decidir, o que seria mais importante conferir: valor, tempo ou outra coisa?"],
+            ["Vou fazer em outro lugar, mais barato.", "Entendo. Se quiser, explico o que está incluído aqui: produtos, tempo de atendimento e o acompanhamento depois. Podemos ver também um serviço que caiba no que você tem em mente."],
+            ["Tenho medo de não ficar como eu quero.", "Por isso a gente conversa antes e olha as suas referências. Na coloração, fazemos uma avaliação do cabelo antes de começar, justamente para evitar surpresa."]
+          ]
+        },
+        { "tipo": "mensagem", "rotulo": "Fechamento", "quando": "Quando a cliente demonstrou interesse.", "texto": "Pelo que você me contou, faz sentido a gente marcar {data}, às {horario}, para eu te mostrar como ficaria no seu caso. Esse dia funciona para você?" }
+      ]
+    },
+    {
+      "id": "cadencia",
+      "titulo": "Quando acompanhar cada contato",
+      "intro": "",
+      "blocos": [
+        {
+          "tipo": "tabela",
+          "colunas": ["Quando", "Canal", "Objetivo", "Mensagem"],
+          "linhas": [
+            ["Dia 0", "WhatsApp", "Responder e entender o que a cliente precisa", "Saudação e orçamento"],
+            ["Dia 2", "WhatsApp", "Saber se ficou alguma dúvida", "Retorno depois de 2 dias"],
+            ["Dia 10", "WhatsApp", "Encerrar com educação", "Encerramento gentil"]
+          ]
+        },
+        { "tipo": "destaque", "titulo": "Insistir não é acompanhar", "texto": "Quem disse não ou pediu para parar não recebe mais mensagem. Anote o pedido na planilha e respeite. Isso protege a sua reputação e a sua conta no WhatsApp.", "tom": "atencao" }
+      ]
+    },
+    {
+      "id": "agendamento",
+      "titulo": "Agendamento sem faltas",
+      "intro": "",
+      "blocos": [
+        {
+          "tipo": "passos",
+          "passos": [
+            { "titulo": "Ofereça dois horários, não uma pergunta aberta", "detalhe": "\"Terça às 10h ou quinta às 15h?\" fecha mais rápido do que \"qual horário você prefere?\"." },
+            { "titulo": "Envie a confirmação por escrito, com data, horário e endereço", "detalhe": "" },
+            { "titulo": "Peça a confirmação um dia antes", "detalhe": "Use a mensagem de confirmação. Se não houver resposta, ligue." },
+            { "titulo": "Deixe a regra de remarcação clara", "detalhe": "Avisar com antecedência permite oferecer o horário a outra pessoa." },
+            { "titulo": "Mantenha uma lista de espera", "detalhe": "Quando alguém desmarca, chame a próxima pessoa da lista." }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "planilha",
+      "titulo": "Planilha de acompanhamento (CRM simples)",
+      "intro": "",
+      "blocos": [
+        { "tipo": "paragrafo", "texto": "Uma planilha basta no começo. Crie estas colunas em uma planilha online e registre cada contato no mesmo dia. Quem não está na planilha não existe no seu acompanhamento." },
+        {
+          "tipo": "tabela",
+          "colunas": ["Data", "Nome", "Contato", "De onde veio", "O que pediu", "Pontos", "Classe", "Valor enviado", "Próximo contato", "Situação"],
+          "linhas": [
+            ["(exemplo) 10/03", "Maria", "(11) 90000-0000", "Indicação", "Orçamento", "9", "Quente", "R$ 350", "12/03", "Orçamento enviado"],
+            ["", "", "", "", "", "", "", "", "", ""]
+          ]
+        },
+        { "tipo": "paragrafo", "texto": "Situações possíveis: Novo contato, Orçamento enviado, Negociando, Agendada, Perdida (anote o motivo) e Pós-atendimento." }
+      ]
+    },
+    {
+      "id": "lgpd",
+      "titulo": "Boas práticas e LGPD",
+      "intro": "",
+      "blocos": [
+        {
+          "tipo": "checklist",
+          "itens": [
+            "Guarde só o que precisa: nome, contato e o que a pessoa pediu",
+            "Registre de onde veio o contato e que a pessoa aceitou receber mensagens",
+            "Ofereça a saída em toda mensagem de acompanhamento (\"responda SAIR\")",
+            "Não compre lista de contatos nem envie mensagem em massa para quem não pediu: além de infração, a conta do WhatsApp pode ser bloqueada",
+            "Apague ou corrija os dados quando a pessoa pedir",
+            "Não guarde documentos pessoais em conversa de WhatsApp sem necessidade"
+          ]
+        },
+        { "tipo": "destaque", "titulo": "", "texto": "Este é um guia de boas práticas, não um parecer jurídico. Para dúvidas sobre a Lei Geral de Proteção de Dados no seu caso, converse com um advogado ou com o seu contador.", "tom": "info" }
+      ]
+    },
+    {
+      "id": "metricas",
+      "titulo": "Números para olhar toda semana",
+      "intro": "Meça por quatro semanas antes de definir metas: ninguém conhece os seus números de hoje melhor do que a sua planilha.",
+      "blocos": [
+        {
+          "tipo": "tabela",
+          "colunas": ["Número", "Como calcular", "Referência"],
+          "linhas": [
+            ["Tempo da primeira resposta", "Hora da resposta menos a hora do contato", "Até 5 minutos no horário comercial"],
+            ["Contatos novos", "Quantas pessoas novas escreveram", "Compare semana com semana"],
+            ["Orçamentos enviados", "Quantos orçamentos saíram", "Compare com os contatos novos"],
+            ["Orçamentos que viram atendimento", "Atendimentos dividido por orçamentos, vezes 100", "Defina a sua meta depois de 4 semanas"],
+            ["Contatos sem resposta após 10 dias", "Quantos chegaram ao encerramento gentil", "Quanto menor, melhor"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ia-rotina-semanal",
+      "titulo": "Rotina semanal de 30 minutos",
+      "intro": "Uma rotina curta e fixa faz o kit funcionar mesmo nas semanas cheias.",
+      "blocos": [
+        {
+          "tipo": "checklist",
+          "itens": [
+            "Abrir a planilha e atualizar a situação de cada contato",
+            "Enviar o retorno de 2 dias para quem ficou sem responder",
+            "Mandar o encerramento gentil para quem chegou ao décimo dia",
+            "Conferir a agenda da semana seguinte e enviar as confirmações de horário",
+            "Anotar o tempo da primeira resposta de três contatos escolhidos ao acaso",
+            "Escolher uma mensagem para melhorar com base no que as clientes perguntaram"
+          ]
+        }
+      ]
+    }
+  ]
+}

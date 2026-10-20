@@ -13,6 +13,8 @@ export function capitalizar(texto: string): string {
 
 /** Primeira letra minúscula — para encaixar uma frase no meio de outra. */
 export function minusculaInicial(texto: string): string {
+  // "R$ 500", "CNPJ" e "MEI" não perdem a maiúscula: virar "r$ 500" é erro, não estilo.
+  if (/^(R\$|[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{2,})/.test(texto)) return texto;
   return texto.charAt(0).toLowerCase() + texto.slice(1);
 }
 

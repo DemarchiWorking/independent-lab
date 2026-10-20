@@ -1,15 +1,15 @@
 # independent-lab: worker de IA (único componente com a credencial da Anthropic).
 #
 #   docker build -f ia-worker/Dockerfile -t independent-lab-ia-worker .
-#   docker build -f ia-worker/Dockerfile --build-arg INSTALAR_CLAUDE_CLI=1 -t independent-lab-ia-worker .
+#   docker build -f ia-worker/Dockerfile --build-arg INSTALAR_CLAUDE_CLI=0 -t independent-lab-ia-worker .   # só modo API
 #
-# Por padrão a imagem é mínima (só Node e um arquivo): serve ao modo API.
-# INSTALAR_CLAUDE_CLI=1 acrescenta a CLI do Claude Code para o modo assinatura
-# (opcional, por conta e risco do operador: ver docs/equipe-ia/IA-OPERACAO.md).
-# A versão da CLI é fixada: é a que foi testada com as flags do worker.
+# Por padrão a imagem leva a CLI do Claude Code: a assinatura Claude Pro é o modo
+# principal (veja os termos da Anthropic em docs/equipe-ia/IA-OPERACAO.md).
+# INSTALAR_CLAUDE_CLI=0 gera uma imagem mínima (só Node e dois arquivos), que serve
+# apenas ao modo API. A versão da CLI é fixada: é a que foi testada com as flags do worker.
 FROM node:24-bookworm-slim
 
-ARG INSTALAR_CLAUDE_CLI=0
+ARG INSTALAR_CLAUDE_CLI=1
 ARG CLAUDE_CODE_VERSAO=2.1.226
 
 # Mesmo uid do app (10001): os dois leem e gravam os arquivos da pasta de troca.
@@ -20,7 +20,7 @@ RUN if [ "$INSTALAR_CLAUDE_CLI" = "1" ]; then \
       npm install -g --no-audit --no-fund "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSAO}"; \
     fi
 
-COPY --chown=ia:ia ia-worker/worker.mjs /app/worker.mjs
+COPY --chown=ia:ia ia-worker/worker.mjs ia-worker/verificar.mjs /app/
 
 USER ia
 WORKDIR /app

@@ -117,13 +117,13 @@ describe("salvarConfigIA", () => {
     expect((await lerConfig()).cobrarPorRequisicao).toBe(false);
   });
 
-  it("o admin não liga o modo assinatura sem o worker ter a credencial", async () => {
+  it("o toggle de créditos de API não liga sem o worker ter a chave; o modo continua assinatura", async () => {
     await garantirConfig();
     mocks.sessao = sessao("admin@admin.com");
-    const r = await salvarConfigIA(entrada({ modo: "assinatura" }));
+    const r = await salvarConfigIA(entrada({ modo: "api" }));
     expect(r.ok).toBe(false);
-    expect(r.erro).toMatch(/worker/);
-    expect((await lerConfig()).modo).toBe("api");
+    expect(r.erro).toMatch(/créditos de API/);
+    expect((await lerConfig()).modo).toBe("assinatura");
   });
 });
 

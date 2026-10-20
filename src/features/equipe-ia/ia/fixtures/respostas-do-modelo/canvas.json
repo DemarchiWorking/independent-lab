@@ -1,0 +1,188 @@
+{
+  "titulo": "Modelo de Negócio e plano de ação: Studio Bela Cabelos",
+  "subtitulo": "Salão de beleza no Centro de Mendes: como transformar a indicação e o Instagram em mais pedidos de horário",
+  "secoes": [
+    {
+      "id": "resumo",
+      "titulo": "Resumo do negócio",
+      "intro": "",
+      "blocos": [
+        {
+          "tipo": "destaque",
+          "titulo": "Documento interno",
+          "texto": "Este documento usa as respostas do seu cadastro (gargalo, orçamento, equipe). É para você e para quem trabalha com você, não para publicar nem para mostrar a clientes.",
+          "tom": "atencao"
+        },
+        {
+          "tipo": "paragrafo",
+          "texto": "O Studio Bela Cabelos atende no Centro de Mendes com corte, coloração e tratamentos. Hoje as clientes chegam principalmente por indicação e pelo Instagram, e o maior ponto fraco declarado é a demora na resposta: quando o contato espera, esfria, e a cliente procura outro salão. Por isso este plano trata o atendimento rápido como a primeira prioridade dos próximos 90 dias, antes de qualquer investimento novo em divulgação."
+        },
+        {
+          "tipo": "tabela",
+          "colunas": ["Item", "Informação"],
+          "linhas": [
+            ["Negócio", "Studio Bela Cabelos"],
+            ["Mercado", "Beleza e estética"],
+            ["Local", "Centro, Mendes"],
+            ["Equipe", "2 a 5 pessoas"],
+            ["Presença digital", "Aparece nas redes sociais, mas pouco para quem pesquisa no Google"],
+            ["Como capta clientes hoje", "Indicação de clientes e Instagram"],
+            ["Objetivo dos próximos 90 dias", "Gerar mais oportunidades de atendimento"],
+            ["Maior gargalo declarado", "A resposta demora, o contato esfria e a cliente procura outro lugar"],
+            ["Investimento mensal em tecnologia", "R$ 500 a R$ 1.500 por mês"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "canvas",
+      "titulo": "Modelo de Negócio (Canvas)",
+      "intro": "O Canvas mostra o negócio inteiro em uma página. Comece pelos segmentos de clientes e pela proposta de valor, e depois confira se atividades, recursos e custos sustentam o que você promete.",
+      "blocos": [
+        {
+          "tipo": "canvas",
+          "celulas": {
+            "segmentos": [
+              "Moradoras do Centro e dos bairros próximos que cuidam do cabelo todo mês e valorizam horário respeitado",
+              "Quem quer mudar a cor ou fazer mechas e precisa de uma avaliação honesta antes de começar",
+              "Pessoas com cabelo ressecado que procuram tratamento com produto profissional",
+              "Clientes que chegam por indicação de amigas e familiares e querem repetir a experiência"
+            ],
+            "proposta": [
+              "Corte feminino (R$ 80) com lavagem e finalização, para todos os tipos de cabelo",
+              "Coloração e mechas (a partir de R$ 180) com avaliação do cabelo antes de começar, para evitar surpresa no resultado",
+              "Hidratação profunda (R$ 120) com produtos profissionais para cabelo ressecado",
+              "Combinado antes de começar: o que será feito, quanto custa e quanto tempo leva",
+              "Resposta rápida com horários disponíveis, o que responde diretamente ao maior gargalo atual"
+            ],
+            "canais": [
+              "Hoje: indicação de clientes e o Instagram do salão",
+              "Instagram: fotos de antes e depois, com autorização da cliente, e vídeos curtos do trabalho",
+              "Perfil da Empresa no Google, para quem pesquisa salão em Mendes e hoje não encontra o seu",
+              "Mensagem direta com horários e preços de referência, respondida no mesmo período"
+            ],
+            "relacionamento": [
+              "Primeiro contato respondido dentro do horário comercial, com saudação e dois horários para escolher",
+              "Confirmação do horário no dia anterior, para reduzir faltas",
+              "Mensagem depois do serviço perguntando como ficou e se há algum ajuste a fazer",
+              "Pedido de indicação e de avaliação no Google para quem saiu satisfeita"
+            ],
+            "receitas": [
+              "Serviços avulsos: corte, coloração e mechas, hidratação",
+              "Combinações de serviços no mesmo dia, como coloração com hidratação",
+              "Venda de produtos para manutenção em casa, se o salão decidir trabalhar com revenda",
+              "Atendimentos para ocasiões especiais, com a agenda reservada com antecedência"
+            ],
+            "recursos": [
+              "Equipe de 2 a 5 pessoas com técnica comprovada e portfólio de trabalhos",
+              "Espaço no Centro, cadeiras e equipamentos",
+              "Produtos profissionais para coloração e tratamento",
+              "Agenda organizada e uma pessoa responsável por responder as mensagens em cada período"
+            ],
+            "atividades": [
+              "Atender, executar os serviços e avaliar o cabelo antes de cada coloração",
+              "Responder mensagens e manter a agenda em dia",
+              "Registrar cada trabalho com foto autorizada para o portfólio",
+              "Controlar o estoque e a validade dos produtos",
+              "Publicar no Instagram toda semana"
+            ],
+            "parcerias": [
+              "Fornecedores de produtos profissionais, com prazo de entrega combinado",
+              "Maquiadoras e fotógrafos para ocasiões especiais, como noivas e formaturas",
+              "Lojas e empresas vizinhas do Centro, para indicação mútua"
+            ],
+            "custos": [
+              "Pessoal da equipe e o pró-labore do dono, separado do caixa do salão",
+              "Produtos e materiais descartáveis",
+              "Aluguel do espaço, água, luz e internet",
+              "Manutenção de equipamentos",
+              "Tecnologia e divulgação: de R$ 500 a R$ 1.500 por mês, como informado no cadastro"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "primeiras-acoes",
+      "titulo": "Primeiras ações: os próximos 7 dias",
+      "intro": "Pequenas, concretas e possíveis em uma semana. Marque cada uma quando fizer.",
+      "blocos": [
+        {
+          "tipo": "checklist",
+          "itens": [
+            "Completar o Perfil da Empresa no Google com nome, endereço, horário, fotos dos trabalhos e a lista de serviços com o preço de referência",
+            "Combinar com a equipe quem responde as mensagens em cada período do dia e qual é o tempo máximo de resposta",
+            "Configurar a mensagem de saudação e a de ausência no Instagram e no aplicativo de mensagens, com os horários de atendimento",
+            "Escrever em uma folha três mensagens-modelo: primeiro contato, confirmação de horário e acompanhamento depois do serviço",
+            "Montar uma pasta de fotos de antes e depois, com autorização por escrito de cada cliente",
+            "Anotar numa planilha, durante uma semana, de onde veio cada novo contato"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "documentos",
+      "titulo": "Documentos para manter em dia",
+      "intro": "",
+      "blocos": [
+        {
+          "tipo": "destaque",
+          "titulo": "",
+          "texto": "Estes são itens que costumam ser exigidos neste mercado. As regras variam por cidade e por atividade: confirme com o seu contador e com os órgãos do seu município antes de tomar qualquer decisão.",
+          "tom": "atencao"
+        },
+        {
+          "tipo": "checklist",
+          "itens": [
+            "CNPJ ou MEI ativo e enquadramento correto (confirmar com o contador)",
+            "Alvará de funcionamento e licença sanitária do município, quando exigidos (confirmar com a prefeitura)",
+            "Registro da limpeza e da esterilização dos instrumentos (confirmar a exigência com a vigilância sanitária)",
+            "Ficha de cadastro e autorização de uso de imagem por cliente, com o aviso de privacidade (LGPD)",
+            "Acordo por escrito com cada profissional que atende no espaço (confirmar o modelo com o contador)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ia-gargalo",
+      "titulo": "Como resolver o maior gargalo: resposta lenta",
+      "intro": "O cadastro aponta que o contato esfria quando a resposta demora. Este passo a passo ataca isso sem exigir ferramenta nova.",
+      "blocos": [
+        {
+          "tipo": "passos",
+          "passos": [
+            { "titulo": "Definir o tempo máximo de resposta", "detalhe": "Combine com a equipe um prazo curto no horário comercial e escreva onde todos vejam." },
+            { "titulo": "Dividir os turnos de resposta", "detalhe": "Cada período do dia tem uma pessoa responsável, para a mensagem nunca ficar sem dono." },
+            { "titulo": "Responder sempre com duas opções de horário", "detalhe": "Quem recebe duas opções decide mais rápido do que quem precisa perguntar." },
+            { "titulo": "Fora do horário, deixar a mensagem de ausência", "detalhe": "Informe quando você responde e ofereça já os horários do próximo dia." },
+            { "titulo": "Retomar os contatos sem resposta", "detalhe": "Quem não respondeu recebe uma mensagem curta de retorno no dia seguinte, uma única vez." }
+          ]
+        },
+        {
+          "tipo": "destaque",
+          "titulo": "Como saber que funcionou",
+          "texto": "Ao fim de duas semanas, compare na planilha quantos contatos viraram horário marcado. Se subiu, mantenha o processo e só depois pense em investir mais em divulgação.",
+          "tom": "sucesso"
+        }
+      ]
+    },
+    {
+      "id": "ia-indicadores",
+      "titulo": "O que acompanhar no dia a dia",
+      "intro": "Sem meta inventada: o importante é medir sempre do mesmo jeito para ver a evolução.",
+      "blocos": [
+        {
+          "tipo": "tabela",
+          "colunas": ["Indicador", "Como medir", "Quando olhar"],
+          "linhas": [
+            ["Contatos novos por origem", "Planilha com a data e a origem de cada contato (indicação, Instagram, Google)", "Toda semana"],
+            ["Contatos que viraram horário marcado", "Contatos do período que agendaram, dividido pelo total de contatos", "Toda semana"],
+            ["Tempo até a primeira resposta", "Hora da mensagem recebida e hora da primeira resposta, por amostra", "A cada duas semanas"],
+            ["Faltas na agenda", "Horários marcados em que a cliente não apareceu", "Todo mês"],
+            ["Avaliações no Google", "Quantidade de avaliações novas e a nota média", "Todo mês"]
+          ]
+        }
+      ]
+    }
+  ]
+}

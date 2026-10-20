@@ -6,12 +6,13 @@ import { ciclo } from "../../../../ia-worker/worker.mjs";
 import type { FileRepository } from "@/lib/db/file-adapter";
 import type { TipoEntregavel } from "../habilidades";
 import type { PedidoIA } from "./contrato";
-import { garantirConfig, gravarConfig } from "./config";
+import { gravarConfig } from "./config";
 import { listarIds, pastaIA } from "./fila";
 import { hashContexto } from "./prompt";
 import {
   autorizarIA,
   coletar,
+  garantirPrimeiraGeracao,
   contextoDoTenant,
   entregavelEfetivo,
   estadoIA,
@@ -20,10 +21,10 @@ import {
   temConsentimento,
   varrer,
 } from "./servico-ia";
-import { bemComportado, criarTenant, esvaziarFila, servidorApi, worker, type Modelo } from "./teste-ambiente-ia";
+import { bemComportado, criarTenant, esvaziarFila, garantirConfigDeTeste as garantirConfig, MODOS, servidorApi, usarModo, worker, type Modelo } from "./teste-ambiente-ia";
 import { documentoComoSaida } from "./teste-util-ia";
 import { lerFalhasRecentes, lerLivro } from "./uso";
-import { lerRegistro } from "./versoes";
+import { lerRegistro, pedidosHoje, registrarFalha } from "./versoes";
 import type { Documento } from "../entregaveis/tipos";
 
 /**
@@ -62,6 +63,9 @@ async function efetivo(repo: FileRepository, tenantId: string, tipo: TipoEntrega
   if (!info) throw new Error("sem contexto");
   return { ...(await entregavelEfetivo(tenantId, tipo, info.ctx)), ctx: info.ctx };
 }
+
+describe.each(MODOS)("[modo %s]", (modo) => {
+  beforeEach(() => usarModo(modo));
 
 // ======================================================================== fluxo
 
@@ -505,4 +509,80 @@ describe("impressão digital do contexto", () => {
     const c = (await contextoDoTenant(repo, tenantId, "canvas", new Date()))?.ctx;
     expect(a && c && hashContexto(a)).not.toBe(c && hashContexto(c));
   });
+});
+
+  // ===================================== primeira geração automática ("quem entra recebe")
+
+  describe("primeira geração automática", () => {
+    it("quem autorizou e abre o material sem versão: a geração começa sozinha, sem gastar o teto de pedidos", async () => {
+      const { repo, tenantId } = await criarTenant();
+      await garantirConfig();
+      expect(await garantirPrimeiraGeracao(repo, tenantId, "canvas")).toBe(true);
+      const [id] = await listarIds("pendente");
+      expect((await lerPedido(id)).prioridade).toBe("usuario"); // passa na frente da melhoria contínua
+      expect(await pedidosHoje(tenantId, new Date())).toBe(0); // ele não pediu nada: o teto fica intacto
+      // abrir de novo não duplica nem insiste
+      expect(await garantirPrimeiraGeracao(repo, tenantId, "canvas")).toBe(false);
+      expect(await listarIds("pendente")).toHaveLength(1);
+    });
+
+    it("do clique de abrir até o material de IA na tela: pedido, worker, coleta e versão", async () => {
+      const { repo, tenantId } = await criarTenant();
+      const srv = await servidorApi(bemComportado);
+      try {
+        await garantirConfig();
+        const est = worker(srv.url);
+        await garantirPrimeiraGeracao(repo, tenantId, "pop");
+        await esvaziarFila(est);
+        await coletar(repo);
+        const e = await efetivo(repo, tenantId, "pop");
+        expect(e.versao?.n).toBe(1);
+        expect(e.documento.meta.geradoPor).toBe("ia");
+      } finally {
+        await srv.fechar();
+      }
+    });
+
+    it("não gera sem consentimento, com a IA desligada, sem o funcionário contratado ou com versão vigente", async () => {
+      const sem = await criarTenant("Sem Consentimento", { consentir: false });
+      const config = await garantirConfig();
+      expect(await garantirPrimeiraGeracao(sem.repo, sem.tenantId, "canvas")).toBe(false);
+
+      const semEquipe = await criarTenant("Sem Equipe", { cargos: [] });
+      expect(await garantirPrimeiraGeracao(semEquipe.repo, semEquipe.tenantId, "canvas")).toBe(false);
+
+      const desligada = await criarTenant("Desligada");
+      await gravarConfig({ ...config, ativa: false });
+      expect(await garantirPrimeiraGeracao(desligada.repo, desligada.tenantId, "canvas")).toBe(false);
+      await gravarConfig({ ...config, ativa: true });
+
+      const srv = await servidorApi(bemComportado);
+      try {
+        const est = worker(srv.url);
+        await garantirPrimeiraGeracao(desligada.repo, desligada.tenantId, "canvas");
+        await esvaziarFila(est);
+        await coletar(desligada.repo);
+        // já tem versão vigente: abrir não gera outra
+        expect(await garantirPrimeiraGeracao(desligada.repo, desligada.tenantId, "canvas", new Date(Date.now() + 3_600_000))).toBe(false);
+      } finally {
+        await srv.fechar();
+      }
+    });
+
+    it("depois de falhas seguidas não insiste, e entre tentativas espera 30 minutos", async () => {
+      const { repo, tenantId } = await criarTenant();
+      await garantirConfig();
+      const agora = new Date();
+      for (let i = 0; i < 3; i++) await registrarFalha(tenantId, "canvas", "saida-invalida", new Date(agora.getTime() - 3 * 3_600_000));
+      expect(await garantirPrimeiraGeracao(repo, tenantId, "canvas", agora)).toBe(false); // 3 falhas: para
+
+      const outro = await criarTenant("Outro Negócio");
+      expect(await garantirPrimeiraGeracao(outro.repo, outro.tenantId, "canvas", agora)).toBe(true);
+      const fila = await listarIds("pendente");
+      for (const id of fila) await (await import("./fila")).removerDaFila("pendente", id); // o pedido some sem resultado
+      expect(await garantirPrimeiraGeracao(outro.repo, outro.tenantId, "canvas", new Date(agora.getTime() + 10 * 60_000))).toBe(false); // < 30 min
+      expect(await garantirPrimeiraGeracao(outro.repo, outro.tenantId, "canvas", new Date(agora.getTime() + 31 * 60_000))).toBe(true);
+    });
+  });
+
 });

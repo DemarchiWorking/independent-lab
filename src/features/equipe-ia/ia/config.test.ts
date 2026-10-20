@@ -41,9 +41,11 @@ function batimento(modos: Array<"api" | "assinatura">): EstadoWorker {
 }
 
 describe("configuração padrão", () => {
-  it("API como modo padrão, melhoria contínua ligada e cobrança por requisição desativada", () => {
+  it("assinatura Pro é o modo principal, melhoria contínua ligada e cobrança por requisição desativada", () => {
     const c = configPadrao(AGORA);
-    expect(c).toMatchObject({ ativa: true, modo: "api", melhoriaContinua: true, cobrarPorRequisicao: false, intervaloVarreduraMin: 60 });
+    expect(c).toMatchObject({ ativa: true, modo: "assinatura", melhoriaContinua: true, cobrarPorRequisicao: false, intervaloVarreduraMin: 60 });
+    // discreto por padrão: a assinatura tem janela de uso e deixa folga para o dono
+    expect(c.limites).toMatchObject({ melhoriasPorVarredura: 4, jobsPorDia: 120 });
     expect(c.modeloUsuario).toBe("claude-sonnet-5-5");
     expect(c.modeloLote).toBe("claude-haiku-5-5");
     expect(Object.keys(c.modelos)).toEqual(Object.keys(MODELOS_PADRAO));
@@ -52,7 +54,7 @@ describe("configuração padrão", () => {
   it("lixo no arquivo volta ao padrão em vez de quebrar a tela do admin", () => {
     for (const lixo of [null, "x", 7, [], { modo: 9, limites: "a", ativa: "sim", modeloUsuario: "gpt-5", maxTokensSaida: -1 }]) {
       const c = normalizarConfig(lixo, AGORA);
-      expect(c.modo).toBe("api");
+      expect(c.modo).toBe("assinatura");
       expect(c.ativa).toBe(true);
       expect(c.modeloUsuario).toBe("claude-sonnet-5-5");
       expect(c.maxTokensSaida).toBe(12_000);
@@ -71,7 +73,7 @@ describe("configuração padrão", () => {
   it("valores fora da faixa voltam ao padrão, valores válidos são mantidos", () => {
     const c = normalizarConfig({ ativa: false, modo: "assinatura", maxTokensSaida: 20_000, limites: { jobsPorDia: 99_999, gastoMaxUsdDia: 12.5 } }, AGORA);
     expect(c).toMatchObject({ ativa: false, modo: "assinatura", maxTokensSaida: 20_000 });
-    expect(c.limites.jobsPorDia).toBe(300);
+    expect(c.limites.jobsPorDia).toBe(120);
     expect(c.limites.gastoMaxUsdDia).toBe(12.5);
   });
 });
@@ -99,17 +101,27 @@ describe("edição pelo admin", () => {
     expect(r.ok && r.config.historico).toEqual([]);
   });
 
-  it("assinatura só com o worker dizendo que tem token, claude e a confirmação do operador", () => {
-    const sem = aplicarEdicaoAdmin(atual, edicao({ modo: "assinatura" }), opcoes(["api"]));
-    expect(sem.ok).toBe(false);
-    expect(sem.ok === false && sem.erro).toMatch(/IA_PERMITIR_ASSINATURA/);
-    expect(aplicarEdicaoAdmin(atual, edicao({ modo: "assinatura" }), { por: "x", agora: AGORA, batimento: null }).ok).toBe(false);
-    expect(aplicarEdicaoAdmin(atual, edicao({ modo: "assinatura" }), opcoes(["api", "assinatura"])).ok).toBe(true);
+  it("o toggle de créditos de API só liga se o worker diz que tem ANTHROPIC_API_KEY", () => {
+    // o padrão do app é a assinatura: ligar a API é o toggle
+    const semChave = aplicarEdicaoAdmin(atual, edicao({ modo: "api" }), opcoes(["assinatura"]));
+    expect(semChave.ok).toBe(false);
+    expect(semChave.ok === false && semChave.erro).toMatch(/ANTHROPIC_API_KEY/);
+    expect(aplicarEdicaoAdmin(atual, edicao({ modo: "api" }), { por: "x", agora: AGORA, batimento: null }).ok).toBe(false);
+    const comChave = aplicarEdicaoAdmin(atual, edicao({ modo: "api" }), opcoes(["assinatura", "api"]));
+    expect(comChave.ok).toBe(true);
+    expect(comChave.ok && comChave.mudancas.join()).toMatch(/créditos de API/);
   });
 
-  it("voltar de assinatura para API é sempre permitido", () => {
-    const emAssinatura = { ...atual, modo: "assinatura" as const };
-    expect(aplicarEdicaoAdmin(emAssinatura, edicao({ modo: "api" }), { por: "x", agora: AGORA, batimento: null }).ok).toBe(true);
+  it("voltar para a assinatura também exige que o worker a tenha (token, claude e a confirmação do operador)", () => {
+    const emApi = { ...atual, modo: "api" as const };
+    const sem = aplicarEdicaoAdmin(emApi, edicao({ modo: "assinatura" }), opcoes(["api"]));
+    expect(sem.ok).toBe(false);
+    expect(sem.ok === false && sem.erro).toMatch(/IA_PERMITIR_ASSINATURA/);
+    expect(aplicarEdicaoAdmin(emApi, edicao({ modo: "assinatura" }), opcoes(["api", "assinatura"])).ok).toBe(true);
+  });
+
+  it("sem trocar de modo não exige nada do worker (limites e modelos se mudam com o worker parado)", () => {
+    expect(aplicarEdicaoAdmin(atual, edicao({ ativa: false }), { por: "x", agora: AGORA, batimento: null }).ok).toBe(true);
   });
 
   it("recusa valores inválidos, modelo fora da lista e tipos errados, sem alterar nada", () => {
@@ -154,7 +166,7 @@ describe("arquivo de configuração", () => {
 
   it("garantirConfig cria o arquivo uma vez e não sobrescreve o que o admin gravou", async () => {
     const primeira = await garantirConfig();
-    expect(primeira.modo).toBe("api");
+    expect(primeira.modo).toBe("assinatura");
     await mkdir(path.join(pasta, "ia"), { recursive: true });
     await writeFile(path.join(pasta, "ia", "config.json"), JSON.stringify({ ...primeira, ativa: false }));
     expect((await garantirConfig()).ativa).toBe(false);
@@ -164,7 +176,7 @@ describe("arquivo de configuração", () => {
   it("config ilegível abre com o padrão", async () => {
     await mkdir(path.join(pasta, "ia"), { recursive: true });
     await writeFile(path.join(pasta, "ia", "config.json"), "{quebrado");
-    expect((await lerConfig()).modo).toBe("api");
+    expect((await lerConfig()).modo).toBe("assinatura");
   });
 });
 

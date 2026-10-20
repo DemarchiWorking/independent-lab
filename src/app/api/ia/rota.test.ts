@@ -4,8 +4,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ciclo } from "../../../../ia-worker/worker.mjs";
 import type { Sessao } from "@/lib/db/types";
-import { garantirConfig, gravarConfig } from "@/features/equipe-ia/ia/config";
-import { bemComportado, criarTenant, esvaziarFila, servidorApi, worker } from "@/features/equipe-ia/ia/teste-ambiente-ia";
+import { gravarConfig } from "@/features/equipe-ia/ia/config";
+import { bemComportado, criarTenant, esvaziarFila, garantirConfigDeTeste as garantirConfig, MODOS, servidorApi, usarModo, worker } from "@/features/equipe-ia/ia/teste-ambiente-ia";
 
 /**
  * Rota `/api/ia/[tipo]` e a rota de entregáveis servindo a versão de IA, com
@@ -56,6 +56,9 @@ const post = (tipo: string, corpo: unknown, cabecalhos: Record<string, string> =
     }),
     params(tipo),
   );
+
+describe.each(MODOS)("[modo %s]", (modo) => {
+  beforeEach(() => usarModo(modo));
 
 describe("acesso", () => {
   it("sem login é 401; material desconhecido é 404; sem o funcionário contratado é 403", async () => {
@@ -208,4 +211,32 @@ describe("do pedido à entrega ao usuário", () => {
       await srv.fechar();
     }
   });
+});
+
+  describe("primeira geração automática", () => {
+    it("abrir o material de quem autorizou já enfileira a geração, e o estado mostra a fila", async () => {
+      await cenario();
+      const { listarIds } = await import("@/features/equipe-ia/ia/fila");
+      const estado = (await (await get("canvas")).json()) as { fila: { estado: string; posicao: number }; versao: unknown };
+      expect(estado.fila).toEqual({ estado: "na-fila", posicao: 1 });
+      expect(estado.versao).toBeNull();
+      expect(await listarIds("pendente")).toHaveLength(1);
+      // consultar de novo (a tela consulta a cada 5 s) não duplica
+      await get("canvas");
+      expect(await listarIds("pendente")).toHaveLength(1);
+    });
+
+    it("quem não autorizou não tem nada enfileirado ao abrir; autorizar já inicia a geração", async () => {
+      await cenario("Padaria Nova", { consentir: false });
+      const { listarIds } = await import("@/features/equipe-ia/ia/fila");
+      expect(((await (await get("canvas")).json()) as { consentido: boolean }).consentido).toBe(false);
+      expect(await listarIds("pendente")).toEqual([]);
+
+      const depois = (await (await post("canvas", { acao: "autorizar" })).json()) as { consentido: boolean; fila: { estado: string } };
+      expect(depois.consentido).toBe(true);
+      expect(depois.fila.estado).toBe("na-fila");
+      expect(await listarIds("pendente")).toHaveLength(1);
+    });
+  });
+
 });

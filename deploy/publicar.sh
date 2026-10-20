@@ -5,7 +5,7 @@
 #   ./deploy/publicar.sh                         # publica o commit atual
 #   VPS=hostinger SITE_URL=https://lab.2-25-146-39.sslip.io ./deploy/publicar.sh
 #   ADMIN_EMAILS=voce@exemplo.com ./deploy/publicar.sh   # só na 1ª vez
-#   INSTALAR_CLAUDE_CLI=1 ./deploy/publicar.sh            # worker com a CLI (modo assinatura, opcional)
+#   INSTALAR_CLAUDE_CLI=0 ./deploy/publicar.sh            # worker sem a CLI (só modo API)
 #
 # O que faz:
 #   1. confere árvore limpa, typecheck e testes locais
@@ -23,7 +23,7 @@ set -euo pipefail
 VPS="${VPS:-hostinger}"
 SITE_URL="${SITE_URL:-https://lab.2-25-146-39.sslip.io}"
 ADMIN_EMAILS="${ADMIN_EMAILS:-}"
-INSTALAR_CLAUDE_CLI="${INSTALAR_CLAUDE_CLI:-0}"
+INSTALAR_CLAUDE_CLI="${INSTALAR_CLAUDE_CLI:-1}"
 DIR=/opt/independent-lab
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -80,7 +80,8 @@ fi
 if [ ! -f "$DIR/.env.ia" ]; then
   cp "$DIR/src/$SHA/deploy/ia.env.example" "$DIR/.env.ia"
   chmod 600 "$DIR/.env.ia"
-  echo "Criado $DIR/.env.ia (modelo). Preencha ANTHROPIC_API_KEY para a IA funcionar:"
+  echo "Criado $DIR/.env.ia (modelo). Para a IA funcionar, preencha CLAUDE_CODE_OAUTH_TOKEN"
+  echo "(gerado na SUA máquina com: claude setup-token) ou ANTHROPIC_API_KEY (créditos de API):"
   echo "   nano $DIR/.env.ia && docker restart independent-lab-ia-worker"
 fi
 
@@ -148,8 +149,10 @@ if [ "$batido" -eq 1 ]; then
 else
   echo "AVISO: o worker de IA ainda não bateu o coração. Veja: docker logs --tail 30 independent-lab-ia-worker" >&2
 fi
-if ! grep -q '^ANTHROPIC_API_KEY=.\+' "$DIR/.env.ia" 2>/dev/null; then
-  echo "AVISO: ANTHROPIC_API_KEY está vazia em $DIR/.env.ia: a IA espera até você preencher (o material de regras funciona sem ela)."
+if ! grep -q '^CLAUDE_CODE_OAUTH_TOKEN=.\+' "$DIR/.env.ia" 2>/dev/null && ! grep -q '^ANTHROPIC_API_KEY=.\+' "$DIR/.env.ia" 2>/dev/null; then
+  echo "AVISO: nem CLAUDE_CODE_OAUTH_TOKEN nem ANTHROPIC_API_KEY estão preenchidos em $DIR/.env.ia: a IA espera (o material de regras funciona sem ela)."
+else
+  echo "Para provar a IA de ponta a ponta (gasta ~100 tokens): docker exec independent-lab-ia-worker node /app/verificar.mjs --chamada"
 fi
 
 # Guarda só as 3 últimas imagens e códigos-fonte.

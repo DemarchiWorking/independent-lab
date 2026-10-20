@@ -1,0 +1,55 @@
+{
+  "pautas": [
+    {
+      "id": "dicas",
+      "rotulo": "Dicas de quem entende",
+      "objetivo": "Ser lembrado como referência e receber salvamentos e compartilhamentos",
+      "slides": [
+        { "papel": "capa", "titulo": "5 cuidados para o cabelo durar bonito", "texto": "Para fazer entre uma visita ao salão e outra. Salve para consultar depois." },
+        { "papel": "conteudo", "titulo": "1. Água morna, nunca muito quente", "texto": "A água muito quente resseca o fio e desbota a cor. Termine o banho com a água mais fria que você aguentar." },
+        { "papel": "conteudo", "titulo": "2. Produtos certos para o seu fio", "texto": "Xampu e condicionador indicados para o seu tipo de cabelo fazem diferença. Pergunte à sua cabeleireira qual é o seu." },
+        { "papel": "conteudo", "titulo": "3. Proteja do calor", "texto": "Use protetor térmico antes de secador ou chapinha e proteja o cabelo do sol forte." },
+        { "papel": "conteudo", "titulo": "4. Hidrate no ritmo indicado", "texto": "Hidratar demais ou de menos atrapalha. Siga o intervalo que a profissional indicou para o seu cabelo." },
+        { "papel": "conteudo", "titulo": "5. Não adie a visita ao salão", "texto": "Avaliar o cabelo de tempos em tempos ajuda a ajustar o corte e o tratamento antes que o problema cresça." },
+        { "papel": "cta", "titulo": "Quer ajuda para o seu cabelo?", "texto": "Chame o Studio Bela Cabelos e conte o que você precisa. Atendimento no Centro de Mendes." }
+      ],
+      "legenda": "5 cuidados simples para o cabelo durar bonito entre uma visita ao salão e outra.\n\nQual deles você já faz? Conta nos comentários!\n\nSalve este post para consultar depois e compartilhe com aquela amiga que merece ouvir isso. Para tirar dúvidas ou marcar um horário, chame o Studio Bela Cabelos aqui no Centro de Mendes.",
+      "hashtags": ["#cuidadoscomocabelo", "#salaodebeleza", "#cabelossaudaveis", "#mendes", "#beleza", "#autoestima", "#apoielocal"],
+      "textoAlternativo": "Carrossel de 7 slides com 5 cuidados para o cabelo durar bonito: usar água morna, escolher produtos certos para o fio, proteger do calor, hidratar no ritmo indicado e manter as visitas ao salão. O último slide convida a chamar o Studio Bela Cabelos.",
+      "orientacaoVisual": "Use na capa uma foto real do seu espaço ou de um cabelo que você trabalhou, com boa luz natural. Nos slides internos, fundo liso e texto grande."
+    },
+    {
+      "id": "oferta",
+      "rotulo": "O que oferecemos",
+      "objetivo": "Gerar pedidos de orçamento",
+      "slides": [
+        { "papel": "capa", "titulo": "O que fazemos no Studio Bela Cabelos", "texto": "Corte, coloração e tratamento no Centro de Mendes" },
+        { "papel": "conteudo", "titulo": "Corte feminino: R$ 80", "texto": "Corte com lavagem e finalização, para todos os tipos de cabelo." },
+        { "papel": "conteudo", "titulo": "Coloração e mechas: a partir de R$ 180", "texto": "Coloração completa ou mechas, com avaliação do cabelo antes de começar." },
+        { "papel": "conteudo", "titulo": "Hidratação profunda: R$ 120", "texto": "Tratamento para cabelos ressecados, com produtos profissionais." },
+        { "papel": "conteudo", "titulo": "Você sabe o que vai acontecer", "texto": "Antes de começar, a gente conversa sobre o que será feito, quanto custa e quanto tempo leva." },
+        { "papel": "cta", "titulo": "Vamos marcar o seu horário?", "texto": "Chame o Studio Bela Cabelos e conte o que você tem em mente. Atendimento no Centro de Mendes." }
+      ],
+      "legenda": "Corte, coloração e hidratação no Centro de Mendes.\n\nNos slides você vê o que fazemos e o valor de cada serviço. E antes de começar a gente sempre conversa sobre o que será feito, para você sair do jeito que combinou.\n\nSalve este post e compartilhe com quem está pensando em cuidar do cabelo. Para marcar um horário, chame o Studio Bela Cabelos.",
+      "hashtags": ["#salaodebeleza", "#cortefeminino", "#coloracao", "#hidratacaocapilar", "#mendes", "#beleza", "#apoielocal"],
+      "textoAlternativo": "Carrossel de 6 slides do Studio Bela Cabelos, em Mendes. Mostra o corte feminino por R$ 80, a coloração e mechas a partir de R$ 180 e a hidratação profunda por R$ 120, e explica que tudo é combinado antes de começar. O último slide convida a marcar um horário.",
+      "orientacaoVisual": "Uma foto real por serviço, de preferência de um trabalho seu, com a autorização de quem aparece. Evite imagem de banco: quem mora perto quer ver o que vai receber."
+    }
+  ],
+  "boasPraticas": [
+    "A capa é o que decide se a pessoa desliza: uma promessa clara de utilidade, em poucas palavras",
+    "Uma ideia por slide, com texto curto: leia no celular antes de publicar",
+    "Use fotos reais do salão e do seu trabalho, com boa luz e com autorização de quem aparece",
+    "Cuide do contraste entre o texto e o fundo e do tamanho da letra",
+    "Cole o texto alternativo na publicação: ele descreve o carrossel para quem usa leitor de tela",
+    "Poste nos horários em que as suas seguidoras estão online (as estatísticas da conta mostram)",
+    "Responda cada comentário e mensagem no mesmo dia"
+  ],
+  "reaproveitamento": [],
+  "metricas": [
+    "Salvamentos e compartilhamentos: mostram o que foi útil",
+    "Mensagens recebidas depois da publicação: é o que mais se aproxima de um pedido de horário",
+    "Visitas ao perfil e cliques no link",
+    "Alcance entre pessoas da sua cidade"
+  ]
+}
