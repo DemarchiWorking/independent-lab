@@ -69,7 +69,7 @@ export default function PrivacidadePage() {
         </p>
       </section>
 
-      <section className="mb-5 space-y-2">
+      <section id="ia" className="mb-5 space-y-2">
         <h2 className="font-extrabold text-teal">Inteligência artificial</h2>
         <p>
           Os Funcionários de IA podem refinar os materiais do seu negócio
@@ -101,7 +101,8 @@ export default function PrivacidadePage() {
           você sempre pode usar o material sem IA.
         </p>
         <p>
-          Você autoriza dentro do estúdio de cada material, e pode
+          Você autoriza na caixa opcional do cadastro (que vem desmarcada) ou
+          dentro do estúdio de qualquer material, e pode
           <b> revogar quando quiser</b>: ao revogar, deixamos de enviar dados
           e apagamos o que a IA gerou para o seu negócio. Como o envio é
           para o exterior, ele se baseia no seu consentimento específico

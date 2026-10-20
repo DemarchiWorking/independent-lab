@@ -80,13 +80,14 @@ O nível vem **do banco** (o funcionário contratado), nunca do cliente.
 
 ### Decisões que merecem explicação
 
-1. **Gerador por regras, não por modelo de linguagem.** O texto sai de
-   funções puras e de uma base de conhecimento escrita à mão. Vantagens:
-   resultado reproduzível, custo zero por pedido, nada do negócio sai do
-   servidor, e é possível **testar o conteúdo**. Custo: a variedade é a que a
-   base cobre. A saída é um `Documento` tipado, então uma camada futura de
-   refino por LLM pode entrar entre o gerador e o renderizador sem mexer no
-   resto.
+1. **Base por regras, refino por IA.** O texto-base sai de funções puras e
+   de uma base de conhecimento escrita à mão. Vantagens: resultado
+   reproduzível, custo zero por pedido, funciona sem IA, e é possível
+   **testar o conteúdo**. Sobre essa base, e só com autorização do dono, a IA
+   (Claude) refina o material com o contexto da conta; o resultado passa por
+   uma validação rígida e vira uma versão (`meta.geradoPor: "ia"`). Se a IA
+   falhar, o dono continua recebendo a versão de regras. Como funciona, o que
+   custa e como operar: [`IA-OPERACAO.md`](IA-OPERACAO.md).
 2. **Público × privado no tipo.** Material voltado ao cliente (carrossel e reel)
    recebe `ContextoPublico = Omit<ContextoNegocio, "privado">`. O gargalo, o
    orçamento e a equipe que o dono declarou em segredo **não existem** nesse
@@ -189,9 +190,10 @@ Gates: `npm run typecheck`, `npm test`, `npm run build`,
 
 ## 9. Limites conhecidos
 
-- O conteúdo é tão variado quanto a base de `mercado/`: 8 segmentos e 13
-  nichos. Negócio fora deles recebe material do segmento declarado, correto
-  mas menos específico.
+- A versão de regras é tão variada quanto a base de `mercado/`: 8 segmentos e
+  13 nichos. Negócio fora deles recebe material do segmento declarado, correto
+  mas menos específico; o refino por IA é o que reduz essa distância, para
+  quem autoriza.
 - Os slides não incluem foto do negócio; o dono insere a própria imagem na
   rede social. Gerar imagem por IA fica para uma fase futura.
 - Não há vídeo gerado: o Editor(a) de Vídeo entrega roteiro. A ligação com o

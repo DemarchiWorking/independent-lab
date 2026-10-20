@@ -7,8 +7,13 @@
 #     escalar privilégio, com teto de memória, CPU e processos.
 #   - Dados em /opt/independent-lab/data (volume), fora da imagem.
 #
+#   - O worker de IA (ia-worker) é o ÚNICO com a credencial da Anthropic
+#     (/opt/independent-lab/.env.ia). Ele não abre porta, não está na rede do
+#     Caddy e só enxerga a pasta de troca data/ia, nunca os dados dos negócios.
+#
 # Uso (feito pelo deploy/publicar.sh):
-#   IMAGEM=independent-lab:<sha> docker compose -p independent-lab -f compose.yml up -d
+#   IMAGEM=independent-lab:<sha> IMAGEM_WORKER=independent-lab-ia-worker:<sha> \
+#     docker compose -p independent-lab -f compose.yml up -d
 
 name: independent-lab
 
@@ -20,7 +25,7 @@ x-logging: &logging
 
 services:
   app:
-    image: ${IMAGEM:?defina IMAGEM (ex.: independent-lab:abc1234)}
+    image: "${IMAGEM:?defina IMAGEM (ex.: independent-lab:abc1234)}"
     container_name: independent-lab-app
     restart: unless-stopped
     env_file: /opt/independent-lab/.env
@@ -43,6 +48,35 @@ services:
     init: true
     logging: *logging
     networks: [lab-net, vitrine_web-net]
+
+  # Worker de IA: pega os pedidos que o app deixa em data/ia/pendente, chama a
+  # Anthropic e devolve o resultado em data/ia/concluido. O app valida tudo que
+  # volta. Sem ANTHROPIC_API_KEY ele sobe, avisa na tela /admin/ia e espera.
+  ia-worker:
+    image: "${IMAGEM_WORKER:?defina IMAGEM_WORKER (ex.: independent-lab-ia-worker:abc1234)}"
+    container_name: independent-lab-ia-worker
+    restart: unless-stopped
+    env_file: /opt/independent-lab/.env.ia
+    environment:
+      NODE_ENV: production
+      IA_SPOOL_DIR: /spool
+    volumes:
+      - /opt/independent-lab/data/ia:/spool
+    read_only: true
+    tmpfs:
+      # o modo assinatura cria uma pasta temporária por pedido
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: 0.5
+    pids_limit: 128
+    init: true
+    logging: *logging
+    # Só a rede própria: sem a rede do Caddy, sem porta no host.
+    networks: [lab-net]
 
   # Cópia diária compactada de /data, com retenção de BACKUP_DIAS dias.
   # O arquivo fica em /opt/independent-lab/backups; copie essa pasta para fora

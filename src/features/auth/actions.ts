@@ -13,7 +13,8 @@ import { EMAIL_MAX, emailValido, opcaoValida, textoDoForm } from "@/lib/validaca
 import { calcular } from "@/features/onboarding/scoring";
 import { perguntas } from "@/features/onboarding/perguntas";
 import { itemMobilia } from "@/features/sede/catalogo";
-import { POLITICA_PRIVACIDADE_VERSAO } from "./politica";
+import { gravarConsentimento } from "@/features/equipe-ia/ia/versoes";
+import { POLITICA_IA_VERSAO, POLITICA_PRIVACIDADE_VERSAO } from "./politica";
 import {
   JANELA_CONVITES_MS,
   LIMITE_CONVITES_POR_JANELA,
@@ -251,6 +252,15 @@ export async function cadastrar(
 
   // Extras cosméticos e de convite: só depois de a conta existir de verdade.
   await darMesaDeBoasVindas(repo, negocioId);
+  // Autorização opcional da IA (caixa própria, desmarcada). Falha aqui nunca derruba o
+  // cadastro: o dono pode autorizar depois, no estúdio de qualquer material.
+  if (fd.get("consentimentoIA") === "on") {
+    await gravarConsentimento(negocioId, {
+      aceitoEm: new Date().toISOString(),
+      politicaVersao: POLITICA_IA_VERSAO,
+      usuarioId: identidade.usuarioId,
+    }).catch(() => undefined);
+  }
   await resgatarConviteSeExistir(repo, negocioId, texto("convite", 4096) || null);
 
   await criarSessao({

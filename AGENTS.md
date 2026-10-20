@@ -60,6 +60,7 @@ inovação aplicada a empreendedorismo/PMEs regionais).
 | Mudar a cor do piso/parede/pele da sala | `color.world` em `design-system/tokens.ts` (o canvas só converte, em `world/render/cores.ts`) |
 | Criar/ver uma campanha com prazo p/ todos os jogadores | `/admin/eventos` (gated por `GAMEHUB_ADMIN_EMAILS`) — ver `src/features/eventos-globais/` |
 | Mudar o que um Funcionário de IA entrega (Canvas, POPs, carrossel, kit comercial, roteiro de vídeo) | `src/features/equipe-ia/entregaveis/` — gerador puro por tipo + base de mercado em `mercado/`; guia completo em [`docs/equipe-ia/ENTREGAVEIS.md`](docs/equipe-ia/ENTREGAVEIS.md) |
+| Mudar o refino por IA (prompt, validação, modelos, limites) ou operar a fila | `src/features/equipe-ia/ia/` e `ia-worker/` — guia em [`docs/equipe-ia/IA-OPERACAO.md`](docs/equipe-ia/IA-OPERACAO.md); tela em `/admin/ia` (só `admin@admin.com`) |
 | Ligar o Editor(a) de Vídeo ao gerador de vídeo do Google | projeto em [`docs/integracoes/GOOGLE-VIDEO-API.md`](docs/integracoes/GOOGLE-VIDEO-API.md) — **só documentação**, nada implementado |
 
 Estrutura completa: [`README.md`](README.md#estrutura). Design system e
@@ -198,6 +199,14 @@ ls /opt/independent-lab/backups                     # backup diário + um antes 
   `ContextoPublico`, tipo que **não tem** as respostas privadas do cadastro.
   Gerador novo: puro, sem ler o repositório, sem inventar meta, prazo ou
   depoimento, e coberto por `documentos.test.ts` (linter de `qualidade.ts`).
+- **IA (Claude) dos Funcionários:** a credencial da Anthropic fica **só** no
+  `ia-worker` (o app recusa subir em produção com ela). A resposta do modelo é
+  dado não confiável: nada vai para a tela sem `ia/validar.ts`, e texto do
+  usuário entra no prompt como dado (JSON em tag, `<` escapado). Só envia
+  dados de quem deu consentimento **específico** (`ia/consentimento`).
+  Mudou o prompt? Suba `GERADOR_IA_VERSAO`. O padrão é **API**; o modo
+  assinatura contraria os termos da Anthropic e é dupla confirmação.
+  Configuração só por `souAdminIA` (`lib/admin.ts`), validada no servidor.
 
 ## Armadilhas conhecidas
 

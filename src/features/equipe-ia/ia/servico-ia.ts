@@ -85,12 +85,15 @@ export async function contextoDoTenant(
 
 // -------------------------------------------------------------- consentimento
 
-/** O dono aceitou uma política que diz que os dados vão para a Anthropic? */
-export async function temConsentimento(repo: GameRepository, tenantId: string): Promise<boolean> {
+/**
+ * O dono autorizou, de forma específica, que os dados do negócio sigam para a
+ * Anthropic? Aceitar a política de privacidade no cadastro NÃO basta: o envio é
+ * uma transferência internacional e o consentimento precisa ser próprio e em
+ * destaque (caixa opcional no cadastro ou botão no estúdio).
+ */
+export async function temConsentimento(tenantId: string): Promise<boolean> {
   const c = await lerConsentimento(tenantId);
-  if (c && c.politicaVersao >= POLITICA_IA_VERSAO) return true;
-  const negocio = await repo.lerNegocio(tenantId);
-  return negocio !== null && negocio.consentimentoVersao >= POLITICA_IA_VERSAO;
+  return c !== null && c.politicaVersao >= POLITICA_IA_VERSAO;
 }
 
 export async function autorizarIA(tenantId: string, usuarioId: string, agora: Date = new Date()): Promise<void> {
@@ -185,7 +188,7 @@ export async function solicitarRefino(
   const info = await contextoDoTenant(repo, tenantId, tipo, agora);
   if (!info) return { ok: false, motivo: "sem-funcionario", mensagem: "Contrate o Funcionário de IA responsável para usar este recurso." };
 
-  if (!(await temConsentimento(repo, tenantId))) {
+  if (!(await temConsentimento(tenantId))) {
     return { ok: false, motivo: "sem-consentimento", mensagem: "Autorize o uso de IA sobre os dados do seu negócio para continuar." };
   }
 
@@ -246,7 +249,7 @@ export interface EstadoIA {
 export async function estadoIA(repo: GameRepository, tenantId: string, tipo: TipoEntregavel, ctx: ContextoNegocio, agora: Date = new Date()): Promise<EstadoIA> {
   const [config, consentido, aberto, registro, batimento, usados] = await Promise.all([
     lerConfig(),
-    temConsentimento(repo, tenantId),
+    temConsentimento(tenantId),
     pedidoAberto(tenantId, tipo),
     lerRegistro(tenantId, tipo),
     lerBatimento(),
@@ -452,7 +455,7 @@ export async function varrer(repo: GameRepository, agora: Date = new Date()): Pr
   const candidatos: Candidato[] = [];
   for (const tenantId of tenantsDoMapa(await repo.lerMapa())) {
     try {
-      if (!(await temConsentimento(repo, tenantId))) continue;
+      if (!(await temConsentimento(tenantId))) continue;
       const cargos = new Set((await repo.listarFuncionarios(tenantId)).map((f) => f.cargoId));
       for (const cargo of cargos) {
         for (const tipo of entregaveisDoCargo(cargo)) {

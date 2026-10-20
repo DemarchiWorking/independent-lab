@@ -19,7 +19,7 @@ ou de uma ação sua em ambiente real (a VPS), e está listado em
 | Gate | Resultado |
 |---|---|
 | `npm run typecheck` | limpo |
-| `npm test` | 497 testes em 40 arquivos, todos passando (358 na auditoria; o resto cobre os entregáveis) |
+| `npm test` | 657 testes em 48 arquivos, todos passando (358 na auditoria; o resto cobre os entregáveis, o worker e a IA) |
 | `npm run build` | passa (Next 15.5.28) |
 | `npm audit --omit=dev --audit-level=high` | 0 vulnerabilidades |
 
@@ -187,10 +187,67 @@ entram no pacote, o PNG sai com a fonte certa, sem login a rota responde 401
 com os cabeçalhos de segurança e `private, no-store`, tipo inexistente é 404 e
 `POST` de outra origem é 403.
 
-Limites: o conteúdo vem de regras e de uma base de conhecimento (8 segmentos,
-13 nichos), não de modelo de linguagem; o vídeo gerado por IA está só
-projetado (`../integracoes/GOOGLE-VIDEO-API.md`), sem chave nem chamada no
-repositório.
+Limites: a versão-base vem de regras e de uma base de conhecimento (8
+segmentos, 13 nichos); o refino por modelo de linguagem é a seção seguinte. O
+vídeo gerado por IA está só projetado (`../integracoes/GOOGLE-VIDEO-API.md`),
+sem chave nem chamada no repositório.
+
+## IA dos Funcionários (Claude)
+
+Os materiais passaram a poder ser **refinados por IA** a partir do contexto
+registrado de cada conta, a pedido e por uma melhoria contínua de hora em hora.
+Guia completo: [`../equipe-ia/IA-OPERACAO.md`](../equipe-ia/IA-OPERACAO.md).
+
+### Decisão que precisa do seu olho: a assinatura Pro
+
+O pedido original era usar a assinatura Claude Pro da VPS por padrão. A página
+oficial de termos do Claude Code
+([legal-and-compliance](https://code.claude.com/docs/en/legal-and-compliance),
+20/10/2026) diz que a Anthropic **não permite** rotear requisições dos usuários
+de um produto por credenciais Free, Pro ou Max, e que pode agir sem aviso. O
+risco recai sobre a conta inteira. Você escolheu: **API como padrão e a
+assinatura como opção do admin**. A assinatura existe, mas exige duas
+confirmações (`IA_PERMITIR_ASSINATURA=1` no worker e a escolha na tela, que
+mostra o aviso) e nunca é ligada sozinha.
+
+### Superfície nova e controles
+
+| Risco | Controle | Teste |
+|---|---|---|
+| Vazar a chave da Anthropic | Só o worker a tem; o app recusa subir em produção com ela; o worker só aceita base https (ou loopback) | `ambiente.test.ts`, `worker.test.ts` |
+| Assinatura vencer a chave sem aviso | O ambiente do `claude -p` nunca herda `ANTHROPIC_API_KEY`; `--bare` não é usado (ignora o token OAuth) | `worker.test.ts`; CLI real v2.1.226 aceitou as flags |
+| Prompt injection pelo nome ou pelas ofertas | Texto do usuário como JSON em tag com `<` escapado, e a validação da resposta como defesa de verdade | `servico-ia.test.ts`, `validar.test.ts` |
+| Resposta com link, e-mail, telefone, CNPJ, @perfil, percentual ou valor inventados, promessa, HTML | `ia/validar.ts` barra; reenvio único com o motivo; depois descarta | `validar.test.ts` |
+| Dado privado em material público | `ContextoPublico` (tipo sem `privado`) e linter | `servico-ia.test.ts` |
+| Resultado forjado na pasta de troca | Id conferido contra o nome do arquivo e o formato; metadados validados | `config.test.ts` |
+| Dados novos enquanto o pedido esperava | Hash do contexto; resultado velho é descartado | `servico-ia.test.ts` |
+| Dados do cliente indo ao exterior sem consentimento | Consentimento específico por negócio (caixa opcional e desmarcada no cadastro, ou botão no estúdio); política 2026-10-20; revogar apaga o que a IA gerou | `servico-ia.test.ts`, `rota.test.ts` |
+| Gasto fora de controle | Pedidos por negócio por dia, por varredura, por dia total, teto de gasto diário que para o worker, e o limite mensal do Console | `worker.test.ts`, `servico-ia.test.ts` |
+| Alguém assumir a tela de IA | Só `admin@admin.com` (ou `GAMEHUB_IA_ADMIN_EMAIL`), **no servidor**; em produção o cadastro público recusa e-mail reservado, com a mesma mensagem de "já existe" | `actions.test.ts`, `admin.test.ts` |
+| Cobrança por requisição ligada por engano | `cobrarPorRequisicao` é sempre `false`: nem o arquivo nem o formulário ligam | `config.test.ts`, `actions.test.ts` |
+| IA parar sem ninguém saber | Docker reinicia; o agendador engole erro e segue; o guardião de hora em hora reinicia e sai com código 2 quando só uma pessoa resolve | `ia-guardiao.test.ts` |
+
+### Defeito corrigido no que eu tinha entregue antes
+
+`deploy/compose.yml` tinha `image: ${IMAGEM:?defina IMAGEM (ex.: ...)}` sem
+aspas: o `: ` dentro do valor é erro de YAML. Nunca foi pego porque não há
+Docker nesta máquina; o primeiro `publicar.sh` teria falhado. Validei com um
+parser YAML, corrigi (aspas) e confirmei o isolamento do worker (somente
+leitura, sem capabilities, só a rede própria, sem porta, app sem nenhuma
+referência à Anthropic).
+
+### Pendências desta parte
+
+- **Chave da Anthropic e limite mensal no Console:** é com você. Sem chave o
+  worker espera e a tela mostra "modo sem credencial".
+- **Nada foi aplicado na VPS.** Faltam `publicar.sh`, a chave em `.env.ia`, a
+  criação da conta de admin (com `GAMEHUB_LIBERAR_CADASTRO_ADMIN=1`, por um
+  instante) e `instalar-guardiao.sh`.
+- **Não verificado aqui:** o build das imagens Docker, a chamada real à API
+  (o worker foi testado contra um servidor HTTP local que imita a API) e o
+  timer no systemd.
+- A política de privacidade foi atualizada (2026-10-20). Vale uma leitura
+  jurídica antes de abrir para o público, como em qualquer texto de LGPD.
 
 ## O que mudou onde
 
@@ -208,3 +265,4 @@ repositório.
 | Gráfico e acessibilidade | ver `docs/world/PLANO-EVOLUCAO-GRAFICA.md` |
 | Entregáveis | `src/features/equipe-ia/entregaveis/`, `src/features/equipe-ia/estudio/`, `src/app/api/entregavel/[tipo]/route.ts`, `src/assets/fonts/` |
 | Integração de vídeo (projeto) | `docs/integracoes/GOOGLE-VIDEO-API.md` |
+| IA (worker, fila, validação, agendador, admin) | `ia-worker/`, `src/features/equipe-ia/ia/`, `src/app/admin/ia`, `src/app/api/ia`, `deploy/{ia-guardiao.sh,instalar-guardiao.sh,ia.env.example,systemd}` |

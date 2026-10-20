@@ -100,6 +100,14 @@ funcionário define a **profundidade**; o nível 1 já é utilizável. Como foi
 construído, o que garante a segurança e como estender:
 [`equipe-ia/ENTREGAVEIS.md`](equipe-ia/ENTREGAVEIS.md).
 
+**Refino por IA (Claude).** Com a autorização do dono, cada material é
+refinado a partir do contexto registrado da conta: a pedido (na hora) e por
+uma melhoria contínua de hora em hora, que só age com a fila vazia e para
+quando o documento já recebeu os refinos previstos. O padrão de credencial é a
+API da Anthropic, com teto de gasto; os controles ficam em `/admin/ia`, só para
+`admin@admin.com`. A cobrança por requisição está desativada (o uso por
+negócio já é registrado). Guia: [`equipe-ia/IA-OPERACAO.md`](equipe-ia/IA-OPERACAO.md).
+
 O que ainda **não** existe: vídeo gerado por IA (o Editor entrega roteiro; a
 ligação com a API do Google está só projetada em
 [`integracoes/GOOGLE-VIDEO-API.md`](integracoes/GOOGLE-VIDEO-API.md)) e imagem

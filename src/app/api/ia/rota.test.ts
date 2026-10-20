@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ciclo } from "../../../../ia-worker/worker.mjs";
 import type { Sessao } from "@/lib/db/types";
 import { garantirConfig, gravarConfig } from "@/features/equipe-ia/ia/config";
-import { bemComportado, criarTenant, esvaziarFila, POLITICA_ANTIGA, servidorApi, worker } from "@/features/equipe-ia/ia/teste-ambiente-ia";
+import { bemComportado, criarTenant, esvaziarFila, servidorApi, worker } from "@/features/equipe-ia/ia/teste-ambiente-ia";
 
 /**
  * Rota `/api/ia/[tipo]` e a rota de entregáveis servindo a versão de IA, com
@@ -102,8 +102,8 @@ describe("acesso", () => {
 });
 
 describe("consentimento e pedido", () => {
-  it("quem aceitou só a política antiga recebe 409 até autorizar; autorizar e revogar", async () => {
-    await cenario("Padaria Antiga", { politica: POLITICA_ANTIGA });
+  it("quem não autorizou a IA recebe 409 até autorizar; autorizar e revogar", async () => {
+    await cenario("Padaria Antiga", { consentir: false });
     const inicial = (await (await get("canvas")).json()) as { consentido: boolean };
     expect(inicial.consentido).toBe(false);
 

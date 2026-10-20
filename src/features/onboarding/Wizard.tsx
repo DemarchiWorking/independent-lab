@@ -32,6 +32,8 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
   );
   const [consentimento, setConsentimento] = useState(false);
   const [perfilPublico, setPerfilPublico] = useState(true);
+  // Opcional e SEM marcação prévia: consentimento específico para enviar dados à IA.
+  const [consentimentoIA, setConsentimentoIA] = useState(false);
   const [estado, formAction, pendente] = useActionState<EstadoForm, FormData>(
     cadastrar,
     {},
@@ -232,6 +234,32 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
                     Quero que meu negócio apareça na página pública
                     (recomendado — ajuda clientes a te encontrar; pode
                     desmarcar e continuar mesmo assim).
+                  </span>
+                </label>
+                <label className="mt-2 flex items-start gap-2 text-[11px] leading-snug text-[#5b6b86]">
+                  <input
+                    type="checkbox"
+                    name="consentimentoIA"
+                    checked={consentimentoIA}
+                    onChange={(e) => setConsentimentoIA(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <b>Opcional:</b> autorizo o uso de inteligência artificial para
+                    melhorar os materiais do meu negócio (modelo de negócio,
+                    procedimentos, publicações, kit comercial e roteiro de vídeo).
+                    Os dados do meu negócio e as respostas deste cadastro são
+                    enviados à Anthropic, nos Estados Unidos; nunca meu e-mail,
+                    senha ou dados de clientes. Posso revogar quando quiser.{" "}
+                    <a
+                      href="/privacidade#ia"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-teal underline"
+                    >
+                      Saiba mais
+                    </a>
+                    .
                   </span>
                 </label>
 

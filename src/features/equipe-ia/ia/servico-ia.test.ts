@@ -20,7 +20,7 @@ import {
   temConsentimento,
   varrer,
 } from "./servico-ia";
-import { bemComportado, criarTenant, esvaziarFila, POLITICA_ANTIGA, servidorApi, worker, type Modelo } from "./teste-ambiente-ia";
+import { bemComportado, criarTenant, esvaziarFila, servidorApi, worker, type Modelo } from "./teste-ambiente-ia";
 import { documentoComoSaida } from "./teste-util-ia";
 import { lerFalhasRecentes, lerLivro } from "./uso";
 import { lerRegistro } from "./versoes";
@@ -187,21 +187,21 @@ describe("fluxo completo: pedir, processar, coletar e servir", () => {
 // ====================================================================== limites
 
 describe("limites e consentimento", () => {
-  it("sem aceitar a política que cita a IA, nada é enviado; autorizar libera", async () => {
-    const { repo, tenantId } = await criarTenant("Padaria Antiga", { politica: POLITICA_ANTIGA });
+  it("aceitar só a política geral no cadastro NÃO é consentimento da IA: nada é enviado até autorizar", async () => {
+    const { repo, tenantId } = await criarTenant("Padaria Antiga", { consentir: false });
     await garantirConfig();
-    expect(await temConsentimento(repo, tenantId)).toBe(false);
+    expect(await temConsentimento(tenantId)).toBe(false);
     const recusa = await solicitarRefino(repo, tenantId, "canvas", "usuario");
     expect(recusa).toMatchObject({ ok: false, motivo: "sem-consentimento" });
     expect(await listarIds("pendente")).toEqual([]);
 
     await autorizarIA(tenantId, "usuario-1");
-    expect(await temConsentimento(repo, tenantId)).toBe(true);
+    expect(await temConsentimento(tenantId)).toBe(true);
     expect((await solicitarRefino(repo, tenantId, "canvas", "usuario")).ok).toBe(true);
   });
 
   it("revogar apaga o que a IA gerou e volta a exigir autorização", async () => {
-    const { repo, tenantId } = await criarTenant("Padaria Antiga", { politica: POLITICA_ANTIGA });
+    const { repo, tenantId } = await criarTenant("Padaria Antiga", { consentir: false });
     const srv = await servidorApi(bemComportado);
     try {
       await garantirConfig();
@@ -213,7 +213,7 @@ describe("limites e consentimento", () => {
       expect((await efetivo(repo, tenantId, "canvas")).versao).not.toBeNull();
 
       await revogarIA(tenantId);
-      expect(await temConsentimento(repo, tenantId)).toBe(false);
+      expect(await temConsentimento(tenantId)).toBe(false);
       expect((await efetivo(repo, tenantId, "canvas")).versao).toBeNull();
     } finally {
       await srv.fechar();
@@ -425,7 +425,7 @@ describe("varredura horária", () => {
   });
 
   it("só trabalha para quem autorizou a IA", async () => {
-    const sem = await criarTenant("Sem Consentimento", { politica: POLITICA_ANTIGA });
+    const sem = await criarTenant("Sem Consentimento", { consentir: false });
     const srv = await servidorApi(bemComportado);
     try {
       await garantirConfig();

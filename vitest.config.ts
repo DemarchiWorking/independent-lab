@@ -7,7 +7,7 @@ export default defineConfig({
   // teste que importe um .tsx falha.
   oxc: { jsx: { runtime: "automatic" } },
   test: {
-    include: ["src/**/*.test.ts", "ia-worker/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "ia-worker/**/*.test.ts", "deploy/**/*.test.ts"],
     environment: "node",
     // Segredo só dos testes: o app não tem mais segredo padrão em nenhum modo.
     env: { GAMEHUB_SECRET: "segredo-de-teste-independent-lab-0123456789abcdef" },

@@ -125,6 +125,14 @@ mais em cima do que o app já gera, sem novo formulário.
                   Estúdio: prévia ─► aprovação humana ─► download
 ```
 
+> **Já existe um molde para isto.** O refino de texto por IA (ver
+> [`../equipe-ia/IA-OPERACAO.md`](../equipe-ia/IA-OPERACAO.md)) usa exatamente o
+> desenho que este documento propõe: um worker isolado com a única credencial,
+> pasta de troca com pedidos e resultados, validação no app, limites e teto de
+> gasto, consentimento específico e tela de admin. O job de vídeo deve reaproveitar
+> esse worker, o contrato da fila e o livro de uso, em vez de criar um segundo
+> mecanismo.
+
 Decisões de arquitetura:
 
 1. **Porta e adaptadores.** `ProvedorDeVideo` é uma interface (`iniciar`,

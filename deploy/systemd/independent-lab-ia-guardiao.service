@@ -1,0 +1,16 @@
+[Unit]
+Description=Guardiao da IA do independent-lab (confere app, worker, batimento e fila)
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/independent-lab/ia-guardiao.sh
+# Restrições: só precisa falar com o Docker e ler/gravar o próprio estado.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+StateDirectory=independent-lab-guardiao
+Environment=ESTADO_DIR=/var/lib/independent-lab-guardiao
+# Código de saída 2 = precisa de uma pessoa: a unidade aparece em `systemctl --failed`.
+SuccessExitStatus=0 1

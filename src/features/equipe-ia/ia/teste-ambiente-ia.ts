@@ -6,6 +6,7 @@ import { FileRepository } from "@/lib/db/file-adapter";
 import type { NovoNegocio } from "@/lib/db/repository";
 import type { Documento } from "../entregaveis/tipos";
 import { pastaIA } from "./fila";
+import { autorizarIA } from "./servico-ia";
 import { documentoComoSaida, secaoExtra } from "./teste-util-ia";
 
 /**
@@ -15,7 +16,6 @@ import { documentoComoSaida, secaoExtra } from "./teste-util-ia";
  */
 
 export const POLITICA_NOVA = "2026-10-20";
-export const POLITICA_ANTIGA = "2026-07-28";
 
 export function novoNegocio(nome: string, consentimentoVersao: string): NovoNegocio {
   return {
@@ -33,9 +33,14 @@ export function novoNegocio(nome: string, consentimentoVersao: string): NovoNego
   };
 }
 
-export async function criarTenant(nome = "Studio Bela Cabelos", opcoes: { politica?: string; cargos?: string[] } = {}) {
+/**
+ * Negócio de teste. Por padrão já autorizou a IA (consentimento específico);
+ * `consentir: false` cria quem só aceitou a política geral no cadastro.
+ */
+export async function criarTenant(nome = "Studio Bela Cabelos", opcoes: { consentir?: boolean; cargos?: string[] } = {}) {
   const repo = new FileRepository();
-  const negocio = await repo.criarNegocio(novoNegocio(nome, opcoes.politica ?? POLITICA_NOVA));
+  const negocio = await repo.criarNegocio(novoNegocio(nome, POLITICA_NOVA));
+  if (opcoes.consentir !== false) await autorizarIA(negocio.id, "u-teste");
   for (const cargo of opcoes.cargos ?? ["documentador", "social-media"]) await repo.contratarFuncionario(negocio.id, cargo);
   await repo.criarOferta({
     tenantId: negocio.id,

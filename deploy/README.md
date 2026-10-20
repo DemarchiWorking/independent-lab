@@ -12,6 +12,9 @@ Internet ──443──▶ Caddy (container vitrine-edge-1, dono do HTTPS)
               independent-lab-app:3000  (Next.js standalone, uid 10001, somente leitura)
                      │
               /opt/independent-lab/data  (volume: JSON dos negócios)
+                     │ data/ia  (pasta de troca: só pedidos e resultados da IA)
+                     ▼
+              independent-lab-ia-worker  (única credencial da Anthropic; sem porta)
 ```
 
 Endereço padrão: `https://lab.2-25-146-39.sslip.io` (o sslip.io resolve o IP
@@ -57,6 +60,9 @@ espera `/api/health` responder com o sha novo. Se não responder em ~2 min,
 | Caminho | O que é |
 |---|---|
 | `/opt/independent-lab/.env` | variáveis de produção (segredo, admins, URL). `chmod 600` |
+| `/opt/independent-lab/.env.ia` | credenciais do worker de IA (`ANTHROPIC_API_KEY`). `chmod 600`. Nunca no `.env` do app |
+| `/opt/independent-lab/data/ia` | pasta de troca app ⇄ worker (pedidos, resultados, configuração da IA, uso) |
+| `/opt/independent-lab/ia-guardiao.sh` | guardião horário da IA (instalado no systemd por `instalar-guardiao.sh`) |
 | `/opt/independent-lab/data` | dados dos negócios (volume do container) |
 | `/opt/independent-lab/backups` | `dados-*.tar.gz` diário (14 dias) e `antes-do-deploy-<sha>.tar.gz` |
 | `/opt/independent-lab/src/<sha>` | código das últimas releases |
@@ -67,7 +73,8 @@ espera `/api/health` responder com o sha novo. Se não responder em ~2 min,
 ```bash
 docker ps --filter name=independent-lab            # STATUS deve dizer (healthy)
 docker logs -f independent-lab-app
-docker stats --no-stream independent-lab-app        # limite: 512 MB, 1 CPU
+docker logs -f independent-lab-ia-worker          # a IA: pedidos, pausas, erros
+docker stats --no-stream independent-lab-app independent-lab-ia-worker
 ```
 
 **Rollback manual** (a imagem anterior continua na máquina):
@@ -75,6 +82,7 @@ docker stats --no-stream independent-lab-app        # limite: 512 MB, 1 CPU
 ```bash
 docker images independent-lab                       # veja as tags (sha)
 cd /opt/independent-lab && IMAGEM=independent-lab:<sha-antigo> \
+  IMAGEM_WORKER=independent-lab-ia-worker:<sha-antigo> \
   docker compose -p independent-lab -f compose.yml up -d
 ```
 
@@ -83,7 +91,8 @@ cd /opt/independent-lab && IMAGEM=independent-lab:<sha-antigo> \
 ```bash
 cd /opt/independent-lab && docker compose -p independent-lab -f compose.yml stop app
 tar -xzf backups/dados-<data>.tar.gz -C data && chown -R 10001:10001 data
-IMAGEM=independent-lab:<sha> docker compose -p independent-lab -f compose.yml up -d
+IMAGEM=independent-lab:<sha> IMAGEM_WORKER=independent-lab-ia-worker:<sha> \
+  docker compose -p independent-lab -f compose.yml up -d
 ```
 
 **Backup fora da VPS** (um disco que morre leva os backups junto):
@@ -93,6 +102,27 @@ rsync -az hostinger:/opt/independent-lab/backups/ ./backups-independent-lab/
 ```
 
 Os arquivos têm dados pessoais (LGPD): guarde cifrados.
+
+## IA (worker, guardião e conta de admin)
+
+Guia completo: [`docs/equipe-ia/IA-OPERACAO.md`](../docs/equipe-ia/IA-OPERACAO.md). Resumo do que o deploy faz e do que **você** faz:
+
+| Passo | Quem | Como |
+|---|---|---|
+| Subir app + worker | `publicar.sh` | Constrói as duas imagens na VPS e confere o batimento do worker |
+| Colocar a chave | você | `nano /opt/independent-lab/.env.ia` (`ANTHROPIC_API_KEY`), depois `docker restart independent-lab-ia-worker`. Crie a chave no Console **com limite mensal de gasto** |
+| Criar a conta de admin da IA | você | Em produção o cadastro recusa `admin@admin.com`. Ponha `GAMEHUB_LIBERAR_CADASTRO_ADMIN=1` no `.env`, reinicie o app, cadastre-se, **remova a linha** e reinicie |
+| Guardião de hora em hora | `instalar-guardiao.sh` | Timer do systemd (ou cron: `0 * * * * /opt/independent-lab/ia-guardiao.sh`) |
+| Escolher modelo, limites, modo | você | `/admin/ia`, só com o e-mail do admin da IA |
+
+O worker sobe mesmo sem chave: a tela `/admin/ia` mostra "modo sem credencial" e o material de regras continua funcionando. O modo assinatura (`INSTALAR_CLAUDE_CLI=1`) é opcional e **contraria os termos da Anthropic** quando atende usuários de um produto: leia o guia antes.
+
+```bash
+docker logs --tail 50 independent-lab-ia-worker
+systemctl list-timers independent-lab-ia-guardiao.timer   # próximo disparo
+systemctl start independent-lab-ia-guardiao.service       # rodar agora
+journalctl -u independent-lab-ia-guardiao.service -n 30   # o que ele fez
+```
 
 ## Atenção
 

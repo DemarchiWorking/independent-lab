@@ -1,0 +1,13 @@
+[Unit]
+Description=Guardiao da IA do independent-lab, de hora em hora
+
+[Timer]
+# De hora em hora, e recupera a execução perdida se a VPS esteve desligada.
+OnCalendar=hourly
+Persistent=true
+# Espalha o disparo por até 2 minutos para não competir com os outros projetos.
+RandomizedDelaySec=120
+Unit=independent-lab-ia-guardiao.service
+
+[Install]
+WantedBy=timers.target
