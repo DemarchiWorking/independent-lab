@@ -1,5 +1,6 @@
 import { contextoPublico, type ContextoPublico } from "./contexto";
 import { baseadoEm, metaDoDocumento, secao } from "./documento";
+import { LIMITE_LEGENDA } from "./edicao";
 import { hashtag, listaPt, minusculaInicial, truncar } from "./linguagem";
 import { perfilDeMercado } from "./mercado";
 import { EQUIPE } from "./mercado/planos";
@@ -39,7 +40,7 @@ import type {
 
 export const LIMITE_TITULO_SLIDE = 60;
 export const LIMITE_TEXTO_SLIDE = 180;
-export const LIMITE_LEGENDA = 2200;
+export { LIMITE_LEGENDA };
 
 function slide(papel: SlideCarrossel["papel"], titulo: string, texto: string): SlideCarrossel {
   return {

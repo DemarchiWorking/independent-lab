@@ -11,6 +11,9 @@ import type { PautaCarrossel } from "./tipos";
 /** Teto do que o editor aceita por slide — acima do que o gerador produz, para dar liberdade. */
 export const LIMITES_EDICAO = { titulo: 90, texto: 280 } as const;
 
+/** Teto da legenda de uma publicação (o limite do Instagram). */
+export const LIMITE_LEGENDA = 2200;
+
 export interface EdicaoSlide {
   titulo: string;
   texto: string;

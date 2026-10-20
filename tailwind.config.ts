@@ -18,6 +18,8 @@ const config: Config = {
         panel: color.bg.panel,
         line: color.bg.line,
         ink: color.text.ink,
+        hairline: color.bg.lineLight,
+        soft: color.text.mutedOnLight,
         muted: color.text.muted,
         orange: { DEFAULT: color.brand.orange, dark: color.brand.orangeDark },
         teal: color.brand.teal,

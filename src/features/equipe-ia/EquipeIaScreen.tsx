@@ -9,21 +9,10 @@ import { ActionButton } from "@/components/ui/ActionButton";
 import { Icon } from "@/components/ui/Icon";
 import { useRecompensa } from "@/features/gamificacao/RecompensaContext";
 import { CARGOS_IA } from "./catalogo";
-import {
-  custoEvolucao,
-  entregavelDoCargo,
-  habilidadesDoCargo,
-  NIVEL_MAX_FUNCIONARIO,
-} from "./habilidades";
+import { custoEvolucao, habilidadesDoCargo, NIVEL_MAX_FUNCIONARIO } from "./habilidades";
+import { EntregaveisDoCargo } from "./estudio/EntregaveisDoCargo";
 import { evoluirFuncionario } from "./actions";
 import type { FuncionarioContratado } from "@/lib/db/types";
-
-const ROTULO_ENTREGAVEL: Record<string, string> = {
-  canvas: "Baixar Modelo de Negócio",
-  post: "Baixar post pronto",
-  script: "Baixar script comercial",
-  reel: "Baixar roteiro de Reels",
-};
 
 interface EquipeIaScreenProps {
   /** cargoIds já contratados — vem do servidor (não é estado local: precisa
@@ -55,7 +44,6 @@ export function EquipeIaScreen({
   const funcionario = funcionarios.find((f) => f.cargoId === selected.id);
   const nivel = funcionario?.nivel ?? 1;
   const habilidades = habilidadesDoCargo(selected.id, nivel);
-  const entregavel = entregavelDoCargo(selected.id);
   const custoProximo = custoEvolucao(nivel + 1);
 
   const evoluir = () => {
@@ -201,15 +189,7 @@ export function EquipeIaScreen({
           <div className="mt-auto space-y-2 pt-3">
             {/* Entregável: só existe depois de contratar (o servidor
                 repete essa checagem — ver /api/entregavel/[tipo]). */}
-            {jaContratado && entregavel ? (
-              <a
-                href={`/api/entregavel/${entregavel}`}
-                className="flex w-full items-center justify-center gap-2 rounded-md bg-teal px-4 py-3 font-ui text-sm font-extrabold text-ink"
-              >
-                <Icon name="file" size={16} />
-                {ROTULO_ENTREGAVEL[entregavel] ?? "Baixar entregável"}
-              </a>
-            ) : null}
+            {jaContratado ? <EntregaveisDoCargo cargoId={selected.id} /> : null}
 
             {jaContratado && custoProximo !== undefined ? (
               <ActionButton

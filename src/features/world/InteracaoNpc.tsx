@@ -13,9 +13,10 @@ import { cargoDoAvatar, tenantDoAvatar, type AvatarProximo } from "./engine/prox
 
 const ROTULO_ENTREGAVEL: Record<string, string> = {
   canvas: "Pedir o Modelo de Negócio",
-  post: "Pedir um post pronto",
-  script: "Pedir o script comercial",
-  reel: "Pedir o roteiro de Reels",
+  pop: "Pedir o Manual de Processos",
+  carrossel: "Pedir os carrosséis",
+  comercial: "Pedir o kit comercial",
+  reel: "Pedir o roteiro de vídeo",
 };
 
 interface InteracaoNpcProps {

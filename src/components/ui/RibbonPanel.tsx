@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { modalVariants } from "@/lib/motion";
@@ -13,6 +14,12 @@ interface RibbonPanelProps {
   children: React.ReactNode;
   /** largura máxima do painel */
   className?: string;
+  /**
+   * Abre sobre a PÁGINA inteira (portal no `body`), em vez de dentro do palco
+   * do jogo. Para telas grandes, como um editor: dentro do palco o painel fica
+   * espremido na moldura pequena do jogo.
+   */
+  tela?: boolean;
 }
 
 const FOCAVEIS =
@@ -31,8 +38,13 @@ export function RibbonPanel({
   onClose,
   children,
   className,
+  tela = false,
 }: RibbonPanelProps) {
   const painelRef = useRef<HTMLDivElement | null>(null);
+  // O portal só existe no navegador: habilita depois de montar, para o HTML do
+  // servidor e a primeira renderização do cliente serem iguais.
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
   // `onClose` costuma ser uma arrow nova a cada render do pai: guardá-la numa
   // ref evita refazer o efeito (e roubar o foco) a cada re-render.
   const fecharRef = useRef(onClose);
@@ -78,11 +90,14 @@ export function RibbonPanel({
     };
   }, [open]);
 
-  return (
+  const conteudo = (
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="absolute inset-0 z-30 flex items-center justify-center p-6"
+          className={cn(
+            "inset-0 flex items-center justify-center",
+            tela ? "fixed z-[70] p-3 sm:p-6" : "absolute z-30 p-6",
+          )}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -100,8 +115,12 @@ export function RibbonPanel({
             animate="enter"
             exit="exit"
             onClick={(e) => e.stopPropagation()}
+            // `cn` só junta classes (não resolve conflito): se o chamador define a
+            // própria largura máxima, a padrão (max-w-xl) não pode vir junto, senão
+            // a que aparecer depois no CSS vence, e "max-w-md" nunca valia nada.
             className={cn(
-              "relative w-full max-w-xl rounded-md bg-panel p-4 pt-5 text-ink shadow-modal outline-none",
+              "relative w-full rounded-md bg-panel p-4 pt-5 text-ink shadow-modal outline-none",
+              className?.includes("max-w-") ? null : "max-w-xl",
               className,
             )}
           >
@@ -122,4 +141,7 @@ export function RibbonPanel({
       ) : null}
     </AnimatePresence>
   );
+
+  if (!tela) return conteudo;
+  return montado ? createPortal(conteudo, document.body) : null;
 }
