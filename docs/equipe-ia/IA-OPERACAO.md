@@ -197,11 +197,11 @@ tela avisa que os dados passariam por uma conta de consumidor.
 2. **Publicar:** `ADMIN_EMAILS=voce@exemplo.com ./deploy/publicar.sh`. Cria
    `/opt/independent-lab/.env.ia` (modelo), sobe app e worker e confere o
    batimento. Depois: `nano /opt/independent-lab/.env.ia` (coloque a chave) e
-   `docker restart independent-lab-ia-worker`.
+   `/opt/independent-lab/recriar.sh ia-worker` (o `docker restart` não relê o `.env.ia`).
 3. **Conta de admin:** em produção o cadastro público recusa `admin@admin.com`.
    Para criar a sua: coloque `GAMEHUB_LIBERAR_CADASTRO_ADMIN=1` em
-   `/opt/independent-lab/.env`, reinicie o app, cadastre-se em `/cadastro` com
-   esse e-mail, **remova a linha** e reinicie de novo. (Ou use
+   `/opt/independent-lab/.env`, rode `/opt/independent-lab/recriar.sh app`, cadastre-se em `/cadastro` com
+   esse e-mail e uma **senha forte**, **remova a linha** e rode `recriar.sh app` de novo. (Ou use
    `GAMEHUB_IA_ADMIN_EMAIL` para outro e-mail.)
 4. **Guardião:** `./deploy/instalar-guardiao.sh` instala o timer horário
    (systemd). Sem systemd: `0 * * * * /opt/independent-lab/ia-guardiao.sh`.
@@ -224,7 +224,7 @@ tela avisa que os dados passariam por uma conta de consumidor.
 | O que a tela ou o guardião mostra | Causa | O que fazer |
 |---|---|---|
 | Worker "Parado" | Container caiu ou travou | O guardião reinicia; veja `docker logs independent-lab-ia-worker` |
-| Pausa `auth` | A Anthropic recusou a credencial | Pro: refaça `claude setup-token` e confira `CLAUDE_CODE_OAUTH_TOKEN`; API: confira `ANTHROPIC_API_KEY`. Depois `docker restart` |
+| Pausa `auth` | A Anthropic recusou a credencial | Pro: refaça `claude setup-token` e confira `CLAUDE_CODE_OAUTH_TOKEN`; API: confira `ANTHROPIC_API_KEY`. Depois `/opt/independent-lab/recriar.sh ia-worker` |
 | Pausa `gasto` | Sem saldo ou limite do Console | Ajuste no Console; o worker retoma sozinho |
 | Pausa `gasto-diario` | Teto do dia da tela atingido | Sobe o teto na tela ou espera a meia-noite UTC |
 | Pausa `limite` | Limite de requisições da Anthropic | Espera sozinho; para volume alto, peça aumento de limite |

@@ -82,7 +82,7 @@ if [ ! -f "$DIR/.env.ia" ]; then
   chmod 600 "$DIR/.env.ia"
   echo "Criado $DIR/.env.ia (modelo). Para a IA funcionar, preencha CLAUDE_CODE_OAUTH_TOKEN"
   echo "(gerado na SUA máquina com: claude setup-token) ou ANTHROPIC_API_KEY (créditos de API):"
-  echo "   nano $DIR/.env.ia && docker restart independent-lab-ia-worker"
+  echo "   nano $DIR/.env.ia && $DIR/recriar.sh ia-worker"
 fi
 
 ANTERIOR="$(docker inspect -f '{{.Config.Image}}' independent-lab-app 2>/dev/null || true)"
@@ -106,6 +106,16 @@ if [ -n "$(ls -A "$DIR/data" 2>/dev/null)" ]; then
 fi
 
 cp "$DIR/src/$SHA/deploy/compose.yml" "$DIR/compose.yml"
+# `docker restart` NÃO relê o env_file: mudar .env ou .env.ia exige recriar o container.
+# Este atalho recria com as imagens desta versão (uso: recriar.sh ia-worker | app).
+cat > "$DIR/recriar.sh" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+cd $DIR
+IMAGEM=independent-lab:$SHA IMAGEM_WORKER=independent-lab-ia-worker:$SHA \
+  docker compose -p independent-lab -f compose.yml up -d --force-recreate "\$@"
+EOF
+chmod 750 "$DIR/recriar.sh"
 # O guardião (de hora em hora) fica pronto aqui; instalá-lo no systemd é um passo à parte.
 cp "$DIR/src/$SHA/deploy/ia-guardiao.sh" "$DIR/ia-guardiao.sh"
 chmod 750 "$DIR/ia-guardiao.sh"

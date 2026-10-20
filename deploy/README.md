@@ -110,8 +110,8 @@ Guia completo: [`docs/equipe-ia/IA-OPERACAO.md`](../docs/equipe-ia/IA-OPERACAO.m
 | Passo | Quem | Como |
 |---|---|---|
 | Subir app + worker | `publicar.sh` | Constrói as duas imagens na VPS e confere o batimento do worker |
-| Colocar a credencial | você | **Pro (principal):** `claude setup-token` numa conta separada e `CLAUDE_CODE_OAUTH_TOKEN` + `IA_PERMITIR_ASSINATURA=1` em `/opt/independent-lab/.env.ia`, publicar com `INSTALAR_CLAUDE_CLI=1`, validar com `node ia-worker/verificar.mjs --chamada`. **API (opcional):** `ANTHROPIC_API_KEY` no mesmo arquivo, com limite mensal no Console. Depois `docker restart independent-lab-ia-worker` |
-| Criar a conta de admin da IA | você | Em produção o cadastro recusa `admin@admin.com`. Ponha `GAMEHUB_LIBERAR_CADASTRO_ADMIN=1` no `.env`, reinicie o app, cadastre-se, **remova a linha** e reinicie |
+| Colocar a credencial | você | **Pro (principal):** `claude setup-token` numa conta separada e `CLAUDE_CODE_OAUTH_TOKEN` + `IA_PERMITIR_ASSINATURA=1` em `/opt/independent-lab/.env.ia`, publicar com `INSTALAR_CLAUDE_CLI=1`, validar com `node ia-worker/verificar.mjs --chamada`. **API (opcional):** `ANTHROPIC_API_KEY` no mesmo arquivo, com limite mensal no Console. Depois `/opt/independent-lab/recriar.sh ia-worker` (**`docker restart` não relê o env_file**) |
+| Criar a conta de admin da IA | você | Em produção o cadastro recusa `admin@admin.com`. Ponha `GAMEHUB_LIBERAR_CADASTRO_ADMIN=1` no `.env`, rode `recriar.sh app`, cadastre-se com **senha forte** (é um endereço público), **remova a linha** e rode `recriar.sh app` de novo |
 | Guardião de hora em hora | `instalar-guardiao.sh` | Timer do systemd (ou cron: `0 * * * * /opt/independent-lab/ia-guardiao.sh`) |
 | Escolher modelo, limites, modo | você | `/admin/ia`, só com o e-mail do admin da IA |
 
