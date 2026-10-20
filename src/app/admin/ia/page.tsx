@@ -71,7 +71,7 @@ export default async function AdminIAPage() {
   const modelos = Object.entries(MODELOS_PADRAO).map(([id, p]) => ({
     id,
     nome: nomeDoModelo(id),
-    precos: `US$ ${p.entradaUsdPorMTok}/${p.saidaUsdPorMTok} por milhão de tokens (entrada/saída)`,
+    precos: `US$ ${p.entradaUsdPorMTok}/${p.saidaUsdPorMTok} por 1M tokens`,
   }));
   const pausadoAte = batimento?.pausadoAte && new Date(batimento.pausadoAte) > agora ? batimento.pausadoAte : null;
 

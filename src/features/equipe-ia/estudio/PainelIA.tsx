@@ -53,7 +53,10 @@ export function PainelIA({ tipo, aoNovaVersao }: Props) {
         const novo = (await r.json()) as EstadoIA;
         setEstado(novo);
         const n = novo.versao?.n ?? null;
-        if (versaoVista.current !== null && n !== null && n > versaoVista.current) aoNovaVersao();
+        if (versaoVista.current !== null && n !== null && n > versaoVista.current) {
+          setMensagem("Nova versão pronta: o material abaixo já foi atualizado.");
+          aoNovaVersao();
+        }
         if (versaoVista.current === null || (n !== null && n > versaoVista.current)) versaoVista.current = n ?? versaoVista.current;
         if (versaoVista.current === null && n === null) versaoVista.current = 0;
       } catch {

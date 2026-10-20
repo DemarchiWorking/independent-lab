@@ -148,7 +148,7 @@ export function AdminIAForm({ config, modelos, modosDisponiveis }: Props) {
       </label>
 
       <label className={rotulo}>
-        Modelo dos pedidos de usuário
+        Modelo dos pedidos de usuário (preço: entrada/saída)
         <select name="modeloUsuario" defaultValue={config.modeloUsuario} className={campo}>
           {modelos.map((m) => (
             <option key={m.id} value={m.id}>
@@ -159,7 +159,7 @@ export function AdminIAForm({ config, modelos, modosDisponiveis }: Props) {
       </label>
 
       <label className={rotulo}>
-        Modelo da melhoria contínua
+        Modelo da melhoria contínua (preço: entrada/saída)
         <select name="modeloLote" defaultValue={config.modeloLote} className={campo}>
           {modelos.map((m) => (
             <option key={m.id} value={m.id}>
