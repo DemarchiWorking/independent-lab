@@ -129,6 +129,12 @@ export interface MetaDocumento {
    * `publico`: só usa informação pública do negócio e pode circular.
    */
   circulacao: "interno" | "publico";
+  /** `ia` quando o texto foi refinado por IA e validado pelo app; ausente = regras */
+  geradoPor?: "regras" | "ia";
+  /** número da versão de IA em uso */
+  versaoIA?: number;
+  /** modelo que escreveu a versão de IA */
+  modeloIA?: string;
 }
 
 export interface Documento {

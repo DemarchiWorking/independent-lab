@@ -58,6 +58,8 @@ export interface MetaPedido {
   feedback: string[] | null;
   /** quantas vezes o app já reenviou por saída inválida */
   reenvios: number;
+  /** de onde veio: o reenvio por saída inválida herda a prioridade original */
+  prioridade: PrioridadeIA;
 }
 
 export interface PedidoIA {

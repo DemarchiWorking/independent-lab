@@ -71,6 +71,7 @@ function pedido(id: string, extra: Partial<PedidoIA> = {}): PedidoIA {
       geradorVersao: 1,
       feedback: null,
       reenvios: 0,
+      prioridade: "lote",
     },
     ...extra,
   };
