@@ -13,8 +13,10 @@
  * roles reais" no fim deste arquivo antes de adicionar um 3º admin ou
  * expor qualquer ação administrativa mais sensível que "criar evento".
  */
-function listaAdmins(): string[] {
-  return (process.env.GAMEHUB_ADMIN_EMAILS ?? "")
+type Ambiente = Record<string, string | undefined>;
+
+function listaAdmins(env: Ambiente = process.env): string[] {
+  return (env.GAMEHUB_ADMIN_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
@@ -24,6 +26,43 @@ export function souAdmin(email: string): boolean {
   const normalizado = email.trim().toLowerCase();
   if (!normalizado) return false;
   return listaAdmins().includes(normalizado);
+}
+
+/** Admin da IA padrão: o único e-mail que muda a configuração da IA (tela `/admin/ia`). */
+export const EMAIL_ADMIN_IA_PADRAO = "admin@admin.com";
+
+/**
+ * Quem pode mudar a configuração da IA (modo de autenticação, limites,
+ * modelos): um único e-mail, `GAMEHUB_IA_ADMIN_EMAIL` ou, sem a variável,
+ * `admin@admin.com`. É mais estreito que `souAdmin` de propósito: esta tela
+ * decide quanto dinheiro o app pode gastar e por qual credencial.
+ */
+export function emailAdminIA(env: Ambiente = process.env): string {
+  return (env.GAMEHUB_IA_ADMIN_EMAIL ?? EMAIL_ADMIN_IA_PADRAO).trim().toLowerCase();
+}
+
+export function souAdminIA(email: string, env: Ambiente = process.env): boolean {
+  const normalizado = email.trim().toLowerCase();
+  return normalizado !== "" && normalizado === emailAdminIA(env);
+}
+
+/**
+ * E-mails que nenhum visitante pode criar pelo cadastro público: os admins.
+ * O cadastro não verifica a posse do e-mail, então, sem isto, quem se
+ * cadastrasse como `admin@admin.com` ANTES do dono ganharia o painel.
+ */
+export function emailReservado(email: string, env: Ambiente = process.env): boolean {
+  const normalizado = email.trim().toLowerCase();
+  return souAdminIA(normalizado, env) || listaAdmins(env).includes(normalizado);
+}
+
+/**
+ * Em produção, o cadastro público recusa e-mail reservado, a menos que o
+ * operador libere por um instante (`GAMEHUB_LIBERAR_CADASTRO_ADMIN=1`) para
+ * criar a própria conta de admin. Em desenvolvimento nada é bloqueado.
+ */
+export function cadastroBloqueado(email: string, env: Ambiente = process.env): boolean {
+  return env.NODE_ENV === "production" && env.GAMEHUB_LIBERAR_CADASTRO_ADMIN !== "1" && emailReservado(email, env);
 }
 
 /**

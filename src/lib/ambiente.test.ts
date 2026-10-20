@@ -7,9 +7,27 @@ const prod = (extra: Record<string, string> = {}) =>
 
 describe("validarAmbiente", () => {
   it("configuração completa de produção não tem erro nem aviso de dados", () => {
-    const r = validarAmbiente(prod({ GAMEHUB_ADMIN_EMAILS: "a@b.c" }));
+    const r = validarAmbiente(prod({ GAMEHUB_ADMIN_EMAILS: "a@b.c", GAMEHUB_IA_ADMIN_EMAIL: "dono@exemplo.com" }));
     expect(r.erros).toEqual([]);
     expect(r.avisos).toEqual([]);
+  });
+
+  it("avisa que o admin da IA é o padrão e quando o cadastro de admin está liberado", () => {
+    const base = { GAMEHUB_ADMIN_EMAILS: "a@b.c" };
+    expect(validarAmbiente(prod(base)).avisos.join()).toMatch(/admin@admin\.com/);
+    const liberado = validarAmbiente(prod({ ...base, GAMEHUB_IA_ADMIN_EMAIL: "x@y.z", GAMEHUB_LIBERAR_CADASTRO_ADMIN: "1" }));
+    expect(liberado.avisos.join()).toMatch(/GAMEHUB_LIBERAR_CADASTRO_ADMIN/);
+    expect(liberado.erros).toEqual([]);
+  });
+
+  it("credencial da Anthropic no ambiente do app: erro em produção, aviso em desenvolvimento", () => {
+    for (const nome of ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"]) {
+      const r = validarAmbiente(prod({ GAMEHUB_ADMIN_EMAILS: "a@b.c", [nome]: "segredo" }));
+      expect(r.erros.join(), nome).toMatch(new RegExp(nome));
+    }
+    const dev = validarAmbiente({ NODE_ENV: "development", GAMEHUB_SECRET: segredo, ANTHROPIC_API_KEY: "k" } as NodeJS.ProcessEnv);
+    expect(dev.erros).toEqual([]);
+    expect(dev.avisos.join()).toMatch(/ANTHROPIC_API_KEY/);
   });
 
   it("sem segredo, ou com segredo curto, recusa", () => {

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { getRepository } from "@/lib/db";
 import { getAuthProvider } from "@/lib/auth";
+import { cadastroBloqueado } from "@/lib/admin";
 import { criarSessao, encerrarSessao } from "@/lib/auth/sessao";
 import { SENHA_MAX } from "@/lib/auth/password";
 import { slugify } from "@/lib/db/file-adapter";
@@ -153,7 +154,9 @@ export async function cadastrar(
   if (senha.length > SENHA_MAX)
     return { erro: `A senha pode ter no máximo ${SENHA_MAX} caracteres.` };
   if (!cadastroPorIp.consumir(await ipDoCliente())) return { erro: MUITAS_TENTATIVAS };
-  if (await auth.emailExiste(email))
+  // E-mail de admin não se cria pelo formulário público (o cadastro não prova posse
+  // do e-mail). Mesma mensagem de "já existe": não revela que o e-mail é reservado.
+  if (cadastroBloqueado(email) || (await auth.emailExiste(email)))
     return { erro: "Já existe uma conta com esse e-mail." };
 
   // Consentimento LGPD (GH-OPS-04) — checagem no servidor, nunca só

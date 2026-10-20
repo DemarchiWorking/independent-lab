@@ -41,6 +41,22 @@ export function validarAmbiente(env: NodeJS.ProcessEnv = process.env): Resultado
     if (!env.GAMEHUB_ADMIN_EMAILS) {
       avisos.push("GAMEHUB_ADMIN_EMAILS vazio: ninguém acessa /admin/eventos.");
     }
+    if (!env.GAMEHUB_IA_ADMIN_EMAIL) {
+      avisos.push("GAMEHUB_IA_ADMIN_EMAIL não definido: o admin da IA é admin@admin.com. O cadastro público recusa esse e-mail; para criar a conta, libere por um instante com GAMEHUB_LIBERAR_CADASTRO_ADMIN=1.");
+    }
+    if (env.GAMEHUB_LIBERAR_CADASTRO_ADMIN === "1") {
+      avisos.push("GAMEHUB_LIBERAR_CADASTRO_ADMIN=1: qualquer pessoa pode cadastrar e-mail de admin. Remova depois de criar a sua conta e reinicie.");
+    }
+  }
+
+  // A credencial da Anthropic fica SÓ no worker de IA. O app recebe texto de qualquer
+  // usuário; se ele tivesse a chave, uma falha nele vazaria a chave junto.
+  for (const nome of ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"]) {
+    if (env[nome]) {
+      const mensagem = `${nome} está definida no ambiente do app. Credencial da Anthropic fica só no worker de IA (ia-worker), nunca no app.`;
+      if (producao) erros.push(mensagem);
+      else avisos.push(mensagem);
+    }
   }
 
   return { erros, avisos };

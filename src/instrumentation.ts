@@ -1,19 +1,17 @@
 /**
- * Roda uma vez quando o servidor Next.js sobe. Valida o ambiente e recusa
- * iniciar configurado errado (ver `lib/ambiente.ts`).
+ * Roda uma vez quando o servidor Next.js sobe. Valida o ambiente, recusa
+ * iniciar configurado errado (ver `lib/ambiente.ts`) e liga o agendador da IA.
+ *
+ * Tudo que usa módulo do Node mora em `instrumentation-node.ts`. O Next
+ * compila este arquivo também para o runtime Edge; o `import()` dentro de um
+ * `if (process.env.NEXT_RUNTIME === "nodejs")` é o padrão documentado para o
+ * bundler cortar esse ramo do Edge. Um `import` direto de `node:fs` ou
+ * `node:crypto` aqui derrubava o servidor de desenvolvimento com erro 500.
  */
 export async function register(): Promise<void> {
-  if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  // Durante `next build` o servidor não roda: não exige as variáveis de produção.
-  if (process.env.NEXT_PHASE === "phase-production-build") return;
-
-  const { validarAmbiente } = await import("@/lib/ambiente");
-  const { erros, avisos } = validarAmbiente();
-
-  for (const aviso of avisos) console.warn(`[ambiente] aviso: ${aviso}`);
-  if (erros.length > 0) {
-    for (const erro of erros) console.error(`[ambiente] ERRO: ${erro}`);
-    throw new Error(`Ambiente inválido (${erros.length}). O servidor não vai iniciar.`);
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { registrarNode } = await import("./instrumentation-node");
+    await registrarNode();
   }
 }
 
