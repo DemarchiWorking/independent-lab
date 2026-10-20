@@ -113,6 +113,15 @@ post pronto (PNG 1080×1080 com cor/fonte da marca); Comercial → script
 comercial + cadência (HTML). Níveis 1–3 controlam a profundidade do
 material (migration `0024`). Habilidades destravadas por nível na UI.
 
+> **Reescrito em out/2026** (branch `entregaveis-profissionais`): a geração
+> virou uma arquitetura em camadas (contexto → gerador puro → `Documento` →
+> HTML/Markdown/JSON/PNG/ZIP), com base de mercado por segmento e nicho,
+> estúdio no app (visualizador e editor de publicações) e kit comercial e
+> manual de POPs completos. Detalhes em
+> [`equipe-ia/ENTREGAVEIS.md`](equipe-ia/ENTREGAVEIS.md). A frase "Social
+> Media → PNG 1080×1080" acima é a versão antiga: hoje são 3 formatos e 3
+> temas.
+
 **`GH-WORLD-07` — Upgrade de equipamento.** Móveis evoluem até o nível 3;
 cada nível reaplica o bônus de atributo (total = base × nível), com custo
 que garante por construção que evoluir nunca seja mais barato que comprar

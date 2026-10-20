@@ -4,6 +4,8 @@
 > VPS compartilhada onde ele vai rodar, correção do que era corrigível no
 > código e empacotamento para produção.
 > **Branch:** `seguranca-producao` (commits locais, nada foi enviado ao remoto).
+> A reescrita dos entregáveis (seção [Entregáveis dos Funcionários de IA](#entregáveis-dos-funcionários-de-ia))
+> está na branch `entregaveis-profissionais`, criada a partir dela.
 > **Data:** 19/10/2026.
 
 ## Resumo
@@ -17,7 +19,7 @@ ou de uma ação sua em ambiente real (a VPS), e está listado em
 | Gate | Resultado |
 |---|---|
 | `npm run typecheck` | limpo |
-| `npm test` | 358 testes em 33 arquivos, todos passando |
+| `npm test` | 497 testes em 40 arquivos, todos passando (358 na auditoria; o resto cobre os entregáveis) |
 | `npm run build` | passa (Next 15.5.28) |
 | `npm audit --omit=dev --audit-level=high` | 0 vulnerabilidades |
 
@@ -141,7 +143,7 @@ Antes de abrir para o público, nesta ordem:
 | **Uma instância só** no modo `file` | A trava é interna ao processo. Duas instâncias sobre a mesma pasta perdem dado. O limitador de tentativas também é por processo e zera ao reiniciar. | Manter uma instância. Para escalar, migrar para Supabase e mover o limitador para armazenamento compartilhado. |
 | CSP com `'unsafe-inline'` em scripts | O App Router do Next injeta scripts inline e sem nonce a CSP não pode ser mais estrita. Reduz a proteção contra XSS, mas as demais barreiras ficam (`object-src 'none'`, `frame-ancestors 'none'`, `base-uri`, `form-action`). | Adotar nonce por requisição no middleware (custo: perde páginas estáticas). |
 | ESLint não configurado | `npm run lint` não existe de fato; só o TypeScript estrito pega erro. | Adicionar `eslint-config-next` e regras de segurança, e incluir no CI. |
-| O `next build` depende do Google Fonts | Em 19/10/2026 um build falhou uma vez por erro transitório na busca das fontes e passou na repetição. Na VPS isso derruba o deploy (o `publicar.sh` aborta antes de trocar o container, então a versão antiga continua no ar). | Trocar por `next/font/local` com os arquivos `.woff2` no repositório. Não fiz porque exige baixar os arquivos e eu preferi lhe pedir isso a fazê-lo sozinho. |
+| O `next build` depende do Google Fonts | Em 19/10/2026 um build falhou uma vez por erro transitório na busca das fontes e passou na repetição. Na VPS isso derruba o deploy (o `publicar.sh` aborta antes de trocar o container, então a versão antiga continua no ar). | Trocar por `next/font/local`. Os arquivos da Nunito já estão em `src/assets/fonts/` (baixados com a sua autorização para os slides), então só falta a migração; o Press Start 2P ainda precisaria ser baixado. |
 | `sslip.io` | Serviço de terceiros; compartilha limite de emissão de certificado. | Domínio próprio quando for algo duradouro. |
 | Vulnerabilidades só de desenvolvimento | Ver B1. | Migrar para Tailwind 4. |
 
@@ -160,6 +162,36 @@ caracteres do formulário de cadastro, que continua valendo. Os dois e-mails
 foram colocados em `GAMEHUB_ADMIN_EMAILS` no `.env` **local** (também fora do
 Git). **Não crie essas contas na VPS** e não copie esse `.env` para lá.
 
+## Entregáveis dos Funcionários de IA
+
+Revisão feita depois da auditoria: Canvas, POPs, carrosséis, kit comercial e
+roteiro de vídeo passaram a ser gerados em camadas, a partir do contexto do
+usuário logado. A superfície nova é a rota `/api/entregavel/[tipo]`, que
+devolve dado de cadastro do negócio (inclusive respostas privadas) e gera
+imagens com CPU do servidor compartilhado. Resumo do que a protege (detalhe e
+tabela completa em [`../equipe-ia/ENTREGAVEIS.md`](../equipe-ia/ENTREGAVEIS.md)):
+
+| Risco | Controle | Teste |
+|---|---|---|
+| Ler o material de outro negócio | tenant só da sessão; parâmetro de tenant na URL ou no corpo é ignorado | `rota.test.ts` |
+| Gerar sem contratar, ou subir de nível | cargo contratado e nível lidos do banco | `rota.test.ts` |
+| Vazar resposta privada num post | `ContextoPublico` não tem o campo `privado`; o linter confere o texto | `documentos.test.ts`, `contexto.test.ts` |
+| CSRF | `POST` só da mesma origem | `rota.test.ts` |
+| Esgotar CPU | 40 pedidos/min por negócio, 24/min para imagens, corpo máximo de 24 000 bytes | `rota.test.ts` |
+| XSS e injeção no material | escape na saída em HTML, Markdown e estúdio; CSP própria no HTML baixado | `render.test.ts` |
+| ZIP com caminho malicioso | nomes ASCII e rejeição de nome que escapa da pasta | `render.test.ts` |
+| Promessa ou dado inventado | linter bloqueia promessa; o plano não cria meta numérica | `documentos.test.ts`, `mercado.test.ts` |
+
+Verificação em produção local (servidor `standalone`): as fontes da Nunito
+entram no pacote, o PNG sai com a fonte certa, sem login a rota responde 401
+com os cabeçalhos de segurança e `private, no-store`, tipo inexistente é 404 e
+`POST` de outra origem é 403.
+
+Limites: o conteúdo vem de regras e de uma base de conhecimento (8 segmentos,
+13 nichos), não de modelo de linguagem; o vídeo gerado por IA está só
+projetado (`../integracoes/GOOGLE-VIDEO-API.md`), sem chave nem chamada no
+repositório.
+
 ## O que mudou onde
 
 | Área | Principais arquivos |
@@ -174,3 +206,5 @@ Git). **Não crie essas contas na VPS** e não copie esse `.env` para lá.
 | Container e deploy | `Dockerfile`, `deploy/{compose.yml,publicar.sh,borda-caddy.sh,vps-hardening.sh,README.md}` |
 | CI | `.github/workflows/ci.yml` |
 | Gráfico e acessibilidade | ver `docs/world/PLANO-EVOLUCAO-GRAFICA.md` |
+| Entregáveis | `src/features/equipe-ia/entregaveis/`, `src/features/equipe-ia/estudio/`, `src/app/api/entregavel/[tipo]/route.ts`, `src/assets/fonts/` |
+| Integração de vídeo (projeto) | `docs/integracoes/GOOGLE-VIDEO-API.md` |

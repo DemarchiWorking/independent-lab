@@ -217,7 +217,7 @@ export function EditorCarrossel({ pacote }: { pacote: PacoteCarrossel }) {
             aria-selected={p.id === pautaId}
             onClick={() => escolherPauta(p.id)}
             className={cn(
-              "rounded-pill px-3 py-1.5 text-[11px] font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal",
+              "inline-flex min-h-11 items-center rounded-pill px-3 py-1.5 text-[11px] font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal",
               p.id === pautaId ? "bg-ink text-panel" : "bg-hairline text-ink hover:bg-[#d3dbe8]",
             )}
           >
@@ -253,7 +253,7 @@ export function EditorCarrossel({ pacote }: { pacote: PacoteCarrossel }) {
                     aria-current={i === indice ? "true" : undefined}
                     aria-label={`Slide ${i + 1}: ${s.titulo}${pendente ? " (falta completar)" : ""}`}
                     className={cn(
-                      "relative h-8 w-8 rounded-sm text-[11px] font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal",
+                      "relative h-11 w-11 rounded-sm text-[11px] font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal",
                       i === indice ? "bg-teal text-ink" : "bg-hairline text-ink hover:bg-[#d3dbe8]",
                     )}
                   >
@@ -310,7 +310,7 @@ export function EditorCarrossel({ pacote }: { pacote: PacoteCarrossel }) {
                 <label
                   key={f}
                   className={cn(
-                    "cursor-pointer rounded-pill px-3 py-1.5 text-[11px] font-bold has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-teal",
+                    "inline-flex min-h-11 cursor-pointer items-center rounded-pill px-3 py-1.5 text-[11px] font-bold has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-teal",
                     formato === f ? "bg-ink text-panel" : "bg-hairline text-ink",
                   )}
                 >
@@ -328,7 +328,7 @@ export function EditorCarrossel({ pacote }: { pacote: PacoteCarrossel }) {
                 <label
                   key={tm}
                   className={cn(
-                    "flex cursor-pointer items-center gap-1.5 rounded-pill px-3 py-1.5 text-[11px] font-bold has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-teal",
+                    "flex min-h-11 cursor-pointer items-center gap-1.5 rounded-pill px-3 py-1.5 text-[11px] font-bold has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-teal",
                     tema === tm ? "bg-ink text-panel" : "bg-hairline text-ink",
                   )}
                 >
@@ -348,7 +348,7 @@ export function EditorCarrossel({ pacote }: { pacote: PacoteCarrossel }) {
           type="button"
           disabled={baixando !== null || pendentesDoSlide}
           onClick={() => baixar("png")}
-          className="rounded-md bg-teal px-4 py-2.5 text-[12px] font-extrabold text-ink disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          className="min-h-11 rounded-md bg-teal px-4 py-2.5 text-[12px] font-extrabold text-ink disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
         >
           {baixando === "png" ? "Gerando…" : `Baixar slide ${numero} (PNG)`}
         </button>
@@ -356,7 +356,7 @@ export function EditorCarrossel({ pacote }: { pacote: PacoteCarrossel }) {
           type="button"
           disabled={baixando !== null || pendentesDaPauta.length > 0}
           onClick={() => baixar("zip")}
-          className="rounded-md bg-orange px-4 py-2.5 text-[12px] font-extrabold text-ink disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          className="min-h-11 rounded-md bg-orange px-4 py-2.5 text-[12px] font-extrabold text-ink disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
         >
           {baixando === "zip" ? "Gerando…" : "Baixar todos (ZIP)"}
         </button>
@@ -391,13 +391,13 @@ export function EditorCarrossel({ pacote }: { pacote: PacoteCarrossel }) {
             className="mt-1 w-full resize-y rounded-sm border-2 border-hairline bg-panel px-2.5 py-2 text-[13px] focus-visible:border-teal focus-visible:outline-none"
           />
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            <button type="button" onClick={() => copiar(legenda, "Legenda")} className="rounded-sm bg-orange px-3 py-1.5 text-[11px] font-extrabold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal">
+            <button type="button" onClick={() => copiar(legenda, "Legenda")} className="min-h-11 rounded-sm bg-orange px-3 py-1.5 text-[11px] font-extrabold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal">
               Copiar legenda
             </button>
-            <button type="button" onClick={() => copiar(pauta.hashtags.join(" "), "Hashtags")} className="rounded-sm bg-hairline px-3 py-1.5 text-[11px] font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal">
+            <button type="button" onClick={() => copiar(pauta.hashtags.join(" "), "Hashtags")} className="min-h-11 rounded-sm bg-hairline px-3 py-1.5 text-[11px] font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal">
               Copiar hashtags
             </button>
-            <button type="button" onClick={() => copiar(pauta.textoAlternativo, "Texto alternativo")} className="rounded-sm bg-hairline px-3 py-1.5 text-[11px] font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal">
+            <button type="button" onClick={() => copiar(pauta.textoAlternativo, "Texto alternativo")} className="min-h-11 rounded-sm bg-hairline px-3 py-1.5 text-[11px] font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal">
               Copiar texto alternativo
             </button>
           </div>

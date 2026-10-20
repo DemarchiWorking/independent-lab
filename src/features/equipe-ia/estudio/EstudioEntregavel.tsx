@@ -62,7 +62,7 @@ export function EstudioEntregavel({ tipo }: { tipo: TipoEntregavel }) {
 
   const base = `/api/entregavel/${tipo}`;
   const acao =
-    "rounded-sm bg-hairline px-3 py-1.5 text-[11px] font-extrabold text-ink hover:bg-[#d3dbe8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal";
+    "inline-flex min-h-11 items-center rounded-sm bg-hairline px-3 py-1.5 text-[11px] font-extrabold text-ink hover:bg-[#d3dbe8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal";
 
   return (
     <div className="max-h-[calc(100dvh-8.5rem)] space-y-3 overflow-y-auto pr-1 text-ink">

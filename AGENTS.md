@@ -59,6 +59,8 @@ inovação aplicada a empreendedorismo/PMEs regionais).
 | Adicionar um móvel novo | `src/features/sede/catalogo.ts` (preço/bônus e `forma`) — a silhueta vem da `forma` (não da `categoria`) e é desenhada em `world/render/desenho.ts`; forma nova = um `case` lá + um teste em `world/render/cores.test.ts` |
 | Mudar a cor do piso/parede/pele da sala | `color.world` em `design-system/tokens.ts` (o canvas só converte, em `world/render/cores.ts`) |
 | Criar/ver uma campanha com prazo p/ todos os jogadores | `/admin/eventos` (gated por `GAMEHUB_ADMIN_EMAILS`) — ver `src/features/eventos-globais/` |
+| Mudar o que um Funcionário de IA entrega (Canvas, POPs, carrossel, kit comercial, roteiro de vídeo) | `src/features/equipe-ia/entregaveis/` — gerador puro por tipo + base de mercado em `mercado/`; guia completo em [`docs/equipe-ia/ENTREGAVEIS.md`](docs/equipe-ia/ENTREGAVEIS.md) |
+| Ligar o Editor(a) de Vídeo ao gerador de vídeo do Google | projeto em [`docs/integracoes/GOOGLE-VIDEO-API.md`](docs/integracoes/GOOGLE-VIDEO-API.md) — **só documentação**, nada implementado |
 
 Estrutura completa: [`README.md`](README.md#estrutura). Design system e
 prints de referência: [`docs/design/`](docs/design/).
@@ -190,6 +192,12 @@ ls /opt/independent-lab/backups                     # backup diário + um antes 
   instância do app.
 - **Browser só recebe fachada pública** (`VizinhoPublico`, `PitchIA`): XP,
   moeda, atributos e consentimento ficam no servidor.
+- **Entregáveis dos Funcionários de IA** (`/api/entregavel/[tipo]`): o
+  negócio vem **só da sessão**; o cargo precisa estar contratado e o nível
+  vem do banco. Material voltado ao cliente (carrossel, reel) recebe
+  `ContextoPublico`, tipo que **não tem** as respostas privadas do cadastro.
+  Gerador novo: puro, sem ler o repositório, sem inventar meta, prazo ou
+  depoimento, e coberto por `documentos.test.ts` (linter de `qualidade.ts`).
 
 ## Armadilhas conhecidas
 

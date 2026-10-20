@@ -90,6 +90,21 @@ Diferente de um **job avulso** do marketplace (uma entrega pontual, ex.:
 > [`melhoria-continua/servicos-ti/`](../melhoria-continua/servicos-ti) —
 > stubs já criados, a preencher com escopo, checklist e SLA.
 
+### 4.5 Estado da implementação (out/2026)
+
+Os quatro cargos **já entregam material no app**, gerado a partir dos dados do
+negócio logado: Canvas e manual de POPs (Documentador), carrosséis com PNG e
+ZIP (Social Media), kit comercial com BANT, mensagens e fluxo de automação
+(Comercial/Automação) e roteiro de vídeo (Editor de Vídeo). O nível do
+funcionário define a **profundidade**; o nível 1 já é utilizável. Como foi
+construído, o que garante a segurança e como estender:
+[`equipe-ia/ENTREGAVEIS.md`](equipe-ia/ENTREGAVEIS.md).
+
+O que ainda **não** existe: vídeo gerado por IA (o Editor entrega roteiro; a
+ligação com a API do Google está só projetada em
+[`integracoes/GOOGLE-VIDEO-API.md`](integracoes/GOOGLE-VIDEO-API.md)) e imagem
+gerada por IA nos slides.
+
 ## 5. Modelo de oferta e preço (rascunho — validar amanhã)
 
 | Cargo | Preço sugerido | Ligação com a escada de valor |

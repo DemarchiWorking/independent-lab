@@ -44,7 +44,7 @@ function BotaoCopiar({ texto, rotulo = "Copiar" }: { texto: string; rotulo?: str
           setTimeout(() => setCopiado(false), 1800);
         }
       }}
-      className="rounded-sm bg-orange px-3 py-1.5 text-[11px] font-extrabold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal"
+      className="inline-flex min-h-11 items-center rounded-sm bg-orange px-3 py-1.5 text-[11px] font-extrabold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal"
     >
       <span aria-live="polite">{copiado ? "Copiado" : rotulo}</span>
     </button>
