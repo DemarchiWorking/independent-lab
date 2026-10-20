@@ -52,15 +52,15 @@ function BotaoCopiar({ texto, rotulo = "Copiar" }: { texto: string; rotulo?: str
 }
 
 const ORDEM_CANVAS: Array<{ chave: CelulaCanvas; titulo: string; classes: string }> = [
-  { chave: "parcerias", titulo: "Parcerias principais", classes: "order-8 md:order-none md:col-span-2 md:row-span-2" },
-  { chave: "atividades", titulo: "Atividades-chave", classes: "order-7 md:order-none md:col-span-2" },
-  { chave: "proposta", titulo: "Proposta de valor", classes: "order-2 md:order-none md:col-span-2 md:row-span-2" },
-  { chave: "relacionamento", titulo: "Relacionamento com clientes", classes: "order-4 md:order-none md:col-span-2" },
-  { chave: "segmentos", titulo: "Segmentos de clientes", classes: "order-1 md:order-none md:col-span-2 md:row-span-2" },
-  { chave: "recursos", titulo: "Recursos principais", classes: "order-6 md:order-none md:col-span-2" },
-  { chave: "canais", titulo: "Canais", classes: "order-3 md:order-none md:col-span-2" },
-  { chave: "custos", titulo: "Estrutura de custos", classes: "order-9 md:order-none md:col-span-5" },
-  { chave: "receitas", titulo: "Fontes de receita", classes: "order-5 md:order-none md:col-span-5" },
+  { chave: "parcerias", titulo: "Parcerias principais", classes: "order-8 sm:col-span-2 lg:order-none lg:col-span-2 lg:row-span-2" },
+  { chave: "atividades", titulo: "Atividades-chave", classes: "order-7 lg:order-none lg:col-span-2" },
+  { chave: "proposta", titulo: "Proposta de valor", classes: "order-2 lg:order-none lg:col-span-2 lg:row-span-2" },
+  { chave: "relacionamento", titulo: "Relacionamento com clientes", classes: "order-4 lg:order-none lg:col-span-2" },
+  { chave: "segmentos", titulo: "Segmentos de clientes", classes: "order-1 lg:order-none lg:col-span-2 lg:row-span-2" },
+  { chave: "recursos", titulo: "Recursos principais", classes: "order-6 lg:order-none lg:col-span-2" },
+  { chave: "canais", titulo: "Canais", classes: "order-3 lg:order-none lg:col-span-2" },
+  { chave: "custos", titulo: "Estrutura de custos", classes: "order-9 lg:order-none sm:col-span-2 lg:col-span-5" },
+  { chave: "receitas", titulo: "Fontes de receita", classes: "order-5 lg:order-none sm:col-span-2 lg:col-span-5" },
 ];
 
 const TOM: Record<"info" | "atencao" | "sucesso", string> = {
@@ -169,9 +169,9 @@ function BlocoView({ bloco }: { bloco: Bloco }) {
       );
     case "canvas":
       return (
-        <div role="group" aria-label="Modelo de Negócio (Canvas)" className="grid gap-2 md:grid-cols-10">
+        <div role="group" aria-label="Modelo de Negócio (Canvas)" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-10">
           {ORDEM_CANVAS.map((c) => (
-            <div key={c.chave} className={cn("rounded-md border-2 border-hairline bg-panel p-2.5", c.classes)}>
+            <div key={c.chave} className={cn("min-w-0 break-words hyphens-auto rounded-md border-2 border-hairline bg-panel p-2.5", c.classes)}>
               <h4 className="mb-1.5 border-b-[3px] border-teal pb-1 text-[10px] font-extrabold uppercase tracking-wide">{c.titulo}</h4>
               <Lista itens={bloco.celulas[c.chave]} classe="text-[11px]" />
             </div>
@@ -234,8 +234,10 @@ export function VisualizadorDocumento({ documento, prefixo }: { documento: Docum
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-[190px_1fr]">
-      <nav aria-label="Seções do documento" className="hidden self-start md:sticky md:top-0 md:block">
+    // O índice lateral (190px) só entra em telas largas: com ele, a coluna do
+    // texto em 768px ficava com ~460px e o Canvas de 10 colunas estourava os blocos.
+    <div className="grid gap-4 lg:grid-cols-[190px_1fr]">
+      <nav aria-label="Seções do documento" className="hidden self-start lg:sticky lg:top-0 lg:block">
         <ol className="space-y-0.5 text-[11px]">
           {documento.secoes.map((s) => (
             <li key={s.id}>
