@@ -193,7 +193,7 @@ function bloco(b: unknown, onde: string, c: Coletor, permitidos: ReadonlySet<str
     case "destaque": {
       const titulo = texto(o.titulo, 140, onde, c, { vazioOk: true });
       const tom = TONS.find((t) => t === o.tom);
-      if (!tom) c.add("forma-invalida", `${onde}/tom`);
+      if (!tom && o.tom !== undefined) c.add("forma-invalida", `${onde}/tom`); // ausente = "info": não vale um reenvio
       return { tipo: "destaque", ...(titulo ? { titulo } : {}), texto: texto(o.texto, 1000, onde, c), tom: tom ?? "info" };
     }
     case "lista":

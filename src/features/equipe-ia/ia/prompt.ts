@@ -22,7 +22,7 @@ import type { ConteudoIA } from "./versoes";
  */
 
 /** Sobe quando o prompt ou o esquema mudam: o que foi gerado com o antigo deixa de valer. */
-export const GERADOR_IA_VERSAO = 1;
+export const GERADOR_IA_VERSAO = 2;
 
 /** Documentos que só usam o que o dono publicou (podem circular). */
 export function ehPublico(tipo: TipoEntregavel): boolean {
@@ -232,7 +232,7 @@ REGRAS INEGOCIÁVEIS
 8. Específico vence genérico. Use a cidade, o bairro, as ofertas e as parcerias dos dados. Se uma frase serviria para qualquer negócio, reescreva até servir só para este.
 9. Cada recomendação é acionável: quem faz, o quê, quando ou com que frequência, e como saber que deu certo.
 10. Quando o cadastro não foi respondido, não adivinhe: escreva de forma útil para qualquer negócio do mercado e peça ao dono que responda o cadastro.
-11. O gênero do nome do negócio é incerto: prefira o nome sozinho ("Studio Bela Cabelos atende...") ou uma expressão como "o salão", "a empresa" ou "o negócio", em vez de artigo + nome.`;
+11. O gênero do nome do negócio é incerto: prefira o nome sozinho ("NomeDoNegocio atende...", com o nome que veio em <dados_do_negocio>) ou uma expressão como "o salão", "a empresa" ou "o negócio", em vez de artigo + nome.`;
 
 const TAREFA: Record<TipoEntregavel, string> = {
   canvas: `TAREFA: Modelo de Negócio (Business Model Canvas) e plano de ação deste negócio.

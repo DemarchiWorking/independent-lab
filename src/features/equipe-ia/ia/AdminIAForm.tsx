@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/components/ui/ActionButton";
 import type { ConfigIA, ModoIA } from "./contrato";
-import { rodarMelhoriaAgora, salvarConfigIA } from "./actions";
+import { creditarSaldoDeTeste, rodarMelhoriaAgora, salvarConfigIA } from "./actions";
 
 /**
  * Formulário da configuração da IA. Só quem é admin da IA chega aqui, mas a
@@ -23,12 +23,14 @@ interface Props {
   modelos: OpcaoDeModelo[];
   /** modos que o worker diz que consegue usar agora */
   modosDisponiveis: ModoIA[];
+  /** botão de saldo de teste (só fora de produção) */
+  testeLiberado?: boolean;
 }
 
 const campo = "rounded-sm border border-[#c7cedb] px-2 py-1.5 text-sm";
 const rotulo = "flex flex-col gap-1 text-xs font-bold";
 
-export function AdminIAForm({ config, modelos, modosDisponiveis }: Props) {
+export function AdminIAForm({ config, modelos, modosDisponiveis, testeLiberado = false }: Props) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
@@ -67,6 +69,20 @@ export function AdminIAForm({ config, modelos, modosDisponiveis }: Props) {
         return;
       }
       setAviso(r.mudancas && r.mudancas.length > 0 ? `Salvo: ${r.mudancas.join("; ")}.` : "Nada mudou.");
+      router.refresh();
+    });
+  }
+
+  function creditar() {
+    setErro(null);
+    setAviso(null);
+    iniciar(async () => {
+      const r = await creditarSaldoDeTeste();
+      if (!r.ok) {
+        setErro(r.erro ?? "Não foi possível creditar.");
+        return;
+      }
+      setAviso(`Saldo de teste creditado: ${(r.moeda ?? 0).toLocaleString("pt-BR")} moedas, nível ${r.nivel}, degrau ${r.degrau}.`);
       router.refresh();
     });
   }
@@ -232,6 +248,13 @@ export function AdminIAForm({ config, modelos, modosDisponiveis }: Props) {
             Rodar a melhoria agora
           </ActionButton>
         </div>
+        {testeLiberado ? (
+          <div className="min-w-[180px] flex-1">
+            <ActionButton variant="ghost" onClick={creditar} disabled={pendente}>
+              Creditar saldo de teste (moedas, XP, degraus)
+            </ActionButton>
+          </div>
+        ) : null}
       </div>
     </form>
   );

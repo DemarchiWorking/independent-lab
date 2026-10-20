@@ -281,3 +281,22 @@ como dado pessoal. Resultados não coletados somem em 24 h.
 | `ia/config.test.ts`, `ia/actions.test.ts`, `lib/admin.test.ts` | Configuração validada; só o admin da IA altera; cadastro de e-mail reservado |
 | `app/api/ia/rota.test.ts` | Rota: sessão, mesma origem, consentimento, limite, entrega da versão de IA |
 | `deploy/ia-guardiao.test.ts` | O guardião, com `docker` falso |
+
+## Validação por tipo de negócio e saldo de teste
+
+**Matriz de negócios** (`ia/matriz-negocios.test.ts`): 10 perfis (salão, padaria, eletricista,
+clínica, contabilidade, pet shop, construtora, TI, marmitaria, ateliê) × 5 materiais. Para cada
+um confere que o pedido leva o nome, a cidade e as ofertas daquele negócio e **nada** de outro,
+que devolver o material de regras como "melhoria" é aceito pelo validador (rede de segurança) e
+que o pedido mais pesado fica abaixo de 9 mil tokens de entrada. Medido em 20/10/2026: de 5,5 a
+6,2 mil tokens de entrada; no teto de saída (12 mil tokens) um refino custa até ~US$ 0,13 no
+Sonnet (só equivalência na assinatura). Rode com `MATRIZ_RELATORIO=1` para ver os números.
+Achado e corrigido: o prompt fixo citava um nome de salão como exemplo, o que poderia
+contaminar o texto de outros negócios (agora é neutro; `GERADOR_IA_VERSAO` = 2).
+O que a matriz **não** prova: a qualidade do texto que o modelo real devolve. Isso só se vê com
+`node ia-worker/verificar.mjs --chamada` e uma conta logada.
+
+**Saldo de teste.** Em `/admin/ia` (só o admin da IA, só fora de produção) o botão "Creditar
+saldo de teste" soma 5 milhões de moedas virtuais, 1 milhão de XP e 4 degraus ao negócio do
+próprio admin, por `aplicarProgresso`. É moeda do jogo, não crédito de API nem R$. Em
+produção a ação é recusada no servidor.

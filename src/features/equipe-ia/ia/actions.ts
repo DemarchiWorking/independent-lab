@@ -61,3 +61,32 @@ export async function rodarMelhoriaAgora(): Promise<ResultadoRodar> {
   revalidatePath("/admin/ia");
   return { ok: true, coleta, varredura };
 }
+
+/** Quanto a ação de teste soma. Moeda virtual e XP do jogo: nunca R$, nunca crédito de API. */
+const CREDITO_DE_TESTE = { xp: 1_000_000, moeda: 5_000_000, degraus: 4 } as const;
+
+export interface ResultadoCredito {
+  ok: boolean;
+  erro?: string;
+  moeda?: number;
+  nivel?: number;
+  degrau?: number;
+}
+
+/**
+ * Dá saldo de teste (moeda virtual, XP e degraus) ao negócio DO PRÓPRIO admin da IA, para
+ * testar o jogo e as contratações de ponta a ponta. Passa por `aplicarProgresso` (a única
+ * porta de escrita da progressão). Em produção é recusada no servidor: a moeda virtual não
+ * pode ser fabricada para ninguém num ambiente real.
+ */
+export async function creditarSaldoDeTeste(): Promise<ResultadoCredito> {
+  if (process.env.NODE_ENV === "production") return { ok: false, erro: "Indisponível em produção." };
+  const guarda = await exigirAdminIA();
+  if (!guarda.ok) return guarda;
+  const sessao = await lerSessao();
+  if (!sessao) return { ok: false, erro: "Sessão expirada. Entre novamente." };
+  const negocio = await getRepository().aplicarProgresso(sessao.tenantId, { ...CREDITO_DE_TESTE });
+  console.info(JSON.stringify({ evento: "ia-credito-de-teste", tenant: sessao.tenantId, moeda: negocio.moedaVirtual }));
+  revalidatePath("/admin/ia");
+  return { ok: true, moeda: negocio.moedaVirtual, nivel: negocio.nivel, degrau: negocio.degrauAtual };
+}

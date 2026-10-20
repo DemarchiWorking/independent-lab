@@ -18,7 +18,7 @@ vi.mock("next/cache", () => ({ revalidatePath: () => undefined }));
 vi.mock("@/lib/auth/sessao", () => ({ lerSessao: async () => mocks.sessao }));
 vi.mock("@/lib/db", () => ({ getRepository: () => mocks.repo }));
 
-const { salvarConfigIA, rodarMelhoriaAgora } = await import("./actions");
+const { salvarConfigIA, rodarMelhoriaAgora, creditarSaldoDeTeste } = await import("./actions");
 
 let pasta = "";
 const anterior = process.env.GAMEHUB_DATA_DIR;
@@ -139,5 +139,65 @@ describe("rodarMelhoriaAgora", () => {
     expect(r.ok).toBe(true);
     // sem worker vivo a varredura não enfileira nada, e diz por quê
     expect(r.varredura).toMatchObject({ pulou: "worker-parado" });
+  });
+});
+
+describe("creditarSaldoDeTeste", () => {
+  async function negocioReal() {
+    const { FileRepository } = await import("@/lib/db/file-adapter");
+    const { atributosVazios } = await import("@/lib/atributos");
+    const repo = new FileRepository();
+    const n = await repo.criarNegocio({
+      nome: "Negócio do Admin",
+      segmento: "tecnologia",
+      cidadeSlug: "mendes",
+      cidadeNome: "Mendes",
+      bairroNome: "Centro",
+      degrauAlvo: 1,
+      xpInicial: 0,
+      moedaVirtual: 100,
+      atributosIniciais: atributosVazios(),
+      perfilPublico: false,
+      consentimentoVersao: "2026-10-20",
+    });
+    mocks.repo = repo;
+    return { repo, tenantId: n.id };
+  }
+
+  it("o admin da IA recebe milhões de moedas, XP e degraus, pela porta de progressão", async () => {
+    const { repo, tenantId } = await negocioReal();
+    mocks.sessao = { ...sessao("admin@admin.com"), tenantId };
+    const r = await creditarSaldoDeTeste();
+    expect(r.ok).toBe(true);
+    const n = await repo.lerNegocio(tenantId);
+    expect(n?.moedaVirtual).toBe(5_000_100);
+    expect(n?.degrauAtual).toBe(5);
+    expect(n?.nivel).toBeGreaterThan(1);
+  });
+
+  it("quem não é o admin da IA é recusado e nada muda", async () => {
+    const { repo, tenantId } = await negocioReal();
+    mocks.sessao = { ...sessao("dono@padaria.com.br"), tenantId };
+    expect((await creditarSaldoDeTeste()).ok).toBe(false);
+    expect((await repo.lerNegocio(tenantId))?.moedaVirtual).toBe(100);
+  });
+
+  it("em produção é recusado até para o admin", async () => {
+    const { repo, tenantId } = await negocioReal();
+    mocks.sessao = { ...sessao("admin@admin.com"), tenantId };
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const r = await creditarSaldoDeTeste();
+      expect(r.ok).toBe(false);
+      expect(r.erro).toMatch(/produção/);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    expect((await repo.lerNegocio(tenantId))?.moedaVirtual).toBe(100);
+  });
+
+  it("sem sessão é recusado", async () => {
+    mocks.sessao = null;
+    expect((await creditarSaldoDeTeste()).ok).toBe(false);
   });
 });

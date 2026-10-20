@@ -129,7 +129,7 @@ export default async function AdminIAPage() {
       </div>
 
       <h2 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-white">Configuração</h2>
-      <AdminIAForm config={config} modelos={modelos} modosDisponiveis={batimento?.modosDisponiveis ?? []} />
+      <AdminIAForm config={config} modelos={modelos} modosDisponiveis={batimento?.modosDisponiveis ?? []} testeLiberado={process.env.NODE_ENV !== "production"} />
 
       <h2 className="mb-2 mt-8 text-sm font-extrabold uppercase tracking-wide text-white">Falhas recentes</h2>
       {falhas.length === 0 ? (
