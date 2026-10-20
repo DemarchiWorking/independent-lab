@@ -2,15 +2,14 @@ import { NextResponse } from "next/server";
 import { lerSessao } from "@/lib/auth/sessao";
 import { getRepository } from "@/lib/db";
 import { Limitador } from "@/lib/limite";
+import { mesmaOrigem } from "@/lib/origem";
 import { cargoDoEntregavel, type TipoEntregavel } from "@/features/equipe-ia/habilidades";
-import { carrosselParaDocumento, gerarCarrosseis } from "@/features/equipe-ia/entregaveis/carrossel";
 import { nomeDeArquivo } from "@/features/equipe-ia/entregaveis/linguagem";
 import { auditarDocumento, resumirProblemas } from "@/features/equipe-ia/entregaveis/qualidade";
 import { documentoParaHtml } from "@/features/equipe-ia/entregaveis/render/html";
 import { documentoParaMarkdown } from "@/features/equipe-ia/entregaveis/render/markdown";
 import {
   carregarContexto,
-  documentoDoEntregavel,
   imagemDoSlide,
   lerPedidoImagem,
   prepararPauta,
@@ -19,6 +18,7 @@ import {
   type SaidaEntregavel,
 } from "@/features/equipe-ia/entregaveis/servico";
 import type { Documento } from "@/features/equipe-ia/entregaveis/tipos";
+import { coletarSePreciso, entregavelEfetivo } from "@/features/equipe-ia/ia/servico-ia";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,18 +74,6 @@ function anexo(nome: string, baixar: boolean): Record<string, string> {
   return { "Content-Disposition": `${baixar ? "attachment" : "inline"}; filename="${nome}"` };
 }
 
-function mesmaOrigem(request: Request): boolean {
-  const site = request.headers.get("sec-fetch-site");
-  if (site && site !== "same-origin" && site !== "none") return false;
-  const origem = request.headers.get("origin");
-  if (!origem) return true;
-  try {
-    return new URL(origem).host === request.headers.get("host");
-  } catch {
-    return false;
-  }
-}
-
 function saidaValida(tipo: TipoEntregavel, valor: unknown, padrao: SaidaEntregavel): SaidaEntregavel | null {
   const saida = (typeof valor === "string" && valor ? valor : padrao) as SaidaEntregavel;
   return SAIDAS_POR_TIPO[tipo].includes(saida) ? saida : null;
@@ -126,11 +114,15 @@ async function tratar(
   const agora = new Date();
   const ctx = await carregarContexto(repo, sessao.tenantId, funcionario.nivel, agora);
   if (!ctx) return erro(404, "Negócio não encontrado.");
+  // O que a IA terminou aparece na hora, sem esperar o próximo passo do agendador.
+  await coletarSePreciso(repo);
+  // A versão de IA (se existe e vale para os dados de hoje) ou o material de regras.
+  const efetivo = await entregavelEfetivo(sessao.tenantId, tipoEntregavel, ctx);
   const base = nomeDeArquivo(ctx.nome);
 
   const registrar = () =>
     console.info(
-      JSON.stringify({ evento: "entregavel", tipo, saida, nivel: ctx.nivel, tenant: sessao.tenantId, ms: Date.now() - inicio }),
+      JSON.stringify({ evento: "entregavel", tipo, saida, nivel: ctx.nivel, ia: efetivo.versao?.n ?? 0, tenant: sessao.tenantId, ms: Date.now() - inicio }),
     );
 
   // ---- imagens do carrossel (PNG de um slide ou ZIP de todos)
@@ -140,7 +132,8 @@ async function tratar(
     const pedido = lido.valor;
     if (saida === "png" && pedido.slide === null) return erro(400, "Informe qual slide baixar.");
 
-    const pacote = gerarCarrosseis(ctx);
+    const pacote = efetivo.pacote;
+    if (!pacote) return erro(404, "Material não encontrado.");
     const pauta = prepararPauta(pacote, pedido);
     if (!pauta.ok) return erro(pauta.status, pauta.erro);
 
@@ -163,15 +156,8 @@ async function tratar(
   }
 
   // ---- documentos (HTML, Markdown e JSON)
-  let documento: Documento;
-  let extra: Record<string, unknown> | null = null;
-  if (tipoEntregavel === "carrossel") {
-    const pacote = gerarCarrosseis(ctx);
-    documento = carrosselParaDocumento(pacote);
-    extra = { pacote };
-  } else {
-    documento = documentoDoEntregavel(tipoEntregavel, ctx);
-  }
+  const documento: Documento = efetivo.documento;
+  const extra: Record<string, unknown> | null = efetivo.pacote ? { pacote: efetivo.pacote } : null;
 
   // Alarme de regressão: o linter olha o RESULTADO. Se algum material sair com
   // "undefined", campo solto ou dado privado em texto público, o log mostra o

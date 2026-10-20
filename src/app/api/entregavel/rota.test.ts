@@ -1,3 +1,6 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { atributosVazios } from "@/lib/atributos";
 import type { FuncionarioContratado, Negocio, Sessao } from "@/lib/db/types";
@@ -67,6 +70,9 @@ vi.mock("@/lib/db", () => ({
     listarFuncionarios: async (id: string) => FUNCIONARIOS[id] ?? [],
   }),
 }));
+
+// A camada de IA lê e grava em pastas: o teste usa uma pasta só dele, nunca a `data/` real.
+process.env.GAMEHUB_DATA_DIR = mkdtempSync(path.join(tmpdir(), "independent-lab-rota-"));
 
 const { GET, POST } = await import("./[tipo]/route");
 

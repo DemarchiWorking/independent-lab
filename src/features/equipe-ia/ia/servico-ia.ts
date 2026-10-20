@@ -354,7 +354,6 @@ async function processarResultado(repo: GameRepository, r: ResultadoIA, agora: D
 }
 
 let coletaEmAndamento: Promise<ResumoColeta> | null = null;
-let ultimaColetaEm = 0;
 
 async function coletarInterno(repo: GameRepository, agora: Date): Promise<ResumoColeta> {
   const resumo: ResumoColeta = { aceitos: 0, rejeitados: 0, reenviados: 0, obsoletos: 0, falhas: 0, lixo: 0 };
@@ -384,19 +383,22 @@ export function coletar(repo: GameRepository, agora: Date = new Date()): Promise
   if (!coletaEmAndamento) {
     coletaEmAndamento = coletarInterno(repo, agora).finally(() => {
       coletaEmAndamento = null;
-      ultimaColetaEm = Date.now();
     });
   }
   return coletaEmAndamento;
 }
 
-/** Para a rota: coleta na hora, mas no máximo uma vez a cada poucos segundos. */
+/**
+ * Para a rota: coleta na hora, para o usuário ver o resultado assim que o worker
+ * terminar. A checagem é só listar duas pastas, então só trabalha quando há resultado.
+ */
 export async function coletarSePreciso(repo: GameRepository): Promise<void> {
   if (coletaEmAndamento) {
     await coletaEmAndamento;
     return;
   }
-  if (Date.now() - ultimaColetaEm < 4_000) return;
+  const [prontos, falhados] = await Promise.all([listarIds("concluido"), listarIds("falhou")]);
+  if (prontos.length + falhados.length === 0) return;
   try {
     await coletar(repo);
   } catch (e) {
