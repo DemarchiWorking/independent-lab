@@ -30,7 +30,9 @@ export default function PrivacidadePage() {
           respostas de um diagnóstico de 10 perguntas (equipe, presença
           digital, objetivo, gargalo e faixa de investimento). Essas
           respostas alimentam o diagnóstico e as recomendações dentro do
-          jogo — nunca são vendidas ou compartilhadas com terceiros.
+          jogo — nunca são vendidas. Só seguem para um prestador de inteligência
+          artificial se você autorizar, como explicado em &ldquo;Inteligência
+          artificial&rdquo; abaixo.
         </p>
       </section>
 
@@ -64,6 +66,46 @@ export default function PrivacidadePage() {
           diagnóstico de 10 perguntas — incluindo faixa de investimento e
           gargalo declarados. Esses dados são usados só internamente, para
           personalizar sua experiência no jogo.
+        </p>
+      </section>
+
+      <section className="mb-5 space-y-2">
+        <h2 className="font-extrabold text-teal">Inteligência artificial</h2>
+        <p>
+          Os Funcionários de IA podem refinar os materiais do seu negócio
+          (modelo de negócio, manual de procedimentos, publicações, kit
+          comercial e roteiro de vídeo). Para isso, e <b>somente se você
+          autorizar</b>, enviamos à Anthropic PBC (empresa de inteligência
+          artificial sediada nos Estados Unidos, que atua como nossa
+          operadora de dados) estas informações:
+        </p>
+        <ul className="ml-4 list-disc space-y-1">
+          <li>nome, segmento, cidade e bairro do negócio;</li>
+          <li>as ofertas que você publicou e as parcerias de perfil público;</li>
+          <li>
+            nos materiais internos (modelo de negócio, procedimentos e kit
+            comercial), as respostas do diagnóstico: equipe, presença
+            digital, captação, objetivo, gargalo e faixa de investimento.
+          </li>
+        </ul>
+        <p>
+          <b>Nunca enviamos</b> e-mail, senha, telefone nem dados dos seus
+          clientes. Materiais que você publica para o público (carrosséis e
+          vídeo) são refinados só com informações públicas do negócio.
+        </p>
+        <p>
+          O envio é feito pela API comercial da Anthropic, que, pelos termos
+          informados por ela, não usa o conteúdo enviado pela API para
+          treinar modelos, salvo se o cliente permitir. O texto devolvido
+          passa por verificação automática antes de aparecer para você, e
+          você sempre pode usar o material sem IA.
+        </p>
+        <p>
+          Você autoriza dentro do estúdio de cada material, e pode
+          <b> revogar quando quiser</b>: ao revogar, deixamos de enviar dados
+          e apagamos o que a IA gerou para o seu negócio. Como o envio é
+          para o exterior, ele se baseia no seu consentimento específico
+          (LGPD, art. 33, VIII).
         </p>
       </section>
 

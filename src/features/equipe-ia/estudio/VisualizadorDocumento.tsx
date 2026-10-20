@@ -260,6 +260,9 @@ export function VisualizadorDocumento({ documento, prefixo }: { documento: Docum
             <span className={cn("rounded-pill px-2.5 py-0.5 text-[10px] font-extrabold text-ink", interno ? "bg-orange" : "bg-green")}>
               {interno ? "Uso interno, não publique" : "Material para publicar"}
             </span>
+            {documento.meta.geradoPor === "ia" ? (
+              <span className="rounded-pill bg-teal px-2.5 py-0.5 text-[10px] font-extrabold text-ink">Refinado por IA</span>
+            ) : null}
             <span>
               <b className="text-ink">Versão</b> {documento.meta.versao}
             </span>

@@ -24,13 +24,18 @@ import path from "node:path";
 
 export const TICK_MS = 30_000;
 
-interface EstadoAgendador {
+export interface EstadoAgendador {
   ultimaVarreduraEm: string | null;
   ultimaColetaEm: string | null;
   ultimaVarredura: ResumoVarredura | null;
 }
 
 const arquivo = (): string => path.join(pastaIA(), "agendador.json");
+
+/** O que o agendador fez por último, para a tela do admin. */
+export async function lerEstadoDoAgendador(): Promise<EstadoAgendador> {
+  return lerArquivoTolerante<EstadoAgendador>(arquivo(), { ultimaVarreduraEm: null, ultimaColetaEm: null, ultimaVarredura: null });
+}
 
 export interface ResumoTick {
   coleta: ResumoColeta | null;

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { TipoEntregavel } from "../habilidades";
 import type { Documento, PacoteCarrossel } from "../entregaveis/tipos";
 import { EditorCarrossel } from "./EditorCarrossel";
 import { erroDaResposta } from "./baixar";
+import { PainelIA } from "./PainelIA";
 import { INFO_ENTREGAVEL } from "./rotulos";
 import { VisualizadorDocumento } from "./VisualizadorDocumento";
 
@@ -33,6 +34,9 @@ function ehPacote(v: unknown): v is PacoteCarrossel {
 
 export function EstudioEntregavel({ tipo }: { tipo: TipoEntregavel }) {
   const [estado, setEstado] = useState<Estado>({ fase: "carregando" });
+  // Sobe quando a IA entrega uma versão nova: o material é buscado de novo, sem piscar a tela.
+  const [recarga, setRecarga] = useState(0);
+  const aoNovaVersao = useCallback(() => setRecarga((n) => n + 1), []);
   const info = INFO_ENTREGAVEL[tipo];
 
   useEffect(() => {
@@ -58,7 +62,7 @@ export function EstudioEntregavel({ tipo }: { tipo: TipoEntregavel }) {
       }
     })();
     return () => controle.abort();
-  }, [tipo]);
+  }, [tipo, recarga]);
 
   const base = `/api/entregavel/${tipo}`;
   const acao =
@@ -81,6 +85,8 @@ export function EstudioEntregavel({ tipo }: { tipo: TipoEntregavel }) {
         </a>
       </div>
 
+      <PainelIA tipo={tipo} aoNovaVersao={aoNovaVersao} />
+
       {estado.fase === "carregando" ? (
         <p role="status" className="py-8 text-center text-[12px] text-soft">
           Montando o seu material a partir dos dados do seu negócio…
@@ -98,7 +104,7 @@ export function EstudioEntregavel({ tipo }: { tipo: TipoEntregavel }) {
           <p className="text-[12px] text-soft">{info.descricao}</p>
           {estado.pacote ? (
             <>
-              <EditorCarrossel pacote={estado.pacote} />
+              <EditorCarrossel key={estado.pacote.meta.versao} pacote={estado.pacote} />
             </>
           ) : (
             <VisualizadorDocumento documento={estado.documento} prefixo={`doc-${tipo}`} />
