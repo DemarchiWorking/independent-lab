@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { lerSessao } from "@/lib/auth/sessao";
 import { getRepository } from "@/lib/db";
 import { CATALOGO_HISTORIA } from "./catalogo";
-import { capituloPorId, deltaDaEscolha, escolhaPorId, proximoCapitulo } from "./motor";
+import {
+  capituloPorId,
+  capitulosPendentes,
+  deltaDaEscolha,
+  escolhaPorId,
+  proximoCapitulo,
+} from "./motor";
 import { agoraGlobal, diaDoNegocio } from "./relogio";
 import type { Capitulo, EstadoNarrativo } from "./tipos";
 
@@ -26,6 +32,7 @@ export interface ResultadoHistoria {
 async function montarEstado(tenantId: string): Promise<{
   estado: EstadoNarrativo;
   agora: string;
+  moedaVirtual: number;
 } | null> {
   const repo = getRepository();
   const [negocio, funcionarios, entregues] = await Promise.all([
@@ -37,6 +44,7 @@ async function montarEstado(tenantId: string): Promise<{
 
   return {
     agora: agoraGlobal(),
+    moedaVirtual: negocio.moedaVirtual,
     estado: {
       criadoEm: negocio.criadoEm,
       xp: negocio.xp,
@@ -44,6 +52,7 @@ async function montarEstado(tenantId: string): Promise<{
       atributos: negocio.atributos,
       segmento: negocio.segmento,
       tamanhoEquipe: funcionarios.length,
+      cargosContratados: new Set(funcionarios.map((f) => f.cargoId)),
       capitulosEntregues: new Set(entregues.map((c) => c.capituloId)),
       capitulosResolvidos: new Set(
         entregues.filter((c) => c.escolhaId).map((c) => c.capituloId),
@@ -54,6 +63,8 @@ async function montarEstado(tenantId: string): Promise<{
 
 export interface CapituloAberto {
   capitulo: Capitulo;
+  /** saldo atual — a UI desabilita a escolha que o jogador não consegue pagar */
+  moedaVirtual: number;
   /** dias de vida do negócio — o "dia da campanha" */
   diaDoNegocio: number;
 }
@@ -82,7 +93,11 @@ export async function capituloAtual(): Promise<CapituloAberto | null> {
   if (pendente) {
     const cap = capituloPorId(CATALOGO_HISTORIA, pendente.capituloId);
     if (cap) {
-      return { capitulo: cap, diaDoNegocio: diaDoNegocio(ctx.estado.criadoEm, ctx.agora) };
+      return {
+        capitulo: cap,
+        moedaVirtual: ctx.moedaVirtual,
+        diaDoNegocio: diaDoNegocio(ctx.estado.criadoEm, ctx.agora),
+      };
     }
   }
 
@@ -93,6 +108,7 @@ export async function capituloAtual(): Promise<CapituloAberto | null> {
   await repo.entregarCapitulo(sessao.tenantId, proximo.id);
   return {
     capitulo: proximo,
+    moedaVirtual: ctx.moedaVirtual,
     diaDoNegocio: diaDoNegocio(ctx.estado.criadoEm, ctx.agora),
   };
 }
@@ -118,6 +134,30 @@ export async function escolherNoCapitulo(
   if (!escolha) return { ok: false, erro: "Escolha inválida." };
 
   const repo = getRepository();
+
+  // O capítulo precisa TER CHEGADO: já entregue a este jogador, ou com o
+  // gatilho atendido agora (relógio do servidor). Sem isto, qualquer usuário
+  // logado chamava a action com o id de um capítulo futuro — `retro-30` no
+  // dia 0 — e coletava XP/moeda de toda a história de uma vez.
+  const ctx = await montarEstado(sessao.tenantId);
+  if (!ctx) return { ok: false, erro: "Negócio não encontrado." };
+  const chegou =
+    ctx.estado.capitulosEntregues.has(capituloId) ||
+    capitulosPendentes(CATALOGO_HISTORIA, ctx.estado, ctx.agora).some(
+      (c) => c.id === capituloId,
+    );
+  if (!chegou) return { ok: false, erro: "Esse capítulo ainda não chegou até você." };
+
+  // Escolha que custa moeda exige saldo. Sem esta checagem o piso em zero do
+  // `aplicarProgresso` transformava "gastar 🪙 300 com 🪙 10" em escolha
+  // GRÁTIS — o custo existia só na etiqueta.
+  const custo = escolha.efeito.moeda && escolha.efeito.moeda < 0 ? -escolha.efeito.moeda : 0;
+  if (custo > ctx.moedaVirtual) {
+    return {
+      ok: false,
+      erro: `Você precisa de 🪙 ${custo} para essa decisão (tem ${ctx.moedaVirtual}). Escolha outra ou cumpra contratos para juntar moeda.`,
+    };
+  }
 
   // garante a entrega antes de resolver — cobre o caso de alguém chamar a
   // action direto, sem ter passado por `capituloAtual`

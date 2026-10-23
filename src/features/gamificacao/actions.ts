@@ -20,9 +20,17 @@ export interface ResultadoRecompensa {
   nivel?: number;
   subiuDegrau?: boolean;
   degrauAtual?: number;
+  /** moeda GASTA no evento (ex.: contratar um Funcionário de IA) */
+  gastoMoeda?: number;
   /** qual eixo da economia de atributos subiu, se algum (feedback no toast) */
   atributoGanho?: { chave: AtributoChave; label: string; ganho: number };
 }
+
+/** Eventos que `recompensar()` aceita — cada um com guarda própria abaixo. */
+const EVENTOS_COM_GUARDA: ReadonlySet<EventoKey> = new Set<EventoKey>([
+  "funcionario_ia_contratado",
+  "servico_contratado",
+]);
 
 /**
  * Aplica um evento de gamificação ao negócio do usuário logado.
@@ -42,12 +50,25 @@ export async function recompensar(
   const sessao = await lerSessao();
   if (!sessao) return { ok: false, erro: "Sessão expirada. Entre novamente." };
 
+  // Server Action é endpoint público: qualquer usuário logado pode chamá-la
+  // com QUALQUER `EventoKey`, não só com os que a UI mostra. Só passam aqui os
+  // eventos que têm guarda de idempotência própria (cargo único, job único).
+  // Os demais têm dono: `diagnostico_agendado`/`retro_90d` são contratos
+  // (features/contratos), `parceria_formada` vive em mapa/actions,
+  // `servico_desbloqueado` em parcerias/actions, `cadastro_completo` no
+  // cadastro — pagar por aqui seria um farm de XP/moeda sem limite.
+  if (!EVENTOS_COM_GUARDA.has(evento)) {
+    return { ok: false, erro: "Esta ação não é recompensada por aqui." };
+  }
+
   const def = EVENTOS[evento];
   if (!def) return { ok: false, erro: "Evento inválido." };
 
   const repo = getRepository();
   const antes = await repo.lerNegocio(sessao.tenantId);
   if (!antes) return { ok: false, erro: "Negócio não encontrado." };
+
+  let custoPago = 0;
 
   if (evento === "funcionario_ia_contratado") {
     if (!contextoId) return { ok: false, erro: "Cargo não especificado." };
@@ -65,7 +86,19 @@ export async function recompensar(
     if (jaContratado) {
       return { ok: false, erro: "Você já contratou esse cargo." };
     }
-    await repo.contratarFuncionario(sessao.tenantId, contextoId);
+    if (antes.moedaVirtual < cargo.custoMoeda) {
+      return {
+        ok: false,
+        erro: `Faltam 🪙 ${cargo.custoMoeda - antes.moedaVirtual} para contratar. Cumpra contratos e capítulos para ganhar moeda.`,
+      };
+    }
+    // débito + contratação atômicos: se o saldo não cobre, nada é contratado
+    try {
+      await repo.contratarFuncionario(sessao.tenantId, contextoId, cargo.custoMoeda);
+    } catch (e) {
+      return { ok: false, erro: traduzirErro(e) };
+    }
+    custoPago = cargo.custoMoeda;
   }
 
   if (evento === "servico_contratado") {
@@ -125,6 +158,7 @@ export async function recompensar(
     ok: true,
     ganhoXp: def.xp,
     ganhoMoeda: def.moeda,
+    gastoMoeda: custoPago || undefined,
     subiuNivel: depois.nivel > nivelAntes,
     nivel: depois.nivel,
     subiuDegrau: depois.degrauAtual > antes.degrauAtual,
@@ -144,6 +178,9 @@ function traduzirErro(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (msg.includes("atributo_insuficiente")) {
     return "Sua maturidade ainda não atende ao requisito deste trabalho.";
+  }
+  if (msg.includes("saldo_insuficiente")) {
+    return "Saldo de moeda insuficiente para contratar.";
   }
   return "Não foi possível concluir. Tente novamente.";
 }

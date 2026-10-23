@@ -1,20 +1,35 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { springSnappy } from "@/lib/motion";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { Icon } from "@/components/ui/Icon";
-import { useRecompensa } from "./RecompensaContext";
 import type { Missao } from "./missoes";
 
 /**
- * Cartão de missão — o "próximo passo" do cliente. Concluir dispara o evento
- * de gamificação pelo caminho único (toast + refresh), e a própria missão se
- * atualiza no refresh (o servidor recalcula `missaoAtual`).
+ * Cartão da Jornada — o "próximo passo" do jogador. Não dispara recompensa:
+ * leva até a tela onde a ação acontece (Equipe de IA, Contratos, vitrine).
+ * Quem paga é sempre uma Server Action com guarda própria, nunca este botão.
+ * O passo se atualiza sozinho no refresh (o servidor recalcula `missaoAtual`).
  */
-export function MissaoCard({ missao }: { missao: Missao | null }) {
-  const { disparar, pendente } = useRecompensa();
+export function MissaoCard({
+  missao,
+  aoIr,
+}: {
+  missao: Missao | null;
+  /** abre uma tela do shell */
+  aoIr?: (view: "equipe-ia" | "marketplace" | "contratos") => void;
+}) {
+  const router = useRouter();
   if (!missao) return null;
+
+  const clicar = () => {
+    const alvo = missao.alvo;
+    if (alvo.tipo === "view") aoIr?.(alvo.view);
+    else if (alvo.tipo === "contrato") aoIr?.("contratos");
+    else if (alvo.tipo === "rota") router.push(alvo.href);
+  };
 
   return (
     <motion.div
@@ -29,19 +44,17 @@ export function MissaoCard({ missao }: { missao: Missao | null }) {
         </span>
         <div className="leading-tight">
           <small className="font-pixel text-[8px] uppercase tracking-wide text-[#5b6b86]">
-            Missão · degrau {missao.degrauAlvo}
+            Jornada · passo {missao.passo} de {missao.totalPassos}
           </small>
           <b className="block text-sm">{missao.titulo}</b>
         </div>
       </div>
       <p className="mb-3 text-xs text-[#33415c]">{missao.descricao}</p>
-      <ActionButton
-        onClick={() => disparar(missao.evento)}
-        disabled={pendente}
-        icon="arrow"
-      >
-        {pendente ? "Concluindo…" : missao.acao}
-      </ActionButton>
+      {missao.acao ? (
+        <ActionButton onClick={clicar} icon="arrow">
+          {missao.acao}
+        </ActionButton>
+      ) : null}
     </motion.div>
   );
 }

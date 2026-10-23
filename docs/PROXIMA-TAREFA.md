@@ -1,6 +1,16 @@
 # Próxima tarefa — leia isto primeiro (economiza contexto)
 
-## 🚨 ANTES DE QUALQUER COISA: confira em que branch o servidor roda
+## 🆕 2026-10-23 — Economia, Contratos e Jornada (leia primeiro)
+
+`main` e este branch estão no mesmo commit base (`0798959`); o aviso de
+branch abaixo é histórico. Esta sessão entregou o **Épico 14**: moeda que se
+ganha por contratos semanais, parceria do Laboratório que paga o Canvas
+nível 1, Jornada guiada e o fechamento de 6 falhas de economia — tudo em
+[`ECONOMIA-E-JORNADA.md`](ECONOMIA-E-JORNADA.md). Falta apenas aplicar/
+verificar a migration `0027` num Postgres real (Fase 0 do Épico 13) e um
+passe de clique real no navegador do roteiro de demo.
+
+## 🚨 (histórico) confira em que branch o servidor roda
 
 Tudo o que foi entregue em 2026-07-28/29 vive no branch
 `claude/module-refactor-framework-497918` (worktree em

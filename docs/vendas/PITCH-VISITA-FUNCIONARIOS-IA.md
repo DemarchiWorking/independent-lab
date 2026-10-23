@@ -37,7 +37,7 @@ contratação direta a partir da tela de visita (ver §7, "não fazer").
 
 ## 3. Os 4 roteiros
 
-### 3.1 Documentador(a) IA — R$ 297/mês (degrau 2+)
+### 3.1 Documentador(a) IA — R$ 297/mês (degrau 1+; entrada do jogo, Canvas nível 1)
 
 **Headline:** "Quem aqui sabe fazer isso, se essa pessoa sair amanhã?"
 

@@ -11,6 +11,7 @@ import type {
   EventoGlobal,
   FuncionarioContratado,
   ItemMobiliaColocado,
+  ContratoConcluido,
   LicaoConcluida,
   Mapa,
   MapaResumo,
@@ -109,10 +110,16 @@ export interface GameRepository {
   /** `disponibilidade` de cada um vem enriquecida a partir de `Alocacao`
    *  (GH-EQP-01) — o chamador nunca cruza as duas listas na mão. */
   listarFuncionarios(tenantId: string): Promise<FuncionarioContratado[]>;
-  /** Idempotente: contratar o mesmo cargo duas vezes retorna o registro existente. */
+  /**
+   * Idempotente: contratar o mesmo cargo duas vezes retorna o registro
+   * existente (e NÃO cobra de novo). Quando o cargo é novo, debita
+   * `custoMoeda` na mesma transação da contratação e lança
+   * `saldo_insuficiente` se não houver saldo — nunca contratar de graça.
+   */
   contratarFuncionario(
     tenantId: string,
     cargoId: string,
+    custoMoeda?: number,
   ): Promise<FuncionarioContratado>;
   /**
    * Sobe o nível de UM funcionário (GH-EQP-04), atômico: valida que o
@@ -236,6 +243,22 @@ export interface GameRepository {
     escolhaId: string,
     delta: DeltaProgresso,
   ): Promise<{ capitulo: CapituloEntregue; negocio: Negocio }>;
+
+  /** ---- Contratos (entregas semanais e de jornada) ---- */
+  listarContratosConcluidos(tenantId: string): Promise<ContratoConcluido[]>;
+  /**
+   * Registra o cumprimento de um contrato E paga a recompensa na MESMA
+   * transação. **Idempotente por (contrato, período)**: repetir devolve
+   * `jaConcluido: true` sem pagar de novo — é o que fecha o farm de moeda.
+   * `delta` só carrega ganhos (a Server Action resolve o valor no catálogo).
+   */
+  concluirContrato(
+    tenantId: string,
+    contratoId: string,
+    periodo: string,
+    valor: number | null,
+    delta: DeltaProgresso,
+  ): Promise<{ contrato: ContratoConcluido; jaConcluido: boolean }>;
 
   listarMobiliaColocada(tenantId: string): Promise<ItemMobiliaColocado[]>;
   /**

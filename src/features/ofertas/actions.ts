@@ -44,6 +44,12 @@ export async function publicarOferta(
     criadaEm: new Date().toISOString(),
   });
 
+  // Campanhas globais com objetivo "oferta publicada" (Épico 11). A moeda da
+  // oferta vem do contrato semanal "Vitrine fresca", não daqui: pagar a cada
+  // publicação abriria um farm de criar oferta.
+  await repo.incrementarProgressoEventos(sessao.tenantId, "oferta_publicada");
+
   revalidatePath("/painel");
+  revalidatePath("/hub");
   return { ok: true };
 }

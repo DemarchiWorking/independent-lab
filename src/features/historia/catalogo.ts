@@ -55,6 +55,44 @@ export const CATALOGO_HISTORIA: readonly Capitulo[] = [
     ],
   },
 
+  // ------------------------------------------- dia 0 · parceria do admin
+  {
+    id: "parceria-laboratorio",
+    peso: 5,
+    titulo: "A primeira parceria: o Laboratório entra no seu time",
+    remetente: "Antonio Demarchi · Laboratório Demarchi",
+    narrativa:
+      "Todo negócio que entra no mapa fecha uma primeira parceria comigo. " +
+      "Funciona assim: o Laboratório libera 🪙 400 de capital do programa — o " +
+      "suficiente para contratar o seu primeiro Funcionário de IA, o " +
+      "Documentador, que escreve o Canvas do seu negócio (nível 1). Em troca, " +
+      "você usa esse Canvas para achar onde está a sua próxima venda. Nosso " +
+      "objetivo aqui é um só: você vender mais.",
+    gatilho: { tipo: "aposCapitulo", capituloId: "chegada" },
+    escolhas: [
+      {
+        id: "montar-canvas",
+        rotulo: "Fechar a parceria e montar o Canvas",
+        descricao: "Recebe 🪙 400 e vai direto contratar o Documentador.",
+        tom: "beneficio",
+        efeito: { xp: 100, moeda: 400, atributos: { processo: 1 } },
+        desfecho:
+          "Parceria fechada. Abra a Equipe de IA e contrate o Documentador por " +
+          "🪙 300: em minutos você tem o Canvas do seu negócio para baixar.",
+      },
+      {
+        id: "conhecer-primeiro",
+        rotulo: "Fechar a parceria e olhar a vizinhança antes",
+        descricao: "Recebe os mesmos 🪙 400 e explora o mapa primeiro.",
+        tom: "neutro",
+        efeito: { xp: 100, moeda: 400, atributos: { aquisicao: 1 } },
+        desfecho:
+          "Parceria fechada. A moeda fica guardada: quando quiser o Canvas, a " +
+          "Equipe de IA espera por você — ele é o passo que mais ajuda a vender.",
+      },
+    ],
+  },
+
   // ---------------------------------------------------------------- dia 2
   {
     id: "primeiro-cliente-pergunta",
@@ -208,6 +246,47 @@ export const CATALOGO_HISTORIA: readonly Capitulo[] = [
     ],
   },
 
+  // ------------------------------------ Canvas nível 1 em mãos (estado)
+  {
+    id: "canvas-na-mesa",
+    peso: 49,
+    titulo: "O Canvas está pronto. Onde está a venda?",
+    remetente: "Documentador IA · Laboratório Demarchi",
+    narrativa:
+      "Seu Canvas nível 1 já pode ser baixado. A maioria guarda o arquivo e " +
+      "não faz nada com ele. O Canvas só vale quando vira uma ação de venda: " +
+      "ou você vende de novo para quem já comprou, ou melhora a oferta para " +
+      "quem ainda não te conhece. Qual das duas você faz esta semana?",
+    gatilho: { tipo: "cargoContratado", cargoId: "documentador" },
+    escolhas: [
+      {
+        id: "chamar-quem-ja-comprou",
+        rotulo: "Chamar quem já comprou de mim",
+        descricao: "Cliente antigo custa quase nada para reativar.",
+        tom: "beneficio",
+        efeito: {
+          xp: 80,
+          moeda: 60,
+          atributos: { aquisicao: 2 },
+          documento: "kit-primeira-resposta",
+        },
+        desfecho:
+          "Boa. Reativar cliente é a venda mais rápida que existe. Registre " +
+          "quantos você chamou no contrato “Reativar clientes antigos”.",
+      },
+      {
+        id: "melhorar-a-oferta",
+        rotulo: "Melhorar a oferta para novos clientes",
+        descricao: "Mais lento, mas abre caminho para quem não te conhece.",
+        tom: "neutro",
+        efeito: { xp: 80, moeda: 60, atributos: { presenca: 2 } },
+        desfecho:
+          "Oferta clara vende sozinha. Publique-a na sua vitrine: o contrato " +
+          "“Vitrine fresca” paga por isso.",
+      },
+    ],
+  },
+
   // --------------------------------------------- gatilho por equipe (estado)
   {
     id: "equipe-cresceu",
@@ -243,6 +322,42 @@ export const CATALOGO_HISTORIA: readonly Capitulo[] = [
         desfecho:
           "Rodou. Uma parte veio ótima, outra fora do tom — e você só descobriu " +
           "quando o cliente comentou.",
+      },
+    ],
+  },
+
+  // ------------------------------------------- dia 7 · primeiro fechamento
+  {
+    id: "primeira-semana-vendas",
+    peso: 25,
+    titulo: "Sete dias. Quanto você vendeu?",
+    remetente: "Laboratório Demarchi",
+    narrativa:
+      "Uma semana no mapa. Antes de qualquer ferramenta, a pergunta que " +
+      "decide tudo: você sabe quanto vendeu nos últimos 7 dias? Quem mede " +
+      "toda semana enxerga cedo o que está funcionando — e corrige antes de " +
+      "perder o mês.",
+    gatilho: { tipo: "diasAposCadastro", dias: 7 },
+    escolhas: [
+      {
+        id: "medir-toda-semana",
+        rotulo: "Fechar a semana toda segunda-feira",
+        descricao: "Cinco minutos para registrar vendas no contrato semanal.",
+        tom: "beneficio",
+        efeito: { xp: 90, moeda: 100, atributos: { processo: 2 } },
+        desfecho:
+          "Hábito criado. Em um mês você terá quatro números para comparar — " +
+          "e vai saber, pela primeira vez, se está vendendo mais.",
+      },
+      {
+        id: "medir-no-olho",
+        rotulo: "Seguir no olho",
+        descricao: "Sem registro. A sensação costuma enganar.",
+        tom: "risco",
+        efeito: { xp: 20 },
+        desfecho:
+          "A sensação diz que foi bem. Sem número, não dá para saber — nem para " +
+          "provar a si mesmo que melhorou.",
       },
     ],
   },

@@ -46,6 +46,7 @@ RLS forçada), isso está explícito para o Claude Code reusar, não reinventar.
 | 10 | [Pitch Readiness](#épico-10--pitch-readiness-sebrae-p0) | Checklist final antes da apresentação |
 | 11 | [Eventos Globais — Gamificação em Tempo Real](#épico-11--eventos-globais--gamificação-em-tempo-real-p1) | Campanhas com prazo que todos os jogadores veem ao mesmo tempo — dá "pulso" de comunidade ao ecossistema |
 | 12 | [Módulos Futuros do App-Drawer](#épico-12--módulos-futuros-do-app-drawer-sem-levantamento-ainda) | Placeholders sem levantamento (equipe humana, finanças, rh-motivação) — formalizados nesta sessão, não executáveis ainda |
+| 14 | [Economia, Contratos e Jornada](#épico-14--economia-contratos-e-jornada-p0) | Moeda ganha por ações que levam a vender; modo história guia o iniciante até o Canvas nível 1 — ver `ECONOMIA-E-JORNADA.md` |
 | 13 | [Multiplayer Real](#épico-13--multiplayer-real-presença-ao-vivo-via-supabase) | Presença ao vivo via Supabase Realtime — plano BMAD completo em `architecture/BMAD-MULTIPLAYER-VPS.md`; ordem dos 2 primeiros cards é dependência de segurança real, não só prioridade |
 
 ---
@@ -2116,6 +2117,23 @@ visitantes de verdade aparecem como avatares adicionais, sem tocar em
 **Regras de segurança:** nenhuma nova — herda a whitelist de `GH-MULTI-02`.
 
 **Dados trafegados:** mesmos de `GH-MULTI-02`, só renderizados.
+
+---
+
+## Épico 14 — Economia, Contratos e Jornada (P0)
+
+> Detalhe, tabelas e falhas corrigidas em
+> [`ECONOMIA-E-JORNADA.md`](ECONOMIA-E-JORNADA.md).
+
+### GH-ECO-01 — Contratos semanais + Jornada + parceria do Laboratório ✅
+
+- [x] Contratos (semanais, únicos, ciclo 90d) com pagamento atômico e idempotente por período (`0027`)
+- [x] Parceria com o admin (carta do Laboratório) paga 🪙 400 em qualquer escolha — fecha o Canvas nível 1
+- [x] Contratar passa a custar moeda; Documentador liberado no degrau 1
+- [x] Jornada (passo único, "ligado a vender") substitui a missão antiga
+- [x] Fecha farm em `recompensar()`, capítulo futuro, escolha sem saldo, RLS de escrita direta
+- [ ] Verificação viva da `0027` em Postgres real (depende da Fase 0 do Épico 13)
+- [ ] Corrida de dupla contratação aplica XP/degrau 2× (limitação conhecida)
 
 ---
 

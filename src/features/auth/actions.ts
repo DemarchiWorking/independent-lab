@@ -7,6 +7,7 @@ import { getAuthProvider } from "@/lib/auth";
 import { criarSessao, encerrarSessao } from "@/lib/auth/sessao";
 import { slugify } from "@/lib/db/file-adapter";
 import { calcular } from "@/features/onboarding/scoring";
+import { MOEDA_INICIAL } from "@/features/gamificacao/engine";
 import { itemMobilia } from "@/features/sede/catalogo";
 import { POLITICA_PRIVACIDADE_VERSAO } from "./politica";
 import {
@@ -175,7 +176,7 @@ export async function cadastrar(
     bairroNome: respostas.bairro,
     degrauAlvo: resultado.degrauAlvo,
     xpInicial: resultado.xpInicial,
-    moedaVirtual: 500,
+    moedaVirtual: MOEDA_INICIAL,
     atributosIniciais: resultado.atributosIniciais,
     perfilPublico,
     consentimentoVersao: POLITICA_PRIVACIDADE_VERSAO,

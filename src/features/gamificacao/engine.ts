@@ -36,6 +36,15 @@ export interface DefinicaoEvento {
   atributo?: { chave: AtributoChave; ganho: number };
 }
 
+/**
+ * Moeda com que todo negócio novo começa — de propósito MENOR que o custo do
+ * primeiro Funcionário de IA (o Documentador, que gera o Canvas nível 1). O
+ * que fecha essa conta é a parceria com o Laboratório na história
+ * (capítulo `parceria-laboratorio`): o jogador chega ao Canvas porque a
+ * história o levou até lá, não porque nasceu rico.
+ */
+export const MOEDA_INICIAL = 100;
+
 export const EVENTOS: Record<EventoKey, DefinicaoEvento> = {
   cadastro_completo: {
     label: "Cadastro concluído",
@@ -91,7 +100,9 @@ export const EVENTOS: Record<EventoKey, DefinicaoEvento> = {
     label: "Funcionário de IA contratado",
     descricao: "Um agente Claude passou a trabalhar no seu negócio.",
     xp: 260,
-    moeda: 200,
+    // sem prêmio em moeda: contratar agora CUSTA moeda (`CargoIA.custoMoeda`);
+    // pagar para contratar e ainda receber por contratar era uma torneira.
+    moeda: 0,
     subeDegrau: true,
     // sem `atributo` fixo — resolvido por cargo, ver comentário acima
   },

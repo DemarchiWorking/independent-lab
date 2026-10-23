@@ -34,10 +34,13 @@ const ICONE_TOM: Record<TomEscolha, "check" | "bolt" | "chevron"> = {
 export function CapituloCard({
   capitulo,
   diaDoNegocio,
+  moedaVirtual = Number.POSITIVE_INFINITY,
   aoFechar,
 }: {
   capitulo: Capitulo;
   diaDoNegocio: number;
+  /** saldo do jogador: escolha que custa mais que isso fica desabilitada */
+  moedaVirtual?: number;
   /** chamado quando o jogador confirma que leu o desfecho — ver `CapituloGate` */
   aoFechar?: () => void;
 }) {
@@ -144,13 +147,16 @@ export function CapituloCard({
             exit={{ opacity: 0 }}
             className="mt-3 flex flex-col gap-2"
           >
-            {capitulo.escolhas.map((e) => (
+            {capitulo.escolhas.map((e) => {
+              const custo = e.efeito.moeda && e.efeito.moeda < 0 ? -e.efeito.moeda : 0;
+              const semSaldo = custo > moedaVirtual;
+              return (
               <motion.button
                 key={e.id}
                 variants={listItem}
-                {...(pendente ? {} : pressable)}
+                {...(pendente || semSaldo ? {} : pressable)}
                 type="button"
-                disabled={pendente}
+                disabled={pendente || semSaldo}
                 onClick={() => escolher(e)}
                 className={cn(
                   "rounded-md border-2 bg-white p-2.5 text-left transition-colors disabled:opacity-60",
@@ -165,8 +171,14 @@ export function CapituloCard({
                   {e.descricao}
                 </span>
                 <CustoDaEscolha escolha={e} />
+                {semSaldo ? (
+                  <span className="mt-1 block text-[10px] font-bold text-coral-dark">
+                    Faltam 🪙 {custo - moedaVirtual} — cumpra contratos para juntar.
+                  </span>
+                ) : null}
               </motion.button>
-            ))}
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>

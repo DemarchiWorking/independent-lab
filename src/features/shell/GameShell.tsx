@@ -22,6 +22,8 @@ import { FinancasScreen } from "@/features/financas/FinancasScreen";
 import { CelularPanel } from "./CelularPanel";
 import { InventarioPanel } from "./InventarioPanel";
 import { LateralMenu, type LateralItem } from "@/components/ui/LateralMenu";
+import { ContratosScreen } from "@/features/contratos/ContratosScreen";
+import type { SituacaoContrato } from "@/features/contratos/tipos";
 import { RecompensaProvider } from "@/features/gamificacao/RecompensaContext";
 import type { Missao } from "@/features/gamificacao/missoes";
 import type {
@@ -47,7 +49,8 @@ type CoreView =
   | "parcerias"
   | "eventos"
   | "mercado"
-  | "financas";
+  | "financas"
+  | "contratos";
 export type View = CoreView | ModuleKey;
 
 /** Chaves do menu lateral: as views do shell + entradas que só navegam para
@@ -64,6 +67,11 @@ const NAV_EQUIPE: NavItem<CoreView> = {
   key: "equipe-ia",
   label: "Equipe IA",
   icon: "users",
+};
+const NAV_CONTRATOS: NavItem<CoreView> = {
+  key: "contratos",
+  label: "Contratos",
+  icon: "briefcase",
 };
 const NAV_SEDE: NavItem<CoreView> = { key: "sede", label: "Sede", icon: "home" };
 
@@ -91,6 +99,7 @@ function stageTitle(v: View): string {
   if (v === "eventos") return "Eventos";
   if (v === "mercado") return "Mercado da região";
   if (v === "financas") return "Finanças";
+  if (v === "contratos") return "Contratos da semana";
   if (isModule(v)) return modules[v].label;
   return "";
 }
@@ -100,6 +109,8 @@ interface GameShellProps {
   /** HUD real (rota autenticada). Ausente = modo demo. */
   hud?: HudData;
   missao?: Missao | null;
+  /** Situação dos contratos do jogador. Presente = habilita a aba "Contratos". */
+  contratos?: SituacaoContrato[];
   /** Mundo real do jogador (rota autenticada). Habilita a aba "Mapa". */
   mapa?: MapaView;
   endereco?: Endereco;
@@ -145,6 +156,7 @@ export function GameShell({
   initialView = "hub",
   hud,
   missao = null,
+  contratos,
   mapa,
   endereco,
   meuTenantId,
@@ -180,8 +192,10 @@ export function GameShell({
     moedaVirtual !== undefined &&
     atributos !== undefined;
   const temMercado = Boolean(benchmark && atributos && endereco);
+  const temContratos = contratos !== undefined;
   const navItems = [
     NAV_BASE[0],
+    ...(temContratos ? [NAV_CONTRATOS] : []),
     ...(temSede ? [NAV_SEDE] : []),
     ...(temMapa ? [NAV_MAPA] : []),
     ...(temEquipeIa ? [NAV_EQUIPE] : []),
@@ -192,6 +206,7 @@ export function GameShell({
    *  tela pronta aparecem com cadeado, em vez de sumir (o jogador vê o que
    *  ainda vem por aí — mesma lógica dos stubs do app-drawer). */
   const lateralItems: ReadonlyArray<LateralItem<LateralKey>> = [
+    { key: "contratos", label: "Contratos", icon: "star", disponivel: temContratos },
     { key: "marketplace", label: "Serviços", icon: "briefcase" },
     { key: "equipe-ia", label: "Equipe de IA", icon: "users", disponivel: temEquipeIa },
     // O World é o motor de gamificação de verdade e tem rota própria: sala
@@ -260,6 +275,7 @@ export function GameShell({
                   funcionarios={funcionarios}
                   degrauAtual={degrauAtual}
                   licoesConcluidas={licoesConcluidas}
+                  aoIr={go}
                 />
               ) : (
                 <div className="relative h-full rounded-md bg-card/85 p-4 pt-5 backdrop-blur-sm">
@@ -292,6 +308,7 @@ export function GameShell({
                         contratados={funcionariosContratados}
                         degrauAtual={degrauAtual}
                         funcionarios={funcionarios}
+                        moedaVirtual={moedaVirtual}
                       />
                     ) : view === "marketplace" ? (
                       <MarketplaceScreen
@@ -319,6 +336,11 @@ export function GameShell({
                         nivelSedeAtual={sede.nivel}
                         mobilia={mobilia}
                         funcionarios={funcionarios}
+                      />
+                    ) : view === "contratos" && contratos ? (
+                      <ContratosScreen
+                        situacoes={contratos}
+                        onIr={(v) => go(v)}
                       />
                     ) : view === "eventos" ? (
                       <EventosScreen eventos={eventos} />

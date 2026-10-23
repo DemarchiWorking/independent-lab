@@ -63,7 +63,10 @@ const NEGOCIOS_SEED: PerfilSeed[] = [
     segmento: "engenharia",
     degrauAlvo: 4,
     xpInicial: 900,
-    moedaVirtual: 2200,
+    // 2200 → 4400: contratar passou a custar moeda (300+400+900 = 1600) e a
+    // evolução de sede (1500) vem depois; o saldo final da demo (🪙 1300)
+    // continua o mesmo de antes da mudança de economia.
+    moedaVirtual: 4400,
     atributosIniciais: atributos({ tecnologia: 14, processo: 12, presenca: 8, aquisicao: 10, capacidade: 10 }),
   },
   {
@@ -126,10 +129,11 @@ async function contratarComRecompensa(
 ): Promise<void> {
   const cargo = cargoPorId(cargoId);
   if (!cargo) throw new Error(`cargo desconhecido no seed: ${cargoId}`);
-  await repo.contratarFuncionario(tenantId, cargoId);
+  // contratar agora CUSTA moeda (`CargoIA.custoMoeda`) e não paga mais prêmio
+  await repo.contratarFuncionario(tenantId, cargoId, cargo.custoMoeda);
   await repo.aplicarProgresso(tenantId, {
     xp: 260,
-    moeda: 200,
+    moeda: 0,
     degraus: 1,
     atributos: { [cargo.eixoFortalecido]: GANHO_ATRIBUTO_CONTRATACAO },
   });

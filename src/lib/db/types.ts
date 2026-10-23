@@ -276,6 +276,22 @@ export interface LicaoConcluida {
 }
 
 /**
+ * Contrato concluído por um tenant (`features/contratos`). `contratoId`
+ * referencia o catálogo estático; `periodo` é a chave do ciclo em que foi
+ * cumprido (`unico`, `2026-W43`, `ciclo-1`) — a unique (tenant, contrato,
+ * periodo) é o que impede receber duas vezes pelo mesmo ciclo. `valor` guarda
+ * o número declarado nos contratos de entrega real (ex.: vendas da semana).
+ */
+export interface ContratoConcluido {
+  id: string;
+  tenantId: string;
+  contratoId: string;
+  periodo: string;
+  valor: number | null;
+  concluidoEm: string;
+}
+
+/**
  * Contato recebido pela página pública do negócio (GH-GROW-01). O visitante
  * deixa o PRÓPRIO contato aqui — nunca expomos e-mail/telefone do dono em
  * texto puro na página pública, isto é o "formulário intermediado" que

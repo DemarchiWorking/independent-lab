@@ -34,6 +34,8 @@ interface EquipeIaScreenProps {
   /** registros completos (id/nivel) dos contratados — necessário para
    *  evoluir e para saber o nível que gera o entregável (GH-EQP-04). */
   funcionarios?: FuncionarioContratado[];
+  /** saldo atual: o botão de contratar mostra o custo e avisa quanto falta */
+  moedaVirtual?: number;
 }
 
 /** Vitrine dos 4 Funcionários de IA — o produto central do gamehub.
@@ -42,6 +44,7 @@ export function EquipeIaScreen({
   contratados,
   degrauAtual,
   funcionarios = [],
+  moedaVirtual,
 }: EquipeIaScreenProps) {
   const [selectedId, setSelectedId] = useState(CARGOS_IA[0].id);
   const selected = CARGOS_IA.find((c) => c.id === selectedId) ?? CARGOS_IA[0];
@@ -52,6 +55,8 @@ export function EquipeIaScreen({
 
   const jaContratado = contratados.includes(selected.id);
   const bloqueadoPorDegrau = degrauAtual < selected.degrauMinimo;
+  const faltaMoeda =
+    moedaVirtual !== undefined ? Math.max(0, selected.custoMoeda - moedaVirtual) : 0;
   const funcionario = funcionarios.find((f) => f.cargoId === selected.id);
   const nivel = funcionario?.nivel ?? 1;
   const habilidades = habilidadesDoCargo(selected.id, nivel);
@@ -232,13 +237,21 @@ export function EquipeIaScreen({
                 Disponível no degrau {selected.degrauMinimo}
               </ActionButton>
             ) : (
-              <ActionButton
-                icon="arrow"
-                disabled={pendente}
-                onClick={() => disparar("funcionario_ia_contratado", selected.id)}
-              >
-                {pendente ? "Contratando…" : "Contratar"}
-              </ActionButton>
+              <>
+                <ActionButton
+                  icon="arrow"
+                  cost={`🪙 ${selected.custoMoeda}`}
+                  disabled={pendente || faltaMoeda > 0}
+                  onClick={() => disparar("funcionario_ia_contratado", selected.id)}
+                >
+                  {pendente ? "Contratando…" : "Contratar"}
+                </ActionButton>
+                {faltaMoeda > 0 ? (
+                  <p className="text-center text-[11px] font-bold text-coral-dark">
+                    Faltam 🪙 {faltaMoeda}. Cumpra os contratos da semana para juntar moeda.
+                  </p>
+                ) : null}
+              </>
             )}
           </div>
         </motion.div>

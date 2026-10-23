@@ -43,6 +43,9 @@ export function gatilhoAtendido(
     case "equipeMinima":
       return estado.tamanhoEquipe >= gatilho.quantidade;
 
+    case "cargoContratado":
+      return estado.cargosContratados.has(gatilho.cargoId);
+
     case "aposCapitulo":
       return estado.capitulosResolvidos.has(gatilho.capituloId);
 

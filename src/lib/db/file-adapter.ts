@@ -22,6 +22,7 @@ import type {
   EventoGlobal,
   FuncionarioContratado,
   ItemMobiliaColocado,
+  ContratoConcluido,
   LicaoConcluida,
   Mapa,
   MapaResumo,
@@ -461,6 +462,41 @@ export class FileRepository implements GameRepository {
     return nova;
   }
 
+  async listarContratosConcluidos(tenantId: string): Promise<ContratoConcluido[]> {
+    return lerJson<ContratoConcluido[]>(
+      path.join(tenantDir(tenantId), "contratos.json"),
+      [],
+    );
+  }
+
+  async concluirContrato(
+    tenantId: string,
+    contratoId: string,
+    periodo: string,
+    valor: number | null,
+    delta: DeltaProgresso,
+  ): Promise<{ contrato: ContratoConcluido; jaConcluido: boolean }> {
+    const arquivo = path.join(tenantDir(tenantId), "contratos.json");
+    const atuais = await lerJson<ContratoConcluido[]>(arquivo, []);
+    const existente = atuais.find(
+      (c) => c.contratoId === contratoId && c.periodo === periodo,
+    );
+    if (existente) return { contrato: existente, jaConcluido: true };
+
+    const novo: ContratoConcluido = {
+      id: randomBytes(8).toString("hex"),
+      tenantId,
+      contratoId,
+      periodo,
+      valor,
+      concluidoEm: new Date().toISOString(),
+    };
+    atuais.push(novo);
+    await escreverJson(arquivo, atuais);
+    await this.aplicarProgresso(tenantId, delta);
+    return { contrato: novo, jaConcluido: false };
+  }
+
   async listarConvitesResgatados(tenantIdConvidante: string): Promise<ConviteResgatado[]> {
     return lerJson<ConviteResgatado[]>(
       path.join(tenantDir(tenantIdConvidante), "convites-enviados.json"),
@@ -590,6 +626,7 @@ export class FileRepository implements GameRepository {
   async contratarFuncionario(
     tenantId: string,
     cargoId: string,
+    custoMoeda = 0,
   ): Promise<FuncionarioContratado> {
     const arquivo = path.join(tenantDir(tenantId), "funcionarios.json");
     const atuais = await lerJson<FuncionarioArmazenado[]>(arquivo, []);
@@ -597,6 +634,14 @@ export class FileRepository implements GameRepository {
     if (existente) {
       const [enriquecido] = await this.enriquecerDisponibilidade(tenantId, [existente]);
       return enriquecido;
+    }
+
+    if (custoMoeda > 0) {
+      const negocio = await this.lerNegocio(tenantId);
+      if (!negocio) throw new Error(`Negócio ${tenantId} não encontrado`);
+      if (negocio.moedaVirtual < custoMoeda) throw new Error("saldo_insuficiente");
+      negocio.moedaVirtual -= custoMoeda;
+      await escreverJson(path.join(tenantDir(tenantId), "negocio.json"), negocio);
     }
 
     const novo: FuncionarioArmazenado = {

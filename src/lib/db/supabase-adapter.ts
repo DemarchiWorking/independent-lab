@@ -16,6 +16,7 @@ import type {
   EventoGlobal,
   FuncionarioContratado,
   ItemMobiliaColocado,
+  ContratoConcluido,
   LicaoConcluida,
   Mapa,
   MapaResumo,
@@ -571,6 +572,69 @@ export class SupabaseRepository implements GameRepository {
     );
   }
 
+  private paraContrato(l: {
+    id: number;
+    tenant_id: number;
+    contrato_id: string;
+    periodo: string;
+    valor: number | null;
+    concluido_em: string;
+  }): ContratoConcluido {
+    return {
+      id: String(l.id),
+      tenantId: String(l.tenant_id),
+      contratoId: l.contrato_id,
+      periodo: l.periodo,
+      valor: l.valor,
+      concluidoEm: l.concluido_em,
+    };
+  }
+
+  async listarContratosConcluidos(tenantId: string): Promise<ContratoConcluido[]> {
+    const { data, error } = await this.db
+      .from("contratos_concluidos")
+      .select("*")
+      .eq("tenant_id", Number(tenantId))
+      .order("concluido_em", { ascending: true });
+    if (error) throw new Error(`listarContratosConcluidos: ${error.message}`);
+    return ((data ?? []) as Array<Parameters<typeof this.paraContrato>[0]>).map((l) =>
+      this.paraContrato(l),
+    );
+  }
+
+  /** Atômica e idempotente via RPC `concluir_contrato` (`0027`). */
+  async concluirContrato(
+    tenantId: string,
+    contratoId: string,
+    periodo: string,
+    valor: number | null,
+    delta: DeltaProgresso,
+  ): Promise<{ contrato: ContratoConcluido; jaConcluido: boolean }> {
+    const a = delta.atributos ?? {};
+    const { data, error } = await this.db
+      .rpc("concluir_contrato", {
+        p_tenant_id: Number(tenantId),
+        p_contrato_id: contratoId,
+        p_periodo: periodo,
+        p_valor: valor,
+        p_xp: delta.xp,
+        p_moeda: delta.moeda,
+        p_tecnologia: a.tecnologia ?? 0,
+        p_processo: a.processo ?? 0,
+        p_presenca: a.presenca ?? 0,
+        p_aquisicao: a.aquisicao ?? 0,
+        p_capacidade: a.capacidade ?? 0,
+      })
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "concluir_contrato: sem retorno");
+    }
+    const linha = data as Parameters<typeof this.paraContrato>[0] & {
+      ja_concluido: boolean;
+    };
+    return { contrato: this.paraContrato(linha), jaConcluido: linha.ja_concluido };
+  }
+
   async listarConvitesResgatados(tenantIdConvidante: string): Promise<ConviteResgatado[]> {
     const { data, error } = await this.db
       .from("convites_resgatados")
@@ -832,7 +896,28 @@ export class SupabaseRepository implements GameRepository {
   async contratarFuncionario(
     tenantId: string,
     cargoId: string,
+    custoMoeda = 0,
   ): Promise<FuncionarioContratado> {
+    if (custoMoeda > 0) {
+      // RPC `contratar_funcionario` (0027): débito + inserção atômicos, saldo
+      // travado por `for update`; idempotente (já contratado = sem cobrança).
+      const { data, error } = await this.db
+        .rpc("contratar_funcionario", {
+          p_tenant_id: Number(tenantId),
+          p_cargo_id: cargoId,
+          p_custo: custoMoeda,
+        })
+        .single();
+      if (error || !data) {
+        throw new Error(error?.message ?? "contratar_funcionario: sem retorno");
+      }
+      const bruto = this.paraFuncionario(
+        data as { id: number; tenant_id: number; cargo_id: string; contratado_em: string },
+      );
+      const [enriquecido] = await this.enriquecerDisponibilidade(tenantId, [bruto]);
+      return enriquecido;
+    }
+
     const { error: upsertError } = await this.db
       .from("funcionarios_contratados")
       .upsert(

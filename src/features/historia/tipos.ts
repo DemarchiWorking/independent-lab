@@ -35,6 +35,8 @@ export type Gatilho =
   | { tipo: "atributoAbaixo"; chave: AtributoChave; valor: number }
   /** quantidade de Funcionários de IA contratados */
   | { tipo: "equipeMinima"; quantidade: number }
+  /** um cargo específico de Funcionário de IA já foi contratado */
+  | { tipo: "cargoContratado"; cargoId: string }
   /** encadeamento: só depois de resolver outro capítulo */
   | { tipo: "aposCapitulo"; capituloId: string }
   /** todos os gatilhos internos precisam valer */
@@ -98,6 +100,8 @@ export interface EstadoNarrativo {
   segmento: Segmento;
   /** quantos Funcionários de IA estão contratados */
   tamanhoEquipe: number;
+  /** ids dos cargos de IA contratados (ex.: "documentador") */
+  cargosContratados: ReadonlySet<string>;
   /** ids de capítulos já RESOLVIDOS (jogador escolheu) */
   capitulosResolvidos: ReadonlySet<string>;
   /** ids de capítulos já entregues (abertos, com ou sem escolha) */

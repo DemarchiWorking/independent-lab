@@ -117,6 +117,9 @@ function ToastView({
                     {toast.r.ganhoMoeda
                       ? ` · +🪙 ${toast.r.ganhoMoeda}`
                       : ""}
+                    {toast.r.gastoMoeda
+                      ? ` · −🪙 ${toast.r.gastoMoeda}`
+                      : ""}
                   </span>
                   {toast.r.subiuNivel ? (
                     <span className="ml-1 text-xs font-bold text-teal">

@@ -30,6 +30,7 @@ function estado(over: Partial<EstadoNarrativo> = {}): EstadoNarrativo {
     atributos: atributosVazios(),
     segmento: "comercio",
     tamanhoEquipe: 0,
+    cargosContratados: new Set(),
     capitulosResolvidos: new Set(),
     capitulosEntregues: new Set(),
     ...over,

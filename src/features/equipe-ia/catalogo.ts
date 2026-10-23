@@ -35,6 +35,9 @@ export interface CargoIA {
   precoMensal: number;
   /** degrau da escada de valor a partir do qual o cargo fica disponível */
   degrauMinimo: number;
+  /** custo ÚNICO em moeda virtual 🪙 para contratar (nunca R$ real — o
+   *  `precoMensal` é a assinatura real, e as duas coisas não se misturam) */
+  custoMoeda: number;
   /** eixo da economia de atributos que este cargo eleva ao ser contratado —
    *  ver docs/analise-prints/telas/economia-de-atributos.md §5 */
   eixoFortalecido: AtributoChave;
@@ -50,7 +53,11 @@ export const CARGOS_IA: CargoIA[] = [
     entrega: "Documentação técnica, processos, SOPs",
     frequencia: "sob demanda + revisão mensal",
     precoMensal: 297,
-    degrauMinimo: 2,
+    // Porta de entrada: é o PRIMEIRO cargo (Canvas nível 1), então precisa
+    // estar ao alcance de quem acabou de entrar. Cada contratação sobe um
+    // degrau, o que destrava o próximo cargo da escada.
+    degrauMinimo: 1,
+    custoMoeda: 300,
     eixoFortalecido: "processo",
     descricao:
       "Documenta processos e conhecimento do seu negócio antes que se percam quando alguém sai.",
@@ -64,6 +71,7 @@ export const CARGOS_IA: CargoIA[] = [
     frequencia: "pacote mensal de carrosséis",
     precoMensal: 397,
     degrauMinimo: 2,
+    custoMoeda: 400,
     eixoFortalecido: "presenca",
     descricao:
       "Roteiro, copy e arte dos seus carrosséis — presença digital sem você precisar parar tudo pra postar.",
@@ -77,6 +85,7 @@ export const CARGOS_IA: CargoIA[] = [
     frequencia: "pacote mensal de vídeos",
     precoMensal: 597,
     degrauMinimo: 3,
+    custoMoeda: 600,
     eixoFortalecido: "presenca",
     descricao:
       "Roteiro, cortes, legendas e CTA prontos pra publicar — o formato que mais converte, sem contratar editor.",
@@ -90,6 +99,7 @@ export const CARGOS_IA: CargoIA[] = [
     frequencia: "contínuo (always-on)",
     precoMensal: 897,
     degrauMinimo: 3,
+    custoMoeda: 900,
     eixoFortalecido: "aquisicao",
     descricao:
       "Qualifica e faz follow-up dos seus leads no WhatsApp automaticamente — resolve o gargalo #1: perder lead por demora.",

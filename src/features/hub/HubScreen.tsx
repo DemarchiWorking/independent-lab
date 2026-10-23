@@ -46,7 +46,10 @@ export function HubScreen({
   funcionarios = [],
   degrauAtual,
   licoesConcluidas = [],
+  aoIr,
 }: {
+  /** navega o shell para outra tela (usado pelo cartão da Jornada) */
+  aoIr?: (view: "equipe-ia" | "marketplace" | "contratos") => void;
   missao?: Missao | null;
   trabalhosAceitos?: readonly string[];
   atributos?: Atributos;
@@ -62,7 +65,7 @@ export function HubScreen({
   return (
     <div className="relative flex h-full flex-col items-center justify-center gap-5">
       {missao ? (
-        <MissaoCard missao={missao} />
+        <MissaoCard missao={missao} aoIr={aoIr} />
       ) : (
         <motion.p
           initial={{ opacity: 0, y: 8 }}

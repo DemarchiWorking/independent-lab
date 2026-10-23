@@ -6,6 +6,7 @@ import { DEGRAUS } from "@/features/onboarding/scoring";
 import { missaoAtual } from "@/features/gamificacao/missoes";
 import { GameShell } from "@/features/shell/GameShell";
 import { capituloAtual } from "@/features/historia/actions";
+import { lerSituacaoContratos } from "@/features/contratos/actions";
 import { CapituloGate } from "@/features/historia/CapituloGate";
 import { listarEventosAtivos } from "@/features/eventos-globais/actions";
 import type { HudData } from "@/components/ui/HudBar";
@@ -17,10 +18,9 @@ export default async function HubPage() {
   if (!sessao) redirect("/entrar");
 
   const repo = getRepository();
-  const [negocio, onboarding, vizinhos, mapa, funcionarios, sede, mobilia, trabalhos, nos, parcerias, licoes, mensagens] =
+  const [negocio, vizinhos, mapa, funcionarios, sede, mobilia, trabalhos, nos, parcerias, licoes, mensagens, entregues, contratos] =
     await Promise.all([
       repo.lerNegocio(sessao.tenantId),
-      repo.lerOnboarding(sessao.tenantId),
       repo.listarVizinhos(sessao.tenantId),
       repo.lerMapaView(),
       repo.listarFuncionarios(sessao.tenantId),
@@ -31,6 +31,8 @@ export default async function HubPage() {
       repo.listarParceriasFormadas(sessao.tenantId),
       repo.listarLicoesConcluidas(sessao.tenantId),
       repo.listarSolicitacoesContato(sessao.tenantId),
+      repo.listarCapitulosEntregues(sessao.tenantId),
+      lerSituacaoContratos(),
     ]);
   if (!negocio) redirect("/cadastro");
 
@@ -40,7 +42,14 @@ export default async function HubPage() {
   ]);
 
   const prog = progresso(negocio.xp);
-  const missao = missaoAtual(negocio, onboarding);
+  const missao = missaoAtual({
+    negocio,
+    cargosContratados: funcionarios.map((f) => f.cargoId),
+    capitulosResolvidos: new Set(
+      entregues.filter((c) => c.escolhaId).map((c) => c.capituloId),
+    ),
+    contratos: contratos ?? [],
+  });
 
   // Relógio *lazy*: avaliado na leitura do hub, a tela que todo mundo vê
   // primeiro após entrar — é onde o capítulo do dia 0 precisa aparecer, não
@@ -73,6 +82,7 @@ export default async function HubPage() {
         initialView="hub"
         hud={hud}
         missao={missao}
+        contratos={contratos ?? undefined}
         mapa={mapa}
         endereco={negocio.endereco}
         meuTenantId={negocio.id}
