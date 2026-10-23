@@ -1,31 +1,39 @@
 -- ============================================================================
 -- Economia de moedas fechada + Contratos (entregas semanais e de jornada).
 --
--- Duas frentes, uma migration, porque nascem do mesmo achado: a moeda virtual
--- só vale alguma coisa se NÃO der para fabricá-la fora das regras do jogo.
+-- A moeda virtual só vale alguma coisa se NÃO der para fabricá-la fora das
+-- regras do jogo. Esta migration faz três coisas:
 --
--- 1. Escritas diretas fechadas. Quatro policies de 0001/0003/0008/0009
---    deixavam um usuário `authenticated` alterar o PRÓPRIO negócio
---    (`negocios_atualiza_proprio` — inclusive `moeda_virtual`, `xp`,
---    `degrau_atual`) e inserir contratação/trabalho/nó direto pelo PostgREST,
---    com a anon key que agora vive no navegador (presença ao vivo). O app
---    inteiro escreve via RPC com a service_role, que ignora RLS — então
---    remover essas policies não muda nenhum caminho do app, só fecha a porta
---    lateral.
+-- 1. Fecha a última escrita direta que o navegador ainda tinha sobre a
+--    economia. `0035`/`0036` já revogaram `update` em `negocios` e quase todo
+--    `insert` de `authenticated`, mas `0036` deixou
+--    `grant insert on funcionarios_contratados to authenticated` (+ a policy
+--    `funcionarios_insere_propria` de `0003`). Desde que contratar CUSTA moeda,
+--    isso deixou de ser inerte: um jogador logado poderia contratar qualquer
+--    cargo de graça por `POST /rest/v1/funcionarios_contratados`, com a anon
+--    key e o próprio JWT. O app inteiro escreve via RPC (service_role), então
+--    revogar não muda nenhum caminho do app. As demais policies de escrita
+--    (`trabalhos`, `nos`, `negocios`) são removidas por defesa em profundidade;
+--    `drop policy if exists` é idempotente caso já tenham sido removidas.
 --
 -- 2. `contratos_concluidos` + `concluir_contrato`: pagamento atômico e
---    idempotente por (tenant, contrato, período). É o que dá o ritmo semanal
---    do jogo sem abrir um novo farm.
+--    idempotente por (tenant, contrato, período).
 --
--- 3. `contratar_funcionario`: contratar passou a CUSTAR moeda. Débito e
+-- 3. `contratar_funcionario`: contratar passou a custar moeda; débito e
 --    inserção na mesma transação, com o saldo travado por `for update`.
+--
+-- Auditoria (`0031`): o ledger `progressao_eventos_log` é alimentado por
+-- trigger em `negocios`, então estas RPCs já aparecem nele. Aqui só rotulamos
+-- a origem (`gamehub.origem`, opcional e aditivo, ver `0031`) para o relatório
+-- distinguir "contrato:<id>" de "contratacao:<cargo>".
 -- ============================================================================
 
 -- ---------------------------------------------------------------- 1. fecha
-drop policy if exists negocios_atualiza_proprio on public.negocios;
+revoke insert on public.funcionarios_contratados from authenticated;
 drop policy if exists funcionarios_insere_propria on public.funcionarios_contratados;
 drop policy if exists trabalhos_insere_propria on public.trabalhos_aceitos;
 drop policy if exists nos_insere_propria on public.nos_desbloqueados;
+drop policy if exists negocios_atualiza_proprio on public.negocios;
 
 -- ------------------------------------------------------------- 2. contratos
 create table public.contratos_concluidos (
@@ -96,6 +104,9 @@ begin
     return;
   end if;
 
+  -- rótulo do ledger de auditoria (0031); local à transação
+  perform set_config('gamehub.origem', 'contrato:' || p_contrato_id, true);
+
   update public.negocios n
   set xp            = n.xp + p_xp,
       nivel         = public.nivel_por_xp(n.xp + p_xp),
@@ -156,6 +167,9 @@ begin
   if p_custo < 0 or v_moeda < p_custo then
     raise exception 'saldo_insuficiente';
   end if;
+
+  -- rótulo do ledger de auditoria (0031); local à transação
+  perform set_config('gamehub.origem', 'contratacao:' || p_cargo_id, true);
 
   update public.negocios
   set moeda_virtual = moeda_virtual - p_custo

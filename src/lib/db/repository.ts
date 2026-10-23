@@ -4,8 +4,10 @@ import type {
   BairroResumo,
   BenchmarkBairro,
   CapituloEntregue,
+  ClienteAdmin,
   ConviteResgatado,
   DestaqueBairro,
+  DocumentoGerado,
   Endereco,
   EscopoMapa,
   EventoGlobal,
@@ -24,6 +26,7 @@ import type {
   ProgressoEventoGlobal,
   Sede,
   SolicitacaoContato,
+  SolicitacaoServico,
   TrabalhoAceito,
   Usuario,
 } from "./types";
@@ -35,6 +38,13 @@ import type {
  * Ver docs/ARQUITETURA-MULTITENANT.md
  */
 export interface GameRepository {
+  /**
+   * Round trip mais barato possível contra o banco — usado só pelo
+   * healthcheck (`src/app/api/health/route.ts`) para distinguir "processo no
+   * ar" de "processo no ar mas banco fora". Nunca lança: devolve `false` no
+   * lugar. Ver `deploy/deploy.sh` (GH-OPS).
+   */
+  pingDb(): Promise<boolean>;
   /** ---- Geografia (global) ---- */
   lerMapa(): Promise<Mapa>;
   /**
@@ -78,6 +88,15 @@ export interface GameRepository {
    * Concorrência é resolvida no adapter (advisory lock no Postgres).
    */
   criarNegocio(dados: NovoNegocio): Promise<Negocio>;
+  /**
+   * Compensação de cadastro que falhou no meio (GH-SEC-04) — nunca para
+   * excluir uma conta em uso. Só é seguro chamar logo após `criarNegocio`,
+   * antes de qualquer atividade real: tabelas com histórico
+   * (`progresso_eventos_globais`, `solicitacoes_servico`) não têm
+   * `on delete cascade` de propósito e bloqueariam a exclusão de um tenant
+   * que já tivesse dado esses passos.
+   */
+  excluirNegocio(tenantId: string): Promise<void>;
   lerNegocio(tenantId: string): Promise<Negocio | null>;
   /** Todos os negócios com `perfilPublico = true` (GH-GROW-01) — para o
    *  `sitemap.xml` dinâmico. Só campos já públicos por design (mesma RLS
@@ -345,8 +364,8 @@ export interface GameRepository {
    *  Não é por tenant: é o mesmo "cartaz" para todo mundo. */
   listarEventosGlobais(): Promise<EventoGlobal[]>;
   /** Cria o evento. Sem validação de negócio aqui — quem chama (a Server
-   *  Action) já checou `souAdmin` e `janelaValida`; o `check` da migration é
-   *  a garantia real (fim > início, meta > 0). */
+   *  Action) já checou `sessao.role === "admin"` e `janelaValida`; o `check`
+   *  da migration é a garantia real (fim > início, meta > 0). */
   criarEventoGlobal(evento: Omit<EventoGlobal, "criadoEm">): Promise<EventoGlobal>;
   listarProgressoEventos(tenantId: string): Promise<ProgressoEventoGlobal[]>;
   /**
@@ -361,6 +380,50 @@ export interface GameRepository {
     tenantId: string,
     eventoKey: string,
   ): Promise<ProgressoEventoGlobal[]>;
+
+  /** ---- Solicitações de serviço (labdatadev, ver documentos/ecossistema/) ---- */
+  /** Cria uma solicitação com status inicial `recebida`. Sem validação de
+   *  negócio aqui — a Server Action já validou tipo/título/descrição; o
+   *  `check` da migration é a garantia real dos valores de `tipo`. */
+  criarSolicitacao(input: NovaSolicitacao): Promise<SolicitacaoServico>;
+  /** Só as solicitações DESTE tenant (dado privado do cliente). */
+  listarSolicitacoesDoTenant(tenantId: string): Promise<SolicitacaoServico[]>;
+  /** Todas as solicitações, de todos os tenants — só para o painel admin
+   *  (a Server Action checa `sessao.role === "admin"` antes de chamar). */
+  listarTodasSolicitacoes(): Promise<SolicitacaoServico[]>;
+  /** Muda o status de uma solicitação (fluxo de atendimento, só admin). */
+  atualizarStatusSolicitacao(id: string, status: string): Promise<SolicitacaoServico>;
+
+  /** ---- Admin cross-tenant (painel `/admin/clientes`) ---- */
+  /**
+   * Todos os negócios (empresas-clientes) com onboarding + assinaturas —
+   * uma chamada, não N+1 (mesma regra de `vizinhos_do_tenant`/
+   * `lerMapaView`). Só para o painel admin; a Server Action checa
+   * `sessao.role === "admin"` antes de chamar. No file-adapter,
+   * `assinaturas` vem sempre `[]` — billing só existe no driver Supabase.
+   */
+  listarClientesAdmin(): Promise<ClienteAdmin[]>;
+
+  /** ---- Documentação de negócio gerada por IA (GH-DOC-01) ---- */
+  /**
+   * Enfileira uma rodada de geração para o tenant — idempotente na RPC
+   * (`enfileirar_geracao_documento`): não duplica item já
+   * pendente/processando, e não reenfileira se `hash` bate com a última
+   * geração concluída. `contexto` é a "ficha" (markdown), ver
+   * `features/documentos-gerados/contexto.ts`. No file-adapter é no-op —
+   * esta esteira depende do motor headless rodando contra o Postgres real.
+   */
+  enfileirarGeracaoDocumento(tenantId: string, contexto: string, hash: string): Promise<void>;
+  /** Documentos já entregues a este tenant, mais recente primeiro. */
+  listarMeusDocumentos(tenantId: string): Promise<DocumentoGerado[]>;
+}
+
+/** Entrada de `criarSolicitacao` — o servidor deriva id/status/datas. */
+export interface NovaSolicitacao {
+  tenantId: string;
+  tipo: string;
+  titulo: string;
+  descricao: string;
 }
 
 export interface DeltaProgresso {
@@ -386,12 +449,17 @@ export interface NovoNegocio {
   xpInicial: number;
   moedaVirtual: number;
   /** valores iniciais dos 5 eixos, calculados pelo onboarding a partir das
-   *  10 respostas (features/onboarding/scoring.ts) */
+   *  respostas do onboarding (features/onboarding/scoring.ts) */
   atributosIniciais: Negocio["atributos"];
   /** Opt-out do perfil público, decidido no formulário de cadastro (GH-GROW-01). */
   perfilPublico: boolean;
   /** Versão da política de privacidade aceita no cadastro (GH-OPS-04). */
   consentimentoVersao: string;
+  /** CEP bruto (8 dígitos), quando o cadastro resolveu cidade/bairro por ele
+   *  (`lib/localizacao/cep.ts`). Dado **privado** — nunca exposto em
+   *  `negocios_publico` nem devolvido pelo adapter; serve só para auditoria/
+   *  suporte. `undefined` quando o usuário preencheu cidade/bairro manualmente. */
+  cep?: string;
 }
 
 export type { Endereco };

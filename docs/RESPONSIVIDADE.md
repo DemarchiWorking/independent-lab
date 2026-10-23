@@ -26,6 +26,24 @@ Em vez de "encolher a cena", o shell tem dois modos:
 Resultado medido: no HD (1366×768) e no Full HD a cena cabe **sem rolagem de
 página**; no tablet em pé e no celular a página rola e nada fica sobreposto.
 
+### Herdado da produção (preservado na integração)
+
+A branch de produção já havia corrigido bugs reais de celular. O layout deste
+documento substituiu a moldura dela, mas **estes comportamentos foram
+mantidos** (cada um nasceu de um achado ao vivo):
+
+- **Medição ao vivo do HUD** (`ResizeObserver` → variável CSS `--hud-h`): no
+  modo cena, o palco e o menu lateral começam abaixo do HUD, mesmo quando o
+  texto dos cartões quebra linha.
+- **Navegação inferior auto-ocultável**: some após 3,5 s parada e volta no
+  primeiro toque/clique/tecla (queixa: "a barra tampa os botões").
+- **Reset de rolagem da moldura** (`overflow-hidden` rolava por foco) e, no modo
+  coluna, **rolagem da página ao topo da moldura ao trocar de aba**.
+- **Menu lateral rolável** abaixo do HUD (11 módulos não cabem em molduras baixas)
+  e item do **estúdio labdatadev** (liberado por degrau).
+- Correções internas de `MapaScreen` e `EquipeIaScreen` (piso de altura do mapa,
+  lista de cargos visível) — independentes da moldura.
+
 ### Decisões que valem lembrar
 
 - **Breakpoint em `lg` (1024 px), não `md`.** Em 768 px a cena de HUD + menu
@@ -33,9 +51,9 @@ página**; no tablet em pé e no celular a página rola e nada fica sobreposto.
   maiores.
 - **Altura por `dvh`, não `vh`.** No celular a barra do navegador muda a altura
   útil; `vh` cortava o rodapé.
-- **A carta de história é overlay**, não um bloco acima do jogo. Inline ela
-  empurrava a cena para fora da primeira tela. Agora rola sozinha quando é
-  maior que a janela (`CapituloGate`).
+- **A carta de história é overlay fixo** (`CapituloCard`, correção que a
+  produção já tinha feito): inline ela empurrava a cena para fora da primeira
+  tela. O `CapituloGate` busca a próxima carta ao fechar a atual.
 - **Atalhos flutuantes não existem no modo coluna.** Cobriam botões de ação do
   conteúdo (ex.: "Desbloquear").
 - **Hub com rolagem interna no modo cena** (`lg:overflow-y-auto` com
@@ -63,7 +81,7 @@ O Canvas (`render-canvas.ts`) tem os próprios degraus, independentes do shell:
 
 ## 4. Matriz de verificação
 
-Verificado em 23/10/2026 (Next dev + emulação de viewport):
+Verificado em 23/10/2026 (Next dev + emulação de viewport). O **hub** foi reverificado em 375, 768, 1024, 1366 e 1920 px **depois** da integração com a branch de produção; as demais telas foram vistas em 375 px antes dela, com o mesmo layout:
 
 | Tela | 375 | 768 | 1024 | 1366 | 1920 |
 |---|:-:|:-:|:-:|:-:|:-:|

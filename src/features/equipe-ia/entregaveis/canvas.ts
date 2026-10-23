@@ -50,6 +50,46 @@ const ATIVIDADE_POR_GARGALO: Record<PerfilNegocio["respostas"]["gargalo"], strin
   "sem-processo": "Documentar o atendimento e a entrega em passo a passo que qualquer pessoa repita",
 };
 
+const LICITACAO_TEXTO: Partial<Record<PerfilNegocio["respostas"]["licitacaoPublico"], string>> = {
+  "vende-regularmente":
+    "Você já vende regularmente ao poder público — priorize ampliar o número de órgãos atendidos",
+  "ja-vendeu":
+    "Você já vendeu ao poder público, mas sem regularidade — falta uma rotina semanal de acompanhamento de editais",
+  "tem-interesse":
+    "Você tem interesse em vender ao poder público — comece pela habilitação (certidões em dia) e por um edital pequeno",
+};
+
+const MODELO_RECEITA_TEXTO: Record<PerfilNegocio["respostas"]["modeloReceita"], string> = {
+  "projeto-unico": "projeto único (receita irregular, exige captar sempre de novo)",
+  "assinatura-recorrente": "assinatura recorrente (previsível)",
+  "comissao-resultado": "comissão sobre resultado (depende do cliente vender)",
+  "venda-produto": "venda de produto (margem e giro de estoque)",
+  combinacao: "combinação de modelos",
+};
+
+const TICKET_TEXTO: Record<PerfilNegocio["respostas"]["ticketMedio"], string> = {
+  "ate-500": "até R$ 500",
+  "500-2000": "R$ 500 a R$ 2.000",
+  "2000-10000": "R$ 2.000 a R$ 10.000",
+  "10000-50000": "R$ 10.000 a R$ 50.000",
+  "acima-50000": "acima de R$ 50.000",
+  "nao-sei": "não informado",
+};
+
+/** Texto livre do cadastro entra no documento: apara e limita (o cadastro já
+ *  trunca no servidor; aqui é a segunda camada, porque este módulo também
+ *  recebe perfis vindos de seed e de testes). */
+function livre(texto: string | undefined, max = 240): string {
+  const t = (texto ?? "").replace(/\s+/g, " ").trim();
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+}
+
+/** O dono respondeu de verdade? ("não sei", "ainda não tenho" e afins contam como vazio.) */
+function respondido(texto: string | undefined): boolean {
+  const t = livre(texto).toLowerCase();
+  return t.length >= 8 && !/^(n[aã]o sei|ainda n[aã]o tenho|nenhum|n\/a|-+)\.?$/.test(t);
+}
+
 interface Avaliacao {
   nivel: Maturidade;
   evidencia: string;
@@ -74,9 +114,13 @@ export function maturidadeDosBlocos(
   const grande = respostas.equipe === "6-15" || respostas.equipe === "16-30" || respostas.equipe === "30+";
 
   const clientes: Avaliacao =
-    canais.includes("portais") || canais.includes("ads")
-      ? { nivel: "definido", evidencia: "Você já capta clientes por portais ou anúncios, o que exige saber quem compra." }
-      : { nivel: "parcial", evidencia: "O segmento está declarado, mas o cliente prioritário ainda não foi escolhido." };
+    respostas.clientesPagantes === "nenhum" && canais.length === 0
+      ? { nivel: "a-definir", evidencia: "Você declarou não ter clientes pagantes nem canal de captação — quem compra ainda não foi identificado." }
+      : respostas.clientesPagantes === "6-20" ||
+          respostas.clientesPagantes === "21-50" ||
+          respostas.clientesPagantes === "mais-50"
+        ? { nivel: "definido", evidencia: `Você já tem clientes pagantes (faixa ${respostas.clientesPagantes}), o que permite descrever quem compra.` }
+        : { nivel: "parcial", evidencia: "O segmento está declarado, mas o cliente prioritário ainda não foi escolhido." };
 
   const base: Maturidade =
     respostas.presencaDigital === "site-portais"
@@ -84,14 +128,18 @@ export function maturidadeDosBlocos(
       : respostas.presencaDigital === "nada"
         ? "a-definir"
         : "parcial";
+  const temProposta = respondido(respostas.problemaPrincipal) && respondido(respostas.diferencial);
+  const comProposta = temProposta ? ajustar(base, 1) : base;
   const proposta: Avaliacao = {
-    nivel: respostas.gargalo === "imagem-fraca" ? ajustar(base, -1) : base,
+    nivel: respostas.gargalo === "imagem-fraca" ? ajustar(comProposta, -1) : comProposta,
     evidencia:
       respostas.gargalo === "imagem-fraca"
         ? "Você declarou que a presença digital está abaixo do que o negócio entrega."
-        : respostas.presencaDigital === "nada"
-          ? "Você declarou não ter presença digital — a proposta ainda não está publicada."
-          : "Há presença digital, mas a proposta de valor ainda não foi validada com clientes.",
+        : temProposta
+          ? "Você descreveu o problema que resolve e o seu diferencial — falta validar com clientes."
+          : respostas.presencaDigital === "nada"
+            ? "Você declarou não ter presença digital — a proposta ainda não está publicada."
+            : "Há presença digital, mas a proposta de valor ainda não foi validada com clientes.",
   };
 
   const canaisAval: Avaliacao =
@@ -111,7 +159,10 @@ export function maturidadeDosBlocos(
   const receitas: Avaliacao =
     respostas.gargalo === "sem-dados"
       ? { nivel: "a-definir", evidencia: "Você declarou não saber de onde vem o resultado." }
-      : { nivel: "parcial", evidencia: "As fontes de receita são conhecidas, mas a margem por fonte ainda não é medida." };
+      : respostas.ticketMedio !== "nao-sei" &&
+          (respostas.modeloReceita === "assinatura-recorrente" || respostas.modeloReceita === "combinacao")
+        ? { nivel: "definido", evidencia: "Você declarou o modelo de receita e o ticket médio — a base para medir margem existe." }
+        : { nivel: "parcial", evidencia: "As fontes de receita são conhecidas, mas a margem por fonte ainda não é medida." };
 
   const recursos: Avaliacao =
     respostas.equipe === "so-eu"
@@ -123,7 +174,11 @@ export function maturidadeDosBlocos(
       ? { nivel: "a-definir", evidencia: "Você declarou que a equipe não tem processo definido." }
       : respostas.gargalo === "manual"
         ? { nivel: "parcial", evidencia: "Você declarou muito trabalho manual e planilha." }
-        : { nivel: "definido", evidencia: "Nenhum gargalo operacional foi declarado." };
+        : respostas.gargalo === "perco-leads"
+          ? { nivel: "parcial", evidencia: "Você declarou perder contatos — a rotina de resposta ainda não está estruturada." }
+          : respostas.gargalo === "sem-dados"
+            ? { nivel: "parcial", evidencia: "Você declarou não medir de onde vem o resultado — falta rotina de registro." }
+            : { nivel: "definido", evidencia: "Nenhum gargalo operacional foi declarado." };
 
   const parcerias: Avaliacao =
     canais.includes("indicacao") && canais.includes("portais")
@@ -161,12 +216,27 @@ export function gerarCanvas(perfil: PerfilNegocio): CanvasNegocio {
       ...(respostas.captacao.includes("portais")
         ? ["Você já atende compradores que usam portais — formalize esse segmento como prioridade"]
         : []),
+      ...(LICITACAO_TEXTO[respostas.licitacaoPublico]
+        ? [LICITACAO_TEXTO[respostas.licitacaoPublico]!]
+        : []),
     ],
     proposta: [
+      ...(respondido(respostas.problemaPrincipal)
+        ? [`Problema que resolvemos (nas suas palavras): ${livre(respostas.problemaPrincipal)}`]
+        : ["Descreva em uma frase o problema que você resolve — é o ponto de partida deste quadro"]),
+      ...(respondido(respostas.diferencial)
+        ? [`Diferencial declarado: ${livre(respostas.diferencial)}`]
+        : []),
+      ...(respondido(respostas.provaSocial)
+        ? [`Prova social disponível: ${livre(respostas.provaSocial)}`]
+        : ["Sem prova social registrada — colete 3 depoimentos ou casos antes de investir em divulgação"]),
       ...(nivel2 ? c.propostaValor : c.propostaValor.slice(0, 2)),
       `Foco declarado para os próximos 90 dias: ${OBJETIVO_TEXTO[respostas.objetivo]}`,
       ...(respostas.gargalo === "imagem-fraca"
         ? ["Ajuste necessário: a presença digital ainda não mostra o que o negócio entrega"]
+        : []),
+      ...(nivel2 && respondido(respostas.concorrentesConhecidos)
+        ? [`Concorrentes que você já conhece: ${livre(respostas.concorrentesConhecidos)} — compare preço, prazo e prova com cada um`]
         : []),
       ...(nivel2 ? [`Diferencial a construir: ${v.argumentoChave}`] : []),
     ],
@@ -189,6 +259,10 @@ export function gerarCanvas(perfil: PerfilNegocio): CanvasNegocio {
       ...(nivel2 ? c.relacionamento : c.relacionamento.slice(0, 1)),
     ],
     receitas: [
+      `Modelo declarado: ${MODELO_RECEITA_TEXTO[respostas.modeloReceita]}`,
+      ...(respostas.ticketMedio !== "nao-sei"
+        ? [`Ticket médio declarado: ${TICKET_TEXTO[respostas.ticketMedio]}`]
+        : ["Ticket médio não informado — calcule antes de definir metas de venda"]),
       ...(nivel2 ? v.receitas : v.receitas.slice(0, 2)),
       ...(respostas.gargalo === "sem-dados"
         ? ["Medir a receita por fonte: hoje não está claro de onde vem o resultado"]
@@ -316,7 +390,11 @@ export function gerarCanvas(perfil: PerfilNegocio): CanvasNegocio {
     resumoExecutivo: [
       {
         rotulo: "O negócio",
-        texto: `${perfil.nomeNegocio} atua com ${v.oQueVende} em ${perfil.bairro}, ${perfil.cidade}.`,
+        texto:
+          `${perfil.nomeNegocio} atua com ${v.oQueVende} em ${perfil.bairro}, ${perfil.cidade}.` +
+          (respondido(respostas.problemaPrincipal)
+            ? ` Resolve: ${livre(respostas.problemaPrincipal)}`
+            : ""),
       },
       {
         rotulo: "Para quem vende",

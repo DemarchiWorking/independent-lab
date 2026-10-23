@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { screenVariants, springSnappy, pressable } from "@/lib/motion";
@@ -9,7 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { cadastrar, type EstadoForm } from "@/features/auth/actions";
 import { perguntas } from "./perguntas";
 
-const TOTAL = perguntas.length + 1; // 10 perguntas + tela de conta
+const TOTAL = perguntas.length + 1; // perguntas.length (19) + tela de conta
 
 interface ContextoConvite {
   token: string;
@@ -18,7 +18,7 @@ interface ContextoConvite {
   bairroNome: string;
 }
 
-/** Cadastro em passos: 10 perguntas + conta. Uma pergunta por tela, com
+/** Cadastro em passos: perguntas.ts (19 perguntas) + conta. Uma pergunta por tela, com
  *  transição animada — parece jogo, não formulário.
  *
  *  `convite` (GH-GROW-02, opcional): pré-preenche cidade/bairro com o do
@@ -42,13 +42,74 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
 
   const valorAtual = pergunta ? valores[pergunta.campo] : undefined;
   const respondida = pergunta
-    ? pergunta.tipo === "multipla"
-      ? Array.isArray(valorAtual) && valorAtual.length > 0
-      : typeof valorAtual === "string" && valorAtual.trim().length > 0
+    ? pergunta.campo === "cidade"
+      ? true // sem cidade escolhida/CEP preenchido, cai no padrão ao avançar
+      : pergunta.tipo === "multipla"
+        ? Array.isArray(valorAtual) && valorAtual.length > 0
+        : typeof valorAtual === "string" && valorAtual.trim().length > 0
     : true;
 
   const definir = (campo: string, valor: string | string[]) =>
     setValores((v) => ({ ...v, [campo]: valor }));
+
+  // CEP (GH-CEP-01): campo obrigatório na pergunta "cidade" — autofill de
+  // cidade/bairro é o atalho, cidade/bairro continuam preenchíveis à mão
+  // (dropdown/texto abaixo) quando a ViaCEP não resolve, mas o CEP em si
+  // precisa estar completo (8 dígitos) para avançar. Debounce de 400ms evita
+  // bater na rota a cada tecla; dispara só com os 8 dígitos completos.
+  const [cepInput, setCepInput] = useState("");
+  const [statusCep, setStatusCep] = useState<
+    "idle" | "buscando" | "encontrado" | "fora-do-piloto" | "nao-encontrado"
+  >("idle");
+
+  /** Máscara `99999-999` — só dígitos, hífen inserido sozinho após o 5º. */
+  const mascararCep = (valor: string): string => {
+    const digitos = valor.replace(/\D/g, "").slice(0, 8);
+    return digitos.length > 5 ? `${digitos.slice(0, 5)}-${digitos.slice(5)}` : digitos;
+  };
+
+  useEffect(() => {
+    const digitos = cepInput.replace(/\D/g, "");
+    if (digitos.length !== 8) {
+      setStatusCep("idle");
+      return;
+    }
+    // Grava o CEP cru assim que os 8 dígitos existem — independe da ViaCEP
+    // resolver ou não (rede fora do ar, CEP genuíno sem match na base
+    // deles). Sendo campo obrigatório agora, precisa viajar no submit mesmo
+    // quando cidade/bairro acabam preenchidos à mão pelo dropdown abaixo.
+    setValores((v) => ({ ...v, cep: digitos }));
+
+    const controlador = new AbortController();
+    setStatusCep("buscando");
+
+    const id = setTimeout(async () => {
+      try {
+        const resposta = await fetch(`/api/localizacao/cep/${digitos}`, {
+          signal: controlador.signal,
+        });
+        const dados = await resposta.json();
+        if (dados.encontrado) {
+          setValores((v) => ({
+            ...v,
+            cidade: dados.cidade,
+            bairro: dados.bairro,
+            cep: dados.cep,
+          }));
+          setStatusCep(dados.cidadeReconhecida ? "encontrado" : "fora-do-piloto");
+        } else {
+          setStatusCep("nao-encontrado");
+        }
+      } catch {
+        if (!controlador.signal.aborted) setStatusCep("nao-encontrado");
+      }
+    }, 400);
+
+    return () => {
+      clearTimeout(id);
+      controlador.abort();
+    };
+  }, [cepInput]);
 
   const alternar = (campo: string, valor: string) => {
     const atual = Array.isArray(valores[campo])
@@ -60,6 +121,30 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
         ? atual.filter((x) => x !== valor)
         : [...atual, valor],
     );
+  };
+
+  // CEP com padrão de segurança para apresentação ao vivo: se o campo ficar
+  // incompleto/vazio quando o apresentador avançar, cai para o CEP/bairro
+  // padrão (26700-000, Centro, Mendes — mesmo lote usado pelo seed de demo)
+  // em vez de travar o cadastro na frente da banca.
+  const CEP_PADRAO = "26700000";
+  const CIDADE_PADRAO = "Mendes";
+  const BAIRRO_PADRAO = "Centro";
+  const cepCompleto = cepInput.replace(/\D/g, "").length === 8;
+  const podeAvancar = respondida;
+
+  const avancar = () => {
+    if (pergunta?.campo === "cidade" && !cepCompleto) {
+      setCepInput(mascararCep(CEP_PADRAO));
+      setValores((v) => ({
+        ...v,
+        cep: CEP_PADRAO,
+        cidade: CIDADE_PADRAO,
+        bairro: BAIRRO_PADRAO,
+      }));
+      setStatusCep("encontrado");
+    }
+    setPasso((p) => p + 1);
   };
 
   return (
@@ -108,6 +193,48 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
                   <p className="mt-1 text-xs text-[#5b6b86]">{pergunta.ajuda}</p>
                 ) : null}
 
+                {pergunta.campo === "cidade" ? (
+                  <div className="mt-3">
+                    <label className="mb-1 block text-[11px] font-bold text-muted">
+                      CEP
+                    </label>
+                    <input
+                      inputMode="numeric"
+                      value={cepInput}
+                      onChange={(e) => setCepInput(mascararCep(e.target.value))}
+                      placeholder="00000-000 — preenche cidade e bairro sozinho (opcional)"
+                      maxLength={9}
+                      className="w-full rounded-md border-2 border-[#dbe3f0] bg-[#f7f9fc] px-3 py-2.5 text-sm outline-none focus:border-teal"
+                    />
+                    {cepInput.length > 0 && !cepCompleto && statusCep === "idle" ? (
+                      <p className="mt-1.5 text-[11px] font-bold text-[#5b6b86]">
+                        Faltam {8 - cepInput.replace(/\D/g, "").length} dígitos.
+                      </p>
+                    ) : null}
+                    {statusCep === "buscando" ? (
+                      <p className="mt-1.5 text-[11px] font-bold text-muted">
+                        Buscando endereço…
+                      </p>
+                    ) : null}
+                    {statusCep === "encontrado" ? (
+                      <p className="mt-1.5 text-[11px] font-bold text-teal">
+                        ✓ {valores.bairro}, {valores.cidade}
+                      </p>
+                    ) : null}
+                    {statusCep === "fora-do-piloto" ? (
+                      <p className="mt-1.5 text-[11px] font-bold text-orange">
+                        ✓ {valores.bairro}, {valores.cidade} — fora da área
+                        piloto, mas seu negócio entra mesmo assim.
+                      </p>
+                    ) : null}
+                    {statusCep === "nao-encontrado" ? (
+                      <p className="mt-1.5 text-[11px] font-bold text-coral-dark">
+                        CEP não encontrado — escolha a cidade abaixo.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <div className="mt-4">
                   {pergunta.tipo === "texto" ? (
                     <input
@@ -115,6 +242,7 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
                       value={(valorAtual as string) ?? ""}
                       onChange={(e) => definir(pergunta.campo, e.target.value)}
                       placeholder={pergunta.placeholder}
+                      maxLength={pergunta.maxLength}
                       className="w-full rounded-md border-2 border-[#dbe3f0] bg-[#f7f9fc] px-3 py-2.5 text-sm outline-none focus:border-teal"
                     />
                   ) : (
@@ -269,8 +397,8 @@ export function Wizard({ convite }: { convite?: ContextoConvite | null }) {
           </ActionButton>
         ) : (
           <ActionButton
-            onClick={() => respondida && setPasso((p) => p + 1)}
-            disabled={!respondida}
+            onClick={() => podeAvancar && avancar()}
+            disabled={!podeAvancar}
             icon="arrow"
           >
             Continuar

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { screenVariants, pressable, listContainer, listItem } from "@/lib/motion";
 import { IsoRoom } from "@/components/ui/IsoRoom";
@@ -22,6 +22,7 @@ import { FinancasScreen } from "@/features/financas/FinancasScreen";
 import { CelularPanel } from "./CelularPanel";
 import { InventarioPanel } from "./InventarioPanel";
 import { LateralMenu, type LateralItem } from "@/components/ui/LateralMenu";
+import { DEGRAU_MINIMO_LABDATADEV } from "@/features/labdatadev/tipos";
 import { ContratosScreen } from "@/features/contratos/ContratosScreen";
 import type { SituacaoContrato } from "@/features/contratos/tipos";
 import { RecompensaProvider } from "@/features/gamificacao/RecompensaContext";
@@ -55,7 +56,7 @@ export type View = CoreView | ModuleKey;
 
 /** Chaves do menu lateral: as views do shell + entradas que só navegam para
  *  uma rota própria (o World). "world" nunca vira `view` — tem href. */
-type LateralKey = View | "world";
+type LateralKey = View | "world" | "labdatadev";
 
 const NAV_BASE: ReadonlyArray<NavItem<CoreView>> = [
   { key: "hub", label: "Hub", icon: "grid" },
@@ -182,6 +183,78 @@ export function GameShell({
   const [celular, setCelular] = useState(false);
   const [inventario, setInventario] = useState(false);
 
+  // Altura REAL do HudBar, medida ao vivo (achado de produção 2026-08-25):
+  // em telas estreitas o texto dos cartões quebra linha, o HUD cresce, e um
+  // valor fixo deixava lição/saldo cobrindo o conteúdo. No modo cena (≥1024px,
+  // onde o HUD é sobreposto) o palco e o menu lateral começam abaixo dele via
+  // a variável CSS `--hud-h`; 96px é só o palpite até o primeiro observer.
+  const hudRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [hudHeight, setHudHeight] = useState(96);
+  useEffect(() => {
+    const el = hudRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      const altura = el.getBoundingClientRect().height;
+      if (altura) setHudHeight(Math.ceil(altura));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Achado de produção 2026-08-25: a moldura é `overflow-hidden`, e o
+  // navegador rola até um elemento focado mesmo assim — ela ficava com
+  // scrollLeft/scrollTop não-zero. O listener pega qualquer gatilho (trocar de
+  // aba, abrir modal), presente ou futuro.
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const resetar = () => {
+      if (el.scrollLeft !== 0 || el.scrollTop !== 0) el.scrollTo({ left: 0, top: 0 });
+    };
+    el.addEventListener("scroll", resetar);
+    resetar();
+    return () => el.removeEventListener("scroll", resetar);
+  }, [view]);
+
+  // No modo coluna (<1024px) a PÁGINA rola, então trocar de aba mantinha a
+  // rolagem da tela anterior e o jogador caía no meio do conteúdo novo.
+  const primeiraRenderizacao = useRef(true);
+  useEffect(() => {
+    if (primeiraRenderizacao.current) {
+      primeiraRenderizacao.current = false;
+      return;
+    }
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      boxRef.current?.scrollIntoView({ block: "start" });
+    }
+  }, [view]);
+
+  // Feedback direto de produção: a barra inferior "tampa diversos botões". Ela
+  // some sozinha depois de 3,5s parada e volta no primeiro toque, clique ou
+  // tecla na moldura — nunca fica escondida de vez.
+  const [navVisivel, setNavVisivel] = useState(true);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const reiniciarTimer = () => {
+      setNavVisivel(true);
+      clearTimeout(timer);
+      timer = setTimeout(() => setNavVisivel(false), 3500);
+    };
+    reiniciarTimer();
+    el.addEventListener("pointerdown", reiniciarTimer);
+    el.addEventListener("pointermove", reiniciarTimer);
+    el.addEventListener("keydown", reiniciarTimer);
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener("pointerdown", reiniciarTimer);
+      el.removeEventListener("pointermove", reiniciarTimer);
+      el.removeEventListener("keydown", reiniciarTimer);
+    };
+  }, [view]);
+
   const demo = hud === undefined;
   const dadosHud = hud ?? HUD_DEMO;
   const temMapa = Boolean(mapa && endereco && meuTenantId);
@@ -193,6 +266,11 @@ export function GameShell({
     atributos !== undefined;
   const temMercado = Boolean(benchmark && atributos && endereco);
   const temContratos = contratos !== undefined;
+  // Computador do escritório (labdatadev): liberado a partir do degrau mínimo
+  // — "depois do diagnóstico, você começa a construir". Gate espelhado na rota
+  // e na Server Action (fonte de verdade).
+  const temLabdatadev =
+    degrauAtual !== undefined && degrauAtual >= DEGRAU_MINIMO_LABDATADEV;
   const navItems = [
     NAV_BASE[0],
     ...(temContratos ? [NAV_CONTRATOS] : []),
@@ -220,6 +298,15 @@ export function GameShell({
       destaque: true,
     },
     { key: "sede", label: "Sede (resumo)", icon: "cube", disponivel: temSede },
+    // Computador do escritório: o estúdio labdatadev, onde o cliente pede
+    // site/app/automação e novas funcionalidades (rota própria /labdatadev).
+    {
+      key: "labdatadev",
+      label: "labdatadev · Estúdio",
+      icon: "monitor",
+      href: "/labdatadev",
+      disponivel: temLabdatadev,
+    },
     { key: "parcerias", label: "Parcerias", icon: "network" },
     { key: "eventos", label: "Eventos", icon: "calendar" },
     { key: "mapa", label: "Mapa da região", icon: "globe", disponivel: temMapa },
@@ -247,12 +334,16 @@ export function GameShell({
             ligada à janela (520–900px) em vez de proporção fixa, que no HD
             estourava a tela e no Full HD sobrava vazio.
       */}
-      <div className="relative flex min-h-[calc(100dvh-4.5rem)] flex-col overflow-hidden rounded-[14px] border-[3px] border-[#05304a] shadow-[0_0_0_4px_#041018,0_18px_50px_rgba(0,0,0,.55)] lg:block lg:h-[clamp(520px,calc(100dvh-6rem),900px)] lg:min-h-0">
+      <div className="relative flex min-h-[calc(100dvh-4.5rem)] flex-col overflow-hidden rounded-[14px] border-[3px] border-[#05304a] shadow-[0_0_0_4px_#041018,0_18px_50px_rgba(0,0,0,.55)] lg:block lg:h-[clamp(520px,calc(100dvh-6rem),900px)] lg:min-h-0"
+        ref={boxRef}
+        style={{ "--hud-h": `${hudHeight}px` } as React.CSSProperties}
+      >
        <RecompensaProvider demo={demo}>
         <div className="absolute inset-0">
           <IsoRoom />
         </div>
         <HudBar
+          ref={hudRef}
           data={dadosHud}
           acoes={
             demo
@@ -267,7 +358,7 @@ export function GameShell({
           }
         />
 
-        <div className="relative z-10 flex-1 px-2 pb-24 pt-2 max-lg:order-2 lg:absolute lg:inset-0 lg:px-0 lg:pb-20 lg:pl-14 lg:pr-4 lg:pt-24">
+        <div className="relative z-10 flex-1 px-2 pb-24 pt-2 max-lg:order-2 lg:absolute lg:inset-0 lg:px-0 lg:pb-20 lg:pl-14 lg:pr-4 lg:pt-[calc(var(--hud-h)+12px)]">
           <AnimatePresence mode="wait">
             <motion.section
               key={view}
@@ -369,7 +460,8 @@ export function GameShell({
           items={lateralItems}
           current={view}
           onSelect={(k) => {
-            if (k !== "world") go(k); // "world" navega por href, não troca de aba
+            // "world" e "labdatadev" navegam por href (rota própria), não trocam de aba
+            if (k !== "world" && k !== "labdatadev") go(k);
           }}
         />
 
@@ -474,7 +566,7 @@ export function GameShell({
           nosDesbloqueados={nosDesbloqueados}
         />
 
-        <Nav items={navItems} current={core} onChange={go} />
+        <Nav items={navItems} current={core} onChange={go} visivel={navVisivel} />
 
         <RibbonPanel title="Módulos" open={drawer} onClose={() => setDrawer(false)}>
           <motion.div

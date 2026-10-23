@@ -3,6 +3,10 @@
 # Gerado por deploy/vps-setup.sh a partir deste template
 # (substitui {{DOMAIN}} e {{PORT}}). Não edite o arquivo final na VPS
 # diretamente — edite este template e rode o setup de novo.
+#
+# `limit_req zone=...` (GH-OPS M-11) usa as zonas definidas em
+# deploy/nginx-limits.conf.template, instalado em /etc/nginx/conf.d/ pelo
+# vps-setup.sh — sem esse arquivo presente, `nginx -t` falha aqui.
 # ============================================================================
 
 server {
@@ -13,7 +17,20 @@ server {
     # limita corpo de upload (formulários do wizard não precisam de mais que isso)
     client_max_body_size 5m;
 
+    # login/cadastro são os alvos naturais de força bruta/spam de conta —
+    # zona mais apertada antes da regra geral.
+    location ~ ^/(entrar|cadastro)$ {
+        limit_req zone=gamehub_auth burst=10 nodelay;
+        proxy_pass http://127.0.0.1:{{PORT}};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location / {
+        limit_req zone=gamehub_geral burst=40 nodelay;
         proxy_pass http://127.0.0.1:{{PORT}};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -25,7 +42,8 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    # assets do Next.js já vêm com hash no nome — cache agressivo é seguro
+    # assets do Next.js já vêm com hash no nome — cache agressivo é seguro,
+    # e sem `limit_req`: são dezenas de requisições por navegação normal.
     location /_next/static/ {
         proxy_pass http://127.0.0.1:{{PORT}};
         proxy_set_header Host $host;

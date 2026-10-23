@@ -1,0 +1,51 @@
+# ============================================================================
+# labdatadev-gamehub — overlay ESPECÍFICO desta VPS (labd.cloud): roteia o
+# Kong via Traefik em `api.gamehub.labd.cloud`, mesmo padrão exato do
+# overlay irmão em `../../docker-compose.labd-cloud.yml` (que roteia o app).
+#
+# Por que o Kong precisa de rota própria (achado de auditoria BMAD/NFR,
+# 2026-08-01, Épico 14): a presença ao vivo (`GH-MULTI-02/03`) abre um
+# WebSocket DIRETO do navegador pro Kong (`/realtime/v1/websocket`) — nunca
+# atravessa o Nginx do app. Sem esta rota, `0.0.0.0:${KONG_HTTP_PORT}` (ver
+# docker-compose.yml deste diretório) é o único jeito de alcançar o Kong de
+# fora, o que funciona mas não tem HTTPS nem domínio.
+#
+# ⚠️ Pré-requisito real, não hipotético: nesta VPS, HOJE (2026-08-01), **não
+# há nenhum container Traefik rodando** — a rede `traefik-public` existe
+# como referência externa, mas órfã (achado da validação de 1-click desta
+# mesma sessão). Aplicar este overlay não quebra nada (só adiciona rede+
+# labels ao Kong), mas NÃO produz HTTPS funcional até alguém subir o Traefik
+# do Company HQ (`/opt/company/docker-compose.yml`, serviço `traefik`) — uma
+# decisão que afeta toda a VPS compartilhada e não deve ser tomada
+# unilateralmente por este projeto. Até lá, use o acesso direto por
+# IP:porta (`docker-compose.yml` base).
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.labd-cloud.yml \
+#     up -d --wait
+# (chamado por deploy/supabase-up.sh quando invocado com --labd-cloud via
+# deploy/docker/setup.sh — ver esse script para o fluxo completo).
+# ============================================================================
+
+services:
+  kong:
+    networks:
+      - supabase-net
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.gamehub-api.rule=Host(`api.gamehub.labd.cloud`)"
+      - "traefik.http.routers.gamehub-api.entrypoints=websecure"
+      - "traefik.http.routers.gamehub-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.gamehub-api.loadbalancer.server.port=8000"
+      # Traefik já repassa `Upgrade`/`Connection` de WebSocket por padrão em
+      # routers HTTP — diferente do Nginx, não precisa de config extra pra
+      # `/realtime/v1/websocket` funcionar através dele.
+      - "traefik.http.routers.gamehub-api-http.rule=Host(`api.gamehub.labd.cloud`)"
+      - "traefik.http.routers.gamehub-api-http.entrypoints=web"
+      - "traefik.http.routers.gamehub-api-http.middlewares=redirect-to-https@file"
+
+networks:
+  traefik-public:
+    external: true

@@ -1,0 +1,72 @@
+# ============================================================================
+# labdatadev-gamehub — overlay ESPECÍFICO desta VPS (labd.cloud).
+#
+# Adiciona só o roteamento HTTPS público via Traefik (mesmo padrão exato de
+# /opt/v4mos e /opt/labdatadev — labels idênticas, rede `traefik-public`
+# externa já gerenciada pelo Company HQ). NÃO decide sozinho qual Supabase
+# usar — combine com UM dos dois:
+#
+#   A) Supabase PRÓPRIO deste app (já validado, ver docker-compose.supabase.yml):
+#        ./deploy/supabase-up.sh
+#        docker compose -f docker-compose.yml -f docker-compose.supabase.yml \
+#          -f docker-compose.labd-cloud.yml up -d --wait
+#
+#   B) Supabase COMPARTILHADO do Company HQ (decisão de arquitetura registrada
+#      em docs/architecture/DBA-ARQUITETURA-ESCALA-2026.md §2 — recomendada
+#      para produção de verdade nesta VPS espec fica, mas AINDA NÃO EXECUTADA:
+#      falta decidir isolamento de schema, `public` já é usado por
+#      v4mos-app/labdatadev-frontend no mesmo Postgres — ver nota no fim
+#      deste arquivo antes de escolher esta opção).
+#
+# Pré-requisito real antes de aplicar em produção: DNS de
+# `gamehub.labd.cloud` apontando para o IP desta VPS (Traefik só emite
+# certificado Let's Encrypt depois que o desafio HTTP-01 resolve pelo
+# domínio de verdade) — troque o `Host()` abaixo se usar outro subdomínio.
+# ============================================================================
+
+services:
+  nginx:
+    # Sem publicar porta de host aqui — Traefik já fala com este container
+    # pela rede `traefik-public` (nome de serviço), evitando um SEGUNDO
+    # ponto de entrada público além do Traefik. Some com a porta herdada do
+    # compose base (`ports:` do docker-compose.yml continua valendo se
+    # combinado — mantenha-a só para depuração local via SSH/túnel, nunca
+    # exposta 0.0.0.0 numa VPS com Traefik já cobrindo o domínio).
+    networks:
+      - gamehub-internal
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.gamehub.rule=Host(`gamehub.labd.cloud`)"
+      - "traefik.http.routers.gamehub.entrypoints=websecure"
+      - "traefik.http.routers.gamehub.tls.certresolver=letsencrypt"
+      - "traefik.http.services.gamehub.loadbalancer.server.port=80"
+      # redirect HTTP → HTTPS
+      - "traefik.http.routers.gamehub-http.rule=Host(`gamehub.labd.cloud`)"
+      - "traefik.http.routers.gamehub-http.entrypoints=web"
+      - "traefik.http.routers.gamehub-http.middlewares=redirect-to-https@file"
+
+networks:
+  traefik-public:
+    external: true
+
+# ----------------------------------------------------------------------------
+# Nota sobre a opção B (Supabase compartilhado do Company HQ) — NÃO decidir
+# sozinho, ler antes de escolher:
+#
+# `/opt/v4mos` e `/opt/labdatadev` já se conectam ao MESMO Postgres do
+# Company HQ (rede `supabase_default`) e presumivelmente já usam o schema
+# `public` para suas próprias tabelas. Aplicar as 32 migrations deste app
+# nesse mesmo `public` arriscaria colisão de nome de tabela/função com esses
+# dois apps — nenhuma migration deste projeto usa prefixo de schema.
+#
+# Antes de escolher a opção B em produção: (1) confirmar com o Antonio se
+# v4mos/labdatadev realmente usam `public` nesse Postgres (checar dentro do
+# próprio Postgres do Company HQ, não supor); (2) se usam, decidir entre
+# `create schema gamehub_public` (isola por schema, exige adaptar
+# `PGRST_DB_SCHEMAS` do Kong do Company HQ) ou um projeto Supabase adicional
+# apontando pro mesmo Postgres físico. Nenhuma migration deste repo foi
+# escrita pensando em schema não-`public` — adaptar as 32 migrations é
+# trabalho real, não um `sed` de 5 minutos.
+# ----------------------------------------------------------------------------

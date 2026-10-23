@@ -23,40 +23,28 @@ import { capituloAtual, type CapituloAberto } from "./actions";
  * parceria do Laboratório, que traz a moeda do Canvas); sem isso, a segunda
  * só apareceria depois de recarregar a página — e o jogador novo, sem saber
  * que existe, ficaria com 🪙 100 olhando para um botão que custa 300.
+ *
+ * Sem wrapper de posicionamento própria: `CapituloCard` é `fixed inset-0`
+ * (overlay de página inteira, ver comentário lá) — não depende de onde é
+ * montado no DOM, então não precisa de `className`/padding por página.
  */
-export function CapituloGate({
-  inicial,
-}: {
-  inicial: CapituloAberto | null;
-}) {
+export function CapituloGate({ inicial }: { inicial: CapituloAberto | null }) {
   const [capitulo, setCapitulo] = useState(inicial);
   if (!capitulo) return null;
   return (
-    // A carta é um overlay (não um bloco acima do jogo): inline ela empurrava a
-    // cena para fora da primeira tela — no HD e no celular o jogador via só a
-    // carta e precisava rolar para descobrir que existia um jogo embaixo. Como
-    // overlay rola sozinha quando é maior que a janela.
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-[60] overflow-y-auto bg-black/60 p-3 sm:p-6"
-    >
-      <div className="mx-auto w-full max-w-xl py-4">
-      <CapituloCard
-        key={capitulo.capitulo.id}
-        capitulo={capitulo.capitulo}
-        diaDoNegocio={capitulo.diaDoNegocio}
-        moedaVirtual={capitulo.moedaVirtual}
-        aoFechar={async () => {
-          setCapitulo(null);
-          try {
-            setCapitulo(await capituloAtual());
-          } catch {
-            // sem rede: a próxima carta aparece no próximo carregamento
-          }
-        }}
-      />
-      </div>
-    </div>
+    <CapituloCard
+      key={capitulo.capitulo.id}
+      capitulo={capitulo.capitulo}
+      diaDoNegocio={capitulo.diaDoNegocio}
+      moedaVirtual={capitulo.moedaVirtual}
+      aoFechar={async () => {
+        setCapitulo(null);
+        try {
+          setCapitulo(await capituloAtual());
+        } catch {
+          // sem rede: a próxima carta aparece no próximo carregamento
+        }
+      }}
+    />
   );
 }

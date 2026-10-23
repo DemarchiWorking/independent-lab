@@ -26,14 +26,35 @@ export function nomeCanal(salaTenantId: string): string {
 }
 
 /**
- * `NEXT_PUBLIC_*` é inlined pelo Next.js em build time. Checar antes de
- * chamar `supabaseAnon()` é o que mantém `GAMEHUB_DB=file` (dev local,
- * sem Supabase) funcionando: sem isso, `supabaseAnon()` lançaria por
- * variável de ambiente ausente e derrubaria a tela de visita inteira por
- * causa de um recurso opcional.
+ * Config mínima pra abrir o canal de presença no browser — URL + anon key.
+ *
+ * ⚠️ Histórico (achado em auditoria BMAD/NFR, 2026-08-01): esta config
+ * ANTES vinha de `process.env.NEXT_PUBLIC_SUPABASE_URL` lido DENTRO do
+ * código do browser. `NEXT_PUBLIC_*` só é substituído pelo Next.js em
+ * BUILD TIME (não runtime) — numa imagem Docker construída uma vez e
+ * configurada depois via `.env`/`docker-compose`, isso significa que o
+ * bundle do navegador congelava o valor PLACEHOLDER do `Dockerfile` pra
+ * sempre, e pior: o guard `if (!supabaseConfigurado())` virava uma
+ * constante `true` em build time e era eliminado por dead-code
+ * elimination — a tela de visita LANÇAVA exceção em vez de degradar.
+ *
+ * Correção: a config agora é lida no SERVIDOR (que sempre vê o `.env`
+ * real em runtime, sem essa armadilha) e passada como prop até aqui —
+ * `app/world/visitar/[tenantId]/page.tsx` → `VisitaScreen` →
+ * `entrarNaSala(..., config)`. Nenhum código de browser lê
+ * `process.env.NEXT_PUBLIC_*` diretamente neste módulo nunca mais.
  */
-export function supabaseConfigurado(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+export interface PresencaConfig {
+  url: string;
+  anonKey: string;
+}
+
+/** `true` só se as duas partes da config existem e não são strings vazias —
+ *  puro, sem tocar em `process.env`, testável sem mock. */
+export function configValida(
+  config: PresencaConfig | null | undefined,
+): config is PresencaConfig {
+  return Boolean(config?.url) && Boolean(config?.anonKey);
 }
 
 /**

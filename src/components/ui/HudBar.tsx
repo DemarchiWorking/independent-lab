@@ -1,5 +1,6 @@
 "use client";
 
+import { forwardRef } from "react";
 import { motion } from "framer-motion";
 import { pressable, springSnappy } from "@/lib/motion";
 import { StatCard } from "./StatCard";
@@ -29,9 +30,10 @@ export interface HudAcoes {
 /** Moldura de topo do jogo: cartões (moeda/rede/ciclo) + Objetivo + Saldo +
  *  faixa de alerta. Fica fixa enquanto o "palco" central troca de tela.
  *  Cada elemento é um atalho para a tela que explica aquele número. */
-export function HudBar({ data, acoes = {} }: { data: HudData; acoes?: HudAcoes }) {
+export const HudBar = forwardRef<HTMLDivElement, { data: HudData; acoes?: HudAcoes }>(
+  function HudBar({ data, acoes = {} }, ref) {
   return (
-    <div className="pointer-events-none relative z-20 p-2 lg:absolute lg:inset-x-0 lg:top-0 lg:p-3">
+    <div ref={ref} className="pointer-events-none relative z-20 p-2 lg:absolute lg:inset-x-0 lg:top-0 lg:p-3">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between lg:gap-3">
         <div className="pointer-events-auto grid grid-cols-3 gap-2 lg:flex">
           <StatCard
@@ -103,4 +105,4 @@ export function HudBar({ data, acoes = {} }: { data: HudData; acoes?: HudAcoes }
       </div>
     </div>
   );
-}
+});

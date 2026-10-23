@@ -89,6 +89,10 @@ export interface Negocio {
    *  `Onboarding`, que guarda as respostas reais). */
   consentimentoEm: string;
   consentimentoVersao: string;
+  /** CEP bruto informado no cadastro, quando resolvido por
+   *  `lib/localizacao/cep.ts` — dado **privado**, só para auditoria/suporte;
+   *  nenhuma tela lê este campo. `undefined` se o cadastro foi manual. */
+  cep?: string;
 }
 
 export interface Usuario {
@@ -100,7 +104,7 @@ export interface Usuario {
   criadoEm: string;
 }
 
-/** As 10 respostas + o que foi calculado a partir delas. */
+/** As respostas do onboarding + o que foi calculado a partir delas. */
 export interface Onboarding {
   tenantId: string;
   respostas: Respostas;
@@ -115,6 +119,10 @@ export interface Respostas {
   segmento: Segmento;
   cidade: string;
   bairro: string;
+  /** Problema que o negócio resolve para OS CLIENTES DELE — distinto de
+   *  `gargalo`, que é o problema INTERNO do próprio negócio. Alimenta o
+   *  Modelo de Negócio (pergunta #1 do corpus oficial GameHub). */
+  problemaPrincipal: string;
   equipe: "so-eu" | "2-5" | "6-15" | "16-30" | "30+";
   presencaDigital:
     | "nada"
@@ -123,6 +131,42 @@ export interface Respostas {
     | "site-desatualizado"
     | "site-portais";
   captacao: string[];
+  /** ICP real do Lab Demarchi/Siga Pregão — fornecer pro poder público via
+   *  licitação. Entra no `scoreFit` (ver `features/onboarding/scoring.ts`). */
+  licitacaoPublico:
+    | "vende-regularmente"
+    | "ja-vendeu"
+    | "tem-interesse"
+    | "nao-e-foco";
+  modeloReceita:
+    | "projeto-unico"
+    | "assinatura-recorrente"
+    | "comissao-resultado"
+    | "venda-produto"
+    | "combinacao";
+  ticketMedio:
+    | "ate-500"
+    | "500-2000"
+    | "2000-10000"
+    | "10000-50000"
+    | "acima-50000"
+    | "nao-sei";
+  clientesPagantes: "nenhum" | "1-5" | "6-20" | "21-50" | "mais-50";
+  /** Entra no `degrauAlvo` (ver `features/onboarding/scoring.ts`). */
+  faturamentoFaixa:
+    | "ate-10k"
+    | "10-30k"
+    | "30-100k"
+    | "100-300k"
+    | "acima-300k"
+    | "prefiro-nao-informar";
+  /** Texto curto — "por que um cliente escolhe você e não o concorrente". */
+  diferencial: string;
+  /** Opcional na prática — "ainda não tenho" é resposta válida. Sem isso,
+   *  a Proposta Comercial omite a seção "Prova social" inteira. */
+  provaSocial: string;
+  /** Opcional na prática — "não sei" é resposta válida. */
+  concorrentesConhecidos: string;
   objetivo:
     | "mais-leads"
     | "organizar"
@@ -178,6 +222,30 @@ export interface FuncionarioContratado {
    *  agente produz e quais habilidades estão destravadas. Ver
    *  `features/equipe-ia/habilidades.ts`. */
   nivel: number;
+}
+
+/**
+ * Estado de assinatura real (R$) de um Funcionário de IA contratado
+ * (GH-COM-02, `0029_assinaturas.sql`) — sem gateway de pagamento
+ * integrado ainda, é só o ESTADO (pendente/ativa/inadimplente/cancelada)
+ * para o painel admin e o painel do cliente mostrarem antes do Stripe
+ * existir. `precoCentavos` é snapshot do preço no momento da assinatura,
+ * nunca lido de volta do catálogo (histórico de cobrança não pode
+ * depender de um catálogo que muda com o tempo).
+ */
+export interface Assinatura {
+  id: string;
+  tenantId: string;
+  funcionarioContratadoId: string;
+  precoCentavos: number;
+  periodicidade: "mensal" | "anual";
+  status: "pendente" | "ativa" | "inadimplente" | "cancelada";
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  ativadaEm?: string;
+  proximaCobrancaEm?: string;
+  canceladaEm?: string;
+  criadaEm: string;
 }
 
 /**
@@ -326,6 +394,26 @@ export interface Sessao {
   tenantId: string;
   nome: string;
   email: string;
+  /** Papel administrativo cross-tenant — ver `lib/auth/provider.ts`
+   *  (`Identidade.role`). Ausente = usuário comum. */
+  role?: "admin";
+}
+
+/**
+ * Solicitação de serviço que um cliente faz ao Laboratório Demarchi de dentro
+ * do jogo (site/app/automação/funcionalidade). `tipo` e `status` são `string`
+ * de propósito aqui (lib/ não conhece o catálogo) — as uniões estreitas vivem
+ * em `features/labdatadev/tipos.ts`. Ver `documentos/ecossistema/`.
+ */
+export interface SolicitacaoServico {
+  id: string;
+  tenantId: string;
+  tipo: string;
+  titulo: string;
+  descricao: string;
+  status: string;
+  criadoEm: string;
+  atualizadoEm: string;
 }
 
 /** ---------- Read model do mapa (para a UI, não o domínio) ----------
@@ -468,4 +556,56 @@ export interface CapituloEntregue {
   entregueEm: string;
   escolhaId: string | null;
   resolvidoEm: string | null;
+}
+
+/**
+ * ---------- Admin cross-tenant ----------
+ * Read model do painel `/admin/clientes`: dados de vitrine do tenant +
+ * onboarding (score comercial) + assinaturas, numa única leitura. Nunca
+ * exposto ao browser (só Server Action gated por `sessao.role ===
+ * "admin"`, ver `features/admin-clientes/actions.ts`) — por isso pode
+ * juntar campos que, individualmente, são privados por tenant.
+ */
+export interface ClienteAdmin {
+  id: string;
+  nome: string;
+  segmento: Segmento;
+  cidadeNome: string;
+  bairroNome: string;
+  degrauAtual: number;
+  degrauAlvo: number;
+  nivel: number;
+  xp: number;
+  criadoEm: string;
+  onboarding: {
+    scoreFit: number;
+    degrauAlvo: number;
+    servicosRecomendados: string[];
+    respondidoEm: string;
+  } | null;
+  assinaturas: Assinatura[];
+}
+
+/**
+ * ---------- Documentação de negócio gerada por IA (GH-DOC-01) ----------
+ * Resultado entregue ao cliente pelo motor headless (`document-engine/`,
+ * cron horário) — cada rodada INSERE linhas novas, nunca sobrescreve; o
+ * histórico de versões vive na tabela. Só existe no driver Supabase (esta
+ * esteira depende do Postgres + do motor rodando na VPS — modo `file` é
+ * demo/dev sem infra, ver `listarMeusDocumentos` no file-adapter).
+ */
+export interface DocumentoGerado {
+  id: string;
+  tenantId: string;
+  tipo:
+    | "canvas"
+    | "modelo-negocio"
+    | "swot"
+    | "resumo-executivo"
+    | "roadmap-melhoria-continua"
+    | "proposta-comercial"
+    | "analise-concorrencia";
+  titulo: string;
+  conteudoMarkdown: string;
+  geradoEm: string;
 }

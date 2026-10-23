@@ -60,18 +60,24 @@ export function OfertasPainel({ ofertas }: { ofertas: Oferta[] }) {
           placeholder="Título (ex.: Consultoria em automação)"
           className="w-full rounded-md border-2 border-card2 bg-night px-3 py-2 text-sm text-white outline-none focus:border-teal"
         />
-        <div className="flex gap-2">
+        {/* achado real (Tarefa C, docs/PROXIMA-TAREFA.md): `w-32` fixo +
+            `flex-1` sem `min-w-0` não encolhe abaixo do min-content do
+            input em telas ~320-390px — o navegador força a largura da
+            linha inteira, causando scroll horizontal em `/painel`. Empilha
+            em telas estreitas; `min-w-0` garante que o `flex-1` encolha de
+            verdade quando lado a lado. */}
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             value={preco}
             onChange={(e) => setPreco(e.target.value)}
             placeholder="Preço (ex.: R$ 1.500)"
-            className="w-32 rounded-md border-2 border-card2 bg-night px-3 py-2 text-sm text-white outline-none focus:border-teal"
+            className="w-full rounded-md border-2 border-card2 bg-night px-3 py-2 text-sm text-white outline-none focus:border-teal sm:w-32"
           />
           <input
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
             placeholder="Descrição (opcional)"
-            className="flex-1 rounded-md border-2 border-card2 bg-night px-3 py-2 text-sm text-white outline-none focus:border-teal"
+            className="min-w-0 flex-1 rounded-md border-2 border-card2 bg-night px-3 py-2 text-sm text-white outline-none focus:border-teal"
           />
         </div>
         {erro ? <p className="text-xs font-bold text-coral">{erro}</p> : null}

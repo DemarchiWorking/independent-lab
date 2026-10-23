@@ -4,14 +4,17 @@ import { supabaseAdmin } from "@/lib/supabase/client";
 import { TETO_ATRIBUTO } from "@/lib/atributos";
 import { disponibilidadeDe } from "@/lib/disponibilidade";
 import { slugify } from "./file-adapter";
-import type { DeltaProgresso, GameRepository, NovoNegocio } from "./repository";
+import type { DeltaProgresso, GameRepository, NovaSolicitacao, NovoNegocio } from "./repository";
 import type {
   Alocacao,
+  Assinatura,
   BairroResumo,
   BenchmarkBairro,
   CapituloEntregue,
+  ClienteAdmin,
   ConviteResgatado,
   DestaqueBairro,
+  DocumentoGerado,
   EscopoMapa,
   EventoGlobal,
   FuncionarioContratado,
@@ -30,6 +33,7 @@ import type {
   Sede,
   Segmento,
   SolicitacaoContato,
+  SolicitacaoServico,
   TrabalhoAceito,
   Usuario,
 } from "./types";
@@ -65,6 +69,7 @@ interface LinhaNegocio {
   perfil_publico: boolean;
   consentimento_em: string;
   consentimento_versao: string | null;
+  cep: string | null;
 }
 
 interface LinhaLocal {
@@ -76,6 +81,17 @@ interface LinhaLocal {
 export class SupabaseRepository implements GameRepository {
   private get db(): SupabaseClient {
     return supabaseAdmin();
+  }
+
+  async pingDb(): Promise<boolean> {
+    // Query mais barata possível: `head: true` não traz linha nenhuma, só
+    // confirma que o PostgREST/Postgres responde. `cidades` existe desde a
+    // 0001 e é seed fixo — nunca some.
+    const { error } = await this.db
+      .from("cidades")
+      .select("slug", { head: true, count: "exact" })
+      .limit(1);
+    return !error;
   }
 
   /** Resolve cidade/bairro/quarteirão de um negócio (1 query com joins). */
@@ -128,6 +144,7 @@ export class SupabaseRepository implements GameRepository {
       perfilPublico: linha.perfil_publico,
       consentimentoEm: linha.consentimento_em,
       consentimentoVersao: linha.consentimento_versao ?? "",
+      cep: linha.cep ?? undefined,
     };
   }
 
@@ -370,6 +387,7 @@ export class SupabaseRepository implements GameRepository {
         p_capacidade: dados.atributosIniciais.capacidade.valor,
         p_perfil_publico: dados.perfilPublico,
         p_consentimento_versao: dados.consentimentoVersao,
+        p_cep: dados.cep ?? null,
       })
       .single();
 
@@ -388,6 +406,14 @@ export class SupabaseRepository implements GameRepository {
 
     if (error) throw new Error(`lerNegocio: ${error.message}`);
     return data ? this.paraDominio(data as LinhaNegocio) : null;
+  }
+
+  async excluirNegocio(tenantId: string): Promise<void> {
+    const { error } = await this.db
+      .from("negocios")
+      .delete()
+      .eq("id", Number(tenantId));
+    if (error) throw new Error(`excluirNegocio: ${error.message}`);
   }
 
   /** N+1 aceitável por ora (1 `local()` por negócio) — dataset público hoje é
@@ -602,7 +628,7 @@ export class SupabaseRepository implements GameRepository {
     );
   }
 
-  /** Atômica e idempotente via RPC `concluir_contrato` (`0027`). */
+  /** Atômica e idempotente via RPC `concluir_contrato` (`0040`). */
   async concluirContrato(
     tenantId: string,
     contratoId: string,
@@ -899,7 +925,7 @@ export class SupabaseRepository implements GameRepository {
     custoMoeda = 0,
   ): Promise<FuncionarioContratado> {
     if (custoMoeda > 0) {
-      // RPC `contratar_funcionario` (0027): débito + inserção atômicos, saldo
+      // RPC `contratar_funcionario` (0040): débito + inserção atômicos, saldo
       // travado por `for update`; idempotente (já contratado = sem cobrança).
       const { data, error } = await this.db
         .rpc("contratar_funcionario", {
@@ -1559,5 +1585,247 @@ export class SupabaseRepository implements GameRepository {
     return ((data ?? []) as Array<Parameters<typeof this.paraProgresso>[0]>).map((l) =>
       this.paraProgresso(l),
     );
+  }
+
+  // ---- Solicitações de serviço (labdatadev) ----
+
+  private paraSolicitacao(l: {
+    id: number;
+    tenant_id: number;
+    tipo: string;
+    titulo: string;
+    descricao: string;
+    status: string;
+    criado_em: string;
+    atualizado_em: string;
+  }): SolicitacaoServico {
+    return {
+      id: String(l.id),
+      tenantId: String(l.tenant_id),
+      tipo: l.tipo,
+      titulo: l.titulo,
+      descricao: l.descricao,
+      status: l.status,
+      criadoEm: l.criado_em,
+      atualizadoEm: l.atualizado_em,
+    };
+  }
+
+  async criarSolicitacao(input: NovaSolicitacao): Promise<SolicitacaoServico> {
+    const { data, error } = await this.db
+      .from("solicitacoes_servico")
+      .insert({
+        tenant_id: Number(input.tenantId),
+        tipo: input.tipo,
+        titulo: input.titulo,
+        descricao: input.descricao,
+      })
+      .select("*")
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "criarSolicitacao: sem retorno");
+    }
+    return this.paraSolicitacao(data as Parameters<typeof this.paraSolicitacao>[0]);
+  }
+
+  async listarSolicitacoesDoTenant(tenantId: string): Promise<SolicitacaoServico[]> {
+    const { data, error } = await this.db
+      .from("solicitacoes_servico")
+      .select("*")
+      .eq("tenant_id", Number(tenantId))
+      .order("criado_em", { ascending: false });
+    if (error) throw new Error(`listarSolicitacoesDoTenant: ${error.message}`);
+    return ((data ?? []) as Array<Parameters<typeof this.paraSolicitacao>[0]>).map((l) =>
+      this.paraSolicitacao(l),
+    );
+  }
+
+  async listarTodasSolicitacoes(): Promise<SolicitacaoServico[]> {
+    const { data, error } = await this.db
+      .from("solicitacoes_servico")
+      .select("*")
+      .order("criado_em", { ascending: false });
+    if (error) throw new Error(`listarTodasSolicitacoes: ${error.message}`);
+    return ((data ?? []) as Array<Parameters<typeof this.paraSolicitacao>[0]>).map((l) =>
+      this.paraSolicitacao(l),
+    );
+  }
+
+  async atualizarStatusSolicitacao(
+    id: string,
+    status: string,
+  ): Promise<SolicitacaoServico> {
+    const { data, error } = await this.db
+      .from("solicitacoes_servico")
+      .update({ status, atualizado_em: new Date().toISOString() })
+      .eq("id", Number(id))
+      .select("*")
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "atualizarStatusSolicitacao: sem retorno");
+    }
+    return this.paraSolicitacao(data as Parameters<typeof this.paraSolicitacao>[0]);
+  }
+
+  /**
+   * Sem N+1 (mesma regra de `vizinhos_do_tenant`/`lerMapaView`): 3 queries
+   * fixas (negócios+localização, onboardings, assinaturas) em vez de uma
+   * por tenant. `quarteiroes!inner(...)` embed vem como objeto único, não
+   * array — mesmo comportamento já usado em `local()` (FK many-to-one).
+   */
+  async listarClientesAdmin(): Promise<ClienteAdmin[]> {
+    const [negociosRes, onboardingsRes, assinaturasRes] = await Promise.all([
+      this.db
+        .from("negocios")
+        .select(
+          `id, nome, segmento, degrau_atual, degrau_alvo, nivel, xp, criado_em,
+           quarteiroes!inner ( bairros!inner ( nome, cidades!inner ( nome ) ) )`,
+        )
+        .order("nome"),
+      this.db
+        .from("onboardings")
+        .select("tenant_id, score_fit, degrau_alvo, servicos_recomendados, respondido_em"),
+      this.db.from("assinaturas").select("*"),
+    ]);
+
+    if (negociosRes.error) {
+      throw new Error(`listarClientesAdmin (negocios): ${negociosRes.error.message}`);
+    }
+    if (onboardingsRes.error) {
+      throw new Error(`listarClientesAdmin (onboardings): ${onboardingsRes.error.message}`);
+    }
+    if (assinaturasRes.error) {
+      throw new Error(`listarClientesAdmin (assinaturas): ${assinaturasRes.error.message}`);
+    }
+
+    type LinhaNegocioAdmin = {
+      id: number;
+      nome: string;
+      segmento: Segmento;
+      degrau_atual: number;
+      degrau_alvo: number;
+      nivel: number;
+      xp: number;
+      criado_em: string;
+      quarteiroes: { bairros: { nome: string; cidades: { nome: string } } };
+    };
+    type LinhaOnboardingAdmin = {
+      tenant_id: number;
+      score_fit: number;
+      degrau_alvo: number;
+      servicos_recomendados: string[];
+      respondido_em: string;
+    };
+    type LinhaAssinatura = {
+      id: number;
+      tenant_id: number;
+      funcionario_contratado_id: number;
+      preco_centavos: number;
+      periodicidade: Assinatura["periodicidade"];
+      status: Assinatura["status"];
+      stripe_customer_id: string | null;
+      stripe_subscription_id: string | null;
+      ativada_em: string | null;
+      proxima_cobranca_em: string | null;
+      cancelada_em: string | null;
+      criada_em: string;
+    };
+
+    const onboardingPorTenant = new Map(
+      ((onboardingsRes.data ?? []) as LinhaOnboardingAdmin[]).map((o) => [
+        String(o.tenant_id),
+        o,
+      ]),
+    );
+
+    const assinaturasPorTenant = new Map<string, Assinatura[]>();
+    for (const a of (assinaturasRes.data ?? []) as LinhaAssinatura[]) {
+      const tenantId = String(a.tenant_id);
+      const assinatura: Assinatura = {
+        id: String(a.id),
+        tenantId,
+        funcionarioContratadoId: String(a.funcionario_contratado_id),
+        precoCentavos: a.preco_centavos,
+        periodicidade: a.periodicidade,
+        status: a.status,
+        stripeCustomerId: a.stripe_customer_id ?? undefined,
+        stripeSubscriptionId: a.stripe_subscription_id ?? undefined,
+        ativadaEm: a.ativada_em ?? undefined,
+        proximaCobrancaEm: a.proxima_cobranca_em ?? undefined,
+        canceladaEm: a.cancelada_em ?? undefined,
+        criadaEm: a.criada_em,
+      };
+      const lista = assinaturasPorTenant.get(tenantId) ?? [];
+      lista.push(assinatura);
+      assinaturasPorTenant.set(tenantId, lista);
+    }
+
+    return ((negociosRes.data ?? []) as unknown as LinhaNegocioAdmin[]).map((n) => {
+      const tenantId = String(n.id);
+      const onboarding = onboardingPorTenant.get(tenantId);
+      return {
+        id: tenantId,
+        nome: n.nome,
+        segmento: n.segmento,
+        cidadeNome: n.quarteiroes.bairros.cidades.nome,
+        bairroNome: n.quarteiroes.bairros.nome,
+        degrauAtual: n.degrau_atual,
+        degrauAlvo: n.degrau_alvo,
+        nivel: n.nivel,
+        xp: n.xp,
+        criadoEm: n.criado_em,
+        onboarding: onboarding
+          ? {
+              scoreFit: onboarding.score_fit,
+              degrauAlvo: onboarding.degrau_alvo,
+              servicosRecomendados: onboarding.servicos_recomendados,
+              respondidoEm: onboarding.respondido_em,
+            }
+          : null,
+        assinaturas: assinaturasPorTenant.get(tenantId) ?? [],
+      };
+    });
+  }
+
+  // ---- Documentação de negócio gerada por IA (GH-DOC-01) ----
+
+  async enfileirarGeracaoDocumento(
+    tenantId: string,
+    contexto: string,
+    hash: string,
+  ): Promise<void> {
+    const { error } = await this.db.rpc("enfileirar_geracao_documento", {
+      p_tenant_id: Number(tenantId),
+      p_contexto: contexto,
+      p_hash: hash,
+    });
+    if (error) throw new Error(`enfileirar_geracao_documento: ${error.message}`);
+  }
+
+  async listarMeusDocumentos(tenantId: string): Promise<DocumentoGerado[]> {
+    const { data, error } = await this.db
+      .from("documentos_gerados")
+      .select("id, tenant_id, tipo, titulo, conteudo_markdown, gerado_em")
+      .eq("tenant_id", Number(tenantId))
+      .order("gerado_em", { ascending: false });
+
+    if (error) throw new Error(`listarMeusDocumentos: ${error.message}`);
+
+    type LinhaDocumento = {
+      id: number;
+      tenant_id: number;
+      tipo: DocumentoGerado["tipo"];
+      titulo: string;
+      conteudo_markdown: string;
+      gerado_em: string;
+    };
+    return ((data ?? []) as LinhaDocumento[]).map((d) => ({
+      id: String(d.id),
+      tenantId: String(d.tenant_id),
+      tipo: d.tipo,
+      titulo: d.titulo,
+      conteudoMarkdown: d.conteudo_markdown,
+      geradoEm: d.gerado_em,
+    }));
   }
 }

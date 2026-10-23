@@ -63,6 +63,10 @@ export function HubScreen({
   const licao = degrauAtual !== undefined ? licaoDoDegrau(degrauAtual) : undefined;
 
   return (
+    // `justify-center` + `h-full` transbordava pra CIMA do limite em telas
+    // curtas (achado de produção 2026-08-25). Aqui o conteúdo rola dentro do
+    // palco no modo cena, e `mt-auto`/`mb-auto` nas pontas centralizam
+    // quando cabe sem nunca cortar o topo quando não cabe.
     <div className="relative flex flex-col items-center gap-4 py-2 lg:h-full lg:gap-5 lg:overflow-y-auto lg:[&>:first-child]:mt-auto lg:[&>:last-child]:mb-auto">
       {missao ? (
         <MissaoCard missao={missao} aoIr={aoIr} />

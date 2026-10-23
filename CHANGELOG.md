@@ -19,10 +19,14 @@ Cada entrada aponta o card do backlog e o documento que detalha a mudança.
   índice de clareza; resumo executivo; plano de 90 dias; matriz de riscos;
   checklist de validação; A4 paisagem. → [`docs/CANVAS-ENTERPRISE.md`](docs/CANVAS-ENTERPRISE.md)
 - "Ver no navegador" para Canvas, script e roteiro (`?ver=1`).
-- Migration `0027_contratos_e_economia.sql`.
+- Migration `0040_contratos_e_economia.sql` (aplicada em ordem pela produção, depois da `0039`).
 - Guias: `CANVAS-ENTERPRISE.md`, `RESPONSIVIDADE.md`, `ECONOMIA-E-JORNADA.md`.
 
 ### Alterado
+- **Canvas usa o cadastro completo da produção**: problema que o cliente
+  resolve, diferencial, prova social, concorrentes, modelo de receita, ticket
+  médio, clientes pagantes e relação com o poder público entram nos quadros e
+  na maturidade.
 - **Responsividade de 375 a 1920 px** (`GH-RESP-01`): shell em dois modos
   (coluna abaixo de 1024 px, cena acima), altura ligada à janela, HUD,
   navegação, menu lateral e modais adaptados. → [`docs/RESPONSIVIDADE.md`](docs/RESPONSIVIDADE.md)
@@ -38,10 +42,12 @@ Cada entrada aponta o card do backlog e o documento que detalha a mudança.
 - `escolherNoCapitulo` aceitava capítulo que ainda não tinha chegado.
 - Escolha de história que custa moeda saía de graça sem saldo.
 - Policies de RLS permitiam o navegador alterar a própria moeda/XP e inserir
-  contratação, trabalho e nó diretamente (removidas em `0027`).
+  contratação, trabalho e nó diretamente (removidas em `0040`; a produção já
+  havia revogado o `update` em `0035`/`0036`, restava o `insert` de
+  `funcionarios_contratados`).
 
 ### Conhecido
 - Dupla contratação simultânea do mesmo cargo aplica XP/degrau duas vezes
   (a moeda é cobrada uma vez).
-- Migration `0027` só teve a **sintaxe** validada; falta Postgres real.
+- Migration `0040` só teve a **sintaxe** validada; falta Postgres real fora da produção.
 - Teste visual de layout é manual (`GH-QA-01`).

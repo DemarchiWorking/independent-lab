@@ -1,8 +1,8 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
+  configValida,
   nomeCanal,
   presentesDe,
-  supabaseConfigurado,
   type EstadoPresenca,
   type VisitantePresente,
 } from "./canalUtil";
@@ -10,16 +10,6 @@ import {
 function visitante(tenantId: string, entrouEm = "2026-01-01T00:00:00.000Z"): VisitantePresente {
   return { tenantId, nome: `Negócio ${tenantId}`, entrouEm };
 }
-
-const urlOriginal = process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-afterEach(() => {
-  if (urlOriginal === undefined) {
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-  } else {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = urlOriginal;
-  }
-});
 
 describe("canalUtil — nome do canal (GH-MULTI-02)", () => {
   it("escopa o canal por sala, com prefixo", () => {
@@ -31,15 +21,25 @@ describe("canalUtil — nome do canal (GH-MULTI-02)", () => {
   });
 });
 
-describe("canalUtil — detecção de Supabase configurado (GH-MULTI-02)", () => {
-  it("false sem NEXT_PUBLIC_SUPABASE_URL (modo GAMEHUB_DB=file)", () => {
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-    expect(supabaseConfigurado()).toBe(false);
+describe("canalUtil — configValida (GH-MULTI-02 / achado B1 da auditoria BMAD)", () => {
+  it("false para null (GAMEHUB_DB=file, sem Supabase)", () => {
+    expect(configValida(null)).toBe(false);
   });
 
-  it("true quando a env var existe", () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://exemplo.supabase.co";
-    expect(supabaseConfigurado()).toBe(true);
+  it("false para undefined", () => {
+    expect(configValida(undefined)).toBe(false);
+  });
+
+  it("false com url vazia", () => {
+    expect(configValida({ url: "", anonKey: "chave" })).toBe(false);
+  });
+
+  it("false com anonKey vazia", () => {
+    expect(configValida({ url: "https://exemplo.supabase.co", anonKey: "" })).toBe(false);
+  });
+
+  it("true com url e anonKey preenchidas", () => {
+    expect(configValida({ url: "https://exemplo.supabase.co", anonKey: "chave" })).toBe(true);
   });
 });
 

@@ -67,13 +67,13 @@ Regras conservadoras: sem resposta que comprove, o quadro nunca passa de
 
 | Quadro | `a definir` quando… | `parcial` quando… | `definido` quando… |
 |---|---|---|---|
-| Clientes | — | segmento declarado, cliente prioritário não escolhido | capta por portais ou anúncios |
-| Proposta | sem presença digital | há presença, proposta não validada (rebaixa 1 nível se gargalo = imagem fraca) | site + portais |
+| Clientes | sem clientes pagantes e sem canal | cliente prioritário não escolhido | 6 ou mais clientes pagantes |
+| Proposta | sem presença digital | há presença, proposta não validada | site + portais, **ou** problema e diferencial descritos (sobe 1 nível); gargalo = imagem fraca rebaixa 1 |
 | Canais | nenhum canal estruturado | 1 canal | 2+ canais |
 | Relacionamento | gargalo = perco leads | equipe pequena | equipe de 6+ |
-| Receitas | gargalo = sem dados | fontes conhecidas, margem não medida | — |
+| Receitas | gargalo = sem dados | fontes conhecidas, margem não medida | modelo recorrente (ou combinação) **e** ticket médio informado |
 | Recursos | — | só o dono | há equipe |
-| Atividades | gargalo = sem processo | gargalo = manual | sem gargalo operacional |
+| Atividades | gargalo = sem processo | gargalo = manual, perco leads ou sem dados | sem gargalo operacional (ou gargalo de imagem, tratado em Proposta) |
 | Parcerias | nem indicação nem rede | só indicação | indicação + portais |
 | Custos | não sabe o teto de investimento | teto até R$ 500 | teto declarado |
 
@@ -81,6 +81,24 @@ Regras conservadoras: sem resposta que comprove, o quadro nunca passa de
 `a definir` = 0), arredondada. Rótulos: ≥ 75 *Modelo sólido*, ≥ 50 *Modelo em
 estruturação*, abaixo *Modelo inicial*. É um indicador de **completude do
 raciocínio**, não de qualidade do negócio — o próprio documento diz isso.
+
+### Campos do cadastro que alimentam o canvas
+
+Além do segmento, equipe, canais, gargalo, objetivo e investimento, o canvas usa
+as respostas ricas do onboarding de produção — o que o torna **do cliente**, não
+só do nicho:
+
+| Resposta | Onde entra |
+|---|---|
+| `problemaPrincipal` | Proposta (item "nas suas palavras") e Resumo executivo ("Resolve: …") |
+| `diferencial`, `provaSocial` | Proposta; sem elas, o quadro **pede** a informação em vez de inventar |
+| `concorrentesConhecidos` | Proposta, a partir do nível 2 |
+| `modeloReceita`, `ticketMedio` | Receitas (modelo declarado + ticket) e maturidade |
+| `clientesPagantes` | Maturidade de Clientes |
+| `licitacaoPublico` | Clientes (rotina de editais / habilitação, conforme a resposta) |
+
+Respostas vazias, "não sei" e "ainda não tenho" **não** viram conteúdo. Texto
+livre é aparado, limitado a 240 caracteres e escapado no HTML.
 
 ## 4. Profundidade por nível do agente
 
@@ -124,7 +142,7 @@ uma **hipótese falsificável**. Evitar promessa de resultado.
 
 ## 7. Qualidade — o que os testes garantem
 
-`canvas.test.ts` (24 testes) + `entregaveis.test.ts`:
+`canvas.test.ts` (33 testes) + `entregaveis.test.ts`:
 
 - 9 quadros numerados, na ordem do método;
 - em **todos os 8 segmentos × 3 níveis**, todo quadro tem pergunta, resposta,

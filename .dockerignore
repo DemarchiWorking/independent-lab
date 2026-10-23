@@ -1,0 +1,44 @@
+# Contexto de build Docker — nunca deixar segredo ou dado real entrar numa
+# camada de imagem. Segredos reais entram só em runtime via `env_file`/
+# `environment` no docker-compose (mesmo padrão de v4mos-app/labdatadev-frontend).
+
+# segredos — nunca na imagem
+.env
+.env.*
+!.env.example
+
+# dado real de jogador (modo file) — nunca embutir num artefato distribuível
+data/
+
+# controle de versão e ferramentas locais
+.git
+.gitignore
+.github
+
+# dependências e build (reconstruídos dentro da imagem)
+node_modules
+.next
+.claude
+.claude/worktrees
+
+# documentação e material que não roda em produção
+# (NÃO incluir design-system/ aqui — é código-fonte real, `@tokens` em
+# tsconfig.json aponta pra `design-system/tokens.ts`, importado em runtime)
+docs/
+melhoria-continua/
+prototipo/
+*.md
+
+# scripts de deploy antigo (não fazem parte da imagem)
+deploy/
+
+# testes e cobertura
+coverage
+**/*.test.ts
+**/*.test.tsx
+
+# diversos
+.DS_Store
+npm-debug.log*
+iniciar.bat
+iniciar.sh

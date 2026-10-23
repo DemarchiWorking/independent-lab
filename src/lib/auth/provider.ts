@@ -8,6 +8,10 @@
  */
 export interface Identidade {
   usuarioId: string;
+  /** Papel administrativo, fora do escopo de tenant — ver `lib/admin.ts`
+   *  para a origem (Supabase: `app_metadata.role`; local: bootstrap por
+   *  `GAMEHUB_ADMIN_EMAILS` no cadastro). Ausente = usuário comum. */
+  role?: "admin";
 }
 
 export interface AuthProvider {
@@ -16,4 +20,31 @@ export interface AuthProvider {
   registrar(nome: string, email: string, senha: string): Promise<Identidade>;
   /** `null` quando e-mail ou senha não conferem (nunca diferencie os dois). */
   autenticar(email: string, senha: string): Promise<Identidade | null>;
+  /**
+   * Compensação de cadastro que falhou no meio (GH-SEC-04): desfaz uma
+   * credencial recém-criada quando o passo seguinte (`vincularMembro`)
+   * falha, evitando uma conta autenticável sem negócio vinculado — hoje
+   * irrecuperável pelo usuário (sem `GH-SEC-03`, fluxo de reset). Nunca
+   * para remover uma conta em uso.
+   */
+  removerConta(usuarioId: string): Promise<void>;
+
+  /**
+   * GH-SEC-03 — recuperação de senha, simplificada de propósito: sempre 1
+   * e-mail, sempre 1 código de 6 dígitos (nunca link mágico, nunca fluxo de
+   * múltiplas etapas). Nunca lança e nunca revela se o e-mail existe — a
+   * ausência silenciosa é a defesa contra enumeração de contas (mesmo
+   * princípio de `autenticar`/`emailExiste`).
+   */
+  solicitarRecuperacaoSenha(email: string): Promise<void>;
+  /**
+   * Valida o código e, se correto e não expirado, troca a senha. `false`
+   * para código errado/expirado/e-mail sem conta — nunca lança, quem chama
+   * decide a mensagem.
+   */
+  confirmarRecuperacaoSenha(
+    email: string,
+    codigo: string,
+    novaSenha: string,
+  ): Promise<boolean>;
 }

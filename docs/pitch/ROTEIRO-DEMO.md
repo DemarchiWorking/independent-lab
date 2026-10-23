@@ -4,6 +4,18 @@
 > caminho testado — nunca descobrir um bug na frente da banca. Este roteiro
 > é o script; `docs/pitch/NARRATIVA-IMPACTO.md` é o discurso.
 
+> **Atualizado 2026-08-02 (`GH-PITCH-03`):** deploy real está no ar
+> (`docker-compose.yml` + `docker-compose.supabase.yml`, Postgres real,
+> Kong público em `:8010`) — os passos 1–6 abaixo já rodam contra
+> infraestrutura de produção de verdade, não mais só local. **Não incluí
+> um passo de presença ao vivo/multiplayer ainda**: o pré-requisito de
+> rede (Kong alcançável de fora) está pronto, mas o card que valida isso
+> num navegador real (`GH-MULTI-04`) continua aberto — ver
+> `docs/BACKLOG-PRODUTO.md`. Não anunciar "metaverso ao vivo" na banca até
+> esse card fechar com evidência. Este roteiro também não foi
+> re-percorrido de ponta a ponta contra o deploy atual — fazer isso antes
+> do dia real, com evidência anexada ao card.
+
 ## Antes de sair de casa (preparação, uma vez só)
 
 1. **Rodar o seed de demo** (cria o bairro "Centro, Mendes" com 6 negócios
@@ -33,7 +45,7 @@
 
 | # | Tempo | Tela | O que fazer / dizer |
 |---|---|---|---|
-| 1 | 0:00–1:00 | `/cadastro` | Cadastro **ao vivo**, como um negócio novo real (ex.: "Padaria da Vila", segmento comércio, cidade Mendes, bairro Centro — mesmo bairro do seed, cai vizinho da Radiz/Vitalys). Passar rápido pelas 10 perguntas, marcar consentimento, criar conta. Narrativa: "isso é o cadastro real, sem trapaça — o mesmo que qualquer empresário faz". |
+| 1 | 0:00–1:00 | `/cadastro` | Cadastro **ao vivo**, como um negócio novo real. Digitar o **CEP de Mendes** primeiro — cidade/bairro preenchem sozinhos (ViaCEP, `GH-CEP-01`), cai automaticamente no mesmo bairro do seed (Centro), vizinho da Radiz/Vitalys. Narrativa: "nem precisa digitar cidade e bairro — o CEP já aloca o lote certo no mapa". Nome do negócio ex.: "Padaria da Vila", segmento comércio. Passar rápido pelas 10 perguntas, marcar consentimento, criar conta. Narrativa: "isso é o cadastro real, sem trapaça — o mesmo que qualquer empresário faz". |
 | 2 | 1:00–1:30 | `/hub` | Mostrar o HUD (moeda, nível, missão atual) e a **Lição do degrau** (`LicaoCard`) — clicar "Ler lição", mostrar o texto curto, concluir (ganha XP). Narrativa: "não é só jogo — cada passo ensina o porquê". |
 | 3 | 1:30–2:30 | Aba **Mapa** | Mostrar o quarteirão com os vizinhos reais (Radiz, Vitalys, etc. já lá). Clicar em **Radiz Engenharia**, "Visitar sede" (leitura, mostra o pitch comercial de Funcionários de IA personalizado). Voltar, clicar "Formar parceria" com Vitalys — recompensa mútua ao vivo. |
 | 4 | 2:30–3:30 | Aba **Equipe de IA** | Contratar um Funcionário de IA (ex. Comercial/SDR) — mostrar XP/degrau subindo no toast. Narrativa: "é aqui que o produto vira negócio de verdade — agentes Claude configurados como cargo, por assinatura". |
@@ -53,17 +65,26 @@ marketplace → mundo visual).
    `GAMEHUB_DB=file`, sem depender de internet nem do Supabase.
 2. Rodar o seed local também (`SEED_DEMO=1 npx vitest run
    src/scripts/seed-demo.test.ts`) antes do dia, para já estar pronto.
-3. O roteiro acima funciona **idêntico** em modo local — nenhum passo
-   depende de rede externa (o próprio produto não tem chamada de API
-   externa nenhuma hoje).
+3. O roteiro acima funciona **idêntico** em modo local, com uma ressalva:
+   o autofill de cidade/bairro por CEP no passo 1 (`GH-CEP-01`) chama a
+   ViaCEP (API pública, sem chave) e degrada em silêncio se não houver
+   internet — cai de volta pro dropdown manual de cidade/bairro, sem
+   travar o cadastro. Todo o resto do produto não faz nenhuma chamada
+   externa.
 
 ## O que NÃO mostrar (ainda não pronto ou incompleto)
 
+- **Presença ao vivo / "gente de verdade na mesma sala" (`GH-MULTI-04`)** —
+  o caminho de código existe e o Kong já está publicamente alcançável
+  nesta VPS, mas ninguém verificou ainda em dois navegadores reais. Não
+  prometer nem demonstrar até o card fechar com evidência.
 - Painel de oportunidades admin (`GH-GROW-05`) — não implementado.
 - Zoom do mapa por camadas (`GH-MAPA-02`) — o mapa hoje é só o quarteirão,
   não região→cidade→quarteirão.
 - Qualquer coisa em `/admin/eventos` **na frente da banca** sem necessidade
-  — é ferramenta interna, não parte da narrativa do produto.
+  — é ferramenta interna, não parte da narrativa do produto (hoje também
+  inacessível: `GAMEHUB_ADMIN_EMAILS` não bate com nenhuma conta
+  cadastrada).
 
 ## Dados de demo — regra de ouro
 

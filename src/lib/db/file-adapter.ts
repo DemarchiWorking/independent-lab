@@ -7,7 +7,7 @@ import { aplicarGanhos, atributosFaltantes } from "@/lib/atributos";
 import { alocacoesAtivasEm, disponibilidadeDe } from "@/lib/disponibilidade";
 import { eventoAtivoEm } from "@/lib/eventos-globais";
 import type { AtributoChave } from "@tokens";
-import type { DeltaProgresso, GameRepository, NovoNegocio } from "./repository";
+import type { DeltaProgresso, GameRepository, NovaSolicitacao, NovoNegocio } from "./repository";
 import type {
   Alocacao,
   Bairro,
@@ -15,8 +15,10 @@ import type {
   BenchmarkBairro,
   CapituloEntregue,
   Cidade,
+  ClienteAdmin,
   ConviteResgatado,
   DestaqueBairro,
+  DocumentoGerado,
   Endereco,
   EscopoMapa,
   EventoGlobal,
@@ -37,6 +39,7 @@ import type {
   Quarteirao,
   Sede,
   SolicitacaoContato,
+  SolicitacaoServico,
   TrabalhoAceito,
   Usuario,
 } from "./types";
@@ -51,6 +54,10 @@ const MAPA = path.join(ROOT, "geografia", "mapa.json");
 const INDEX_MEMBROS = path.join(ROOT, "index", "membros.json");
 /** Global (não por tenant) — mesmo "cartaz" para todo mundo, ver MAPA acima. */
 const EVENTOS_GLOBAIS = path.join(ROOT, "eventos-globais.json");
+/** Global também: o painel admin (labdatadev) precisa ler TODAS as
+ *  solicitações de todos os tenants; um arquivo único é o que torna o
+ *  "listar tudo" trivial no modo file (dev/demo, escritor único). */
+const SOLICITACOES = path.join(ROOT, "solicitacoes-servico.json");
 export const LOTES_POR_QUARTEIRAO = 8;
 
 /** Cidades do ICP primário — fonte única em lib/regiao.ts (espelhada em
@@ -111,6 +118,12 @@ function novoQuarteirao(indice: number): Quarteirao {
 type FuncionarioArmazenado = Omit<FuncionarioContratado, "disponibilidade">;
 
 export class FileRepository implements GameRepository {
+  async pingDb(): Promise<boolean> {
+    // Adapter de arquivo não tem banco a pingar — se o processo Node está de
+    // pé, o "banco" (JSON em disco) está acessível. Sempre saudável.
+    return true;
+  }
+
   async lerMapa(): Promise<Mapa> {
     return lerJson<Mapa>(MAPA, mapaInicial());
   }
@@ -354,6 +367,7 @@ export class FileRepository implements GameRepository {
       perfilPublico: dados.perfilPublico,
       consentimentoEm: new Date().toISOString(),
       consentimentoVersao: dados.consentimentoVersao,
+      cep: dados.cep,
     };
     await escreverJson(path.join(tenantDir(id), "negocio.json"), negocio);
     return negocio;
@@ -364,6 +378,21 @@ export class FileRepository implements GameRepository {
       path.join(tenantDir(tenantId), "negocio.json"),
       null,
     );
+  }
+
+  async excluirNegocio(tenantId: string): Promise<void> {
+    const mapa = await this.lerMapa();
+    for (const cidade of mapa.cidades) {
+      for (const bairro of cidade.bairros) {
+        for (const quarteirao of bairro.quarteiroes) {
+          for (const lote of quarteirao.lotes) {
+            if (lote.tenantId === tenantId) lote.tenantId = null;
+          }
+        }
+      }
+    }
+    await escreverJson(MAPA, mapa);
+    await fs.rm(tenantDir(tenantId), { recursive: true, force: true });
   }
 
   async listarNegociosPublicos(): Promise<Negocio[]> {
@@ -1118,5 +1147,105 @@ export class FileRepository implements GameRepository {
       await escreverJson(path.join(tenantDir(tenantId), "negocio.json"), negocio);
     }
     return progresso;
+  }
+
+  // ---- Solicitações de serviço (labdatadev) ----
+
+  async criarSolicitacao(input: NovaSolicitacao): Promise<SolicitacaoServico> {
+    const atuais = await lerJson<SolicitacaoServico[]>(SOLICITACOES, []);
+    const agora = new Date().toISOString();
+    const nova: SolicitacaoServico = {
+      id: randomBytes(8).toString("hex"),
+      tenantId: input.tenantId,
+      tipo: input.tipo,
+      titulo: input.titulo,
+      descricao: input.descricao,
+      status: "recebida",
+      criadoEm: agora,
+      atualizadoEm: agora,
+    };
+    atuais.push(nova);
+    await escreverJson(SOLICITACOES, atuais);
+    return nova;
+  }
+
+  async listarSolicitacoesDoTenant(tenantId: string): Promise<SolicitacaoServico[]> {
+    const atuais = await lerJson<SolicitacaoServico[]>(SOLICITACOES, []);
+    return atuais.filter((s) => s.tenantId === tenantId);
+  }
+
+  async listarTodasSolicitacoes(): Promise<SolicitacaoServico[]> {
+    return lerJson<SolicitacaoServico[]>(SOLICITACOES, []);
+  }
+
+  async atualizarStatusSolicitacao(
+    id: string,
+    status: string,
+  ): Promise<SolicitacaoServico> {
+    const atuais = await lerJson<SolicitacaoServico[]>(SOLICITACOES, []);
+    const alvo = atuais.find((s) => s.id === id);
+    if (!alvo) throw new Error(`Solicitação ${id} não encontrada.`);
+    alvo.status = status;
+    alvo.atualizadoEm = new Date().toISOString();
+    await escreverJson(SOLICITACOES, atuais);
+    return alvo;
+  }
+
+  async listarClientesAdmin(): Promise<ClienteAdmin[]> {
+    const raiz = path.join(ROOT, "tenants");
+    let pastas: string[];
+    try {
+      pastas = await fs.readdir(raiz);
+    } catch {
+      return [];
+    }
+
+    const mapa = await this.lerMapa();
+    const nomeCidade = new Map(mapa.cidades.map((c) => [c.slug, c.nome]));
+    const nomeBairro = new Map(
+      mapa.cidades.flatMap((c) => c.bairros.map((b) => [`${c.slug}/${b.slug}`, b.nome])),
+    );
+
+    const negocios = await Promise.all(pastas.map((id) => this.lerNegocio(id)));
+    return Promise.all(
+      negocios
+        .filter((n): n is Negocio => n !== null)
+        .map(async (n): Promise<ClienteAdmin> => {
+          const onboarding = await this.lerOnboarding(n.id);
+          return {
+            id: n.id,
+            nome: n.nome,
+            segmento: n.segmento,
+            cidadeNome: nomeCidade.get(n.endereco.cidadeSlug) ?? n.endereco.cidadeSlug,
+            bairroNome:
+              nomeBairro.get(`${n.endereco.cidadeSlug}/${n.endereco.bairroSlug}`) ??
+              n.endereco.bairroSlug,
+            degrauAtual: n.degrauAtual,
+            degrauAlvo: n.degrauAlvo,
+            nivel: n.nivel,
+            xp: n.xp,
+            criadoEm: n.criadoEm,
+            onboarding: onboarding
+              ? {
+                  scoreFit: onboarding.scoreFit,
+                  degrauAlvo: onboarding.degrauAlvo,
+                  servicosRecomendados: onboarding.servicosRecomendados,
+                  respondidoEm: onboarding.respondidoEm,
+                }
+              : null,
+            // Billing (assinaturas) só existe no driver Supabase hoje.
+            assinaturas: [],
+          };
+        }),
+    );
+  }
+
+  // ---- Documentação de negócio gerada por IA (GH-DOC-01) ----
+  // No-op: a esteira de geração depende do motor headless rodando contra o
+  // Postgres real (fila + RLS) — modo `file` é demo/dev sem infra.
+  async enfileirarGeracaoDocumento(): Promise<void> {}
+
+  async listarMeusDocumentos(): Promise<DocumentoGerado[]> {
+    return [];
   }
 }

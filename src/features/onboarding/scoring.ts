@@ -3,7 +3,7 @@ import { ehCidadePrioritaria } from "@/lib/regiao";
 import { atributosVazios, type Atributos } from "@/lib/atributos";
 
 /**
- * Converte as 10 respostas em posição comercial e de jogo.
+ * Converte as respostas do onboarding em posição comercial e de jogo.
  * Regras documentadas em docs/design/ONBOARDING-10-PERGUNTAS.md
  */
 
@@ -19,7 +19,7 @@ export interface Resultado {
    */
   xpInicial: number;
   servicosRecomendados: string[];
-  /** os 5 eixos de atributo, já calculados a partir das 10 respostas */
+  /** os 5 eixos de atributo, já calculados a partir das respostas do onboarding */
   atributosIniciais: Atributos;
 }
 
@@ -46,6 +46,13 @@ const PONTOS_EQUIPE: Record<Respostas["equipe"], number> = {
   "6-15": 20,
   "16-30": 20,
   "30+": 12,
+};
+
+const PONTOS_LICITACAO: Record<Respostas["licitacaoPublico"], number> = {
+  "vende-regularmente": 25,
+  "ja-vendeu": 12,
+  "tem-interesse": 5,
+  "nao-e-foco": 0,
 };
 
 /** Gargalos que indicam urgência real (BANT). */
@@ -79,7 +86,7 @@ function servicosPara(r: Respostas): string[] {
 }
 
 /**
- * Valor inicial de cada eixo, a partir das 10 respostas — ver
+ * Valor inicial de cada eixo, a partir das respostas do onboarding — ver
  * docs/analise-prints/telas/economia-de-atributos.md §5 pela justificativa
  * de cada mapeamento. Nenhum eixo nasce de zero absoluto: todo negócio real
  * já tem alguma base, mesmo que pequena.
@@ -141,6 +148,11 @@ export function calcular(r: Respostas): Resultado {
 
   score += PONTOS_EQUIPE[r.equipe];
   score += PONTOS_INVESTIMENTO[r.investimento];
+  // `?? 0`: achado real de code review — um FormData forjado (fora da UI
+  // normal, que só manda valores do enum) com `licitacaoPublico` inválido
+  // faria essa busca retornar `undefined`, propagando `NaN` por `score` e
+  // `xpInicial` até um insert que rejeita `xp: null` sem mensagem amigável.
+  score += PONTOS_LICITACAO[r.licitacaoPublico] ?? 0;
   if (GARGALOS_URGENTES.includes(r.gargalo)) score += 15;
 
   score = Math.max(0, Math.min(100, score));
@@ -150,6 +162,8 @@ export function calcular(r: Respostas): Resultado {
   const porteBom = r.equipe === "6-15" || r.equipe === "16-30";
   if (r.segmento === "engenharia" && porteBom) alvo += 1;
   if (r.presencaDigital === "nada") alvo -= 1; // precisa de base antes
+  if (r.faturamentoFaixa === "100-300k" || r.faturamentoFaixa === "acima-300k")
+    alvo += 1;
   alvo = Math.max(1, Math.min(5, alvo));
 
   return {

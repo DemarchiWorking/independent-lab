@@ -1,4 +1,8 @@
 @import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Press+Start+2P&display=swap");
+/* Par tipográfico do /pitch (`features/pitch/`) — display geométrico +
+   corpo neutro de alto padrão, escopado via `.pitch-scope` (ver abaixo).
+   Nunca aplicado fora do pitch: o jogo/landing mantêm Nunito/pixel. */
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -8,6 +12,20 @@
   --font-ui: "Nunito";
   --font-body: "Nunito";
   --font-pixel: "Press Start 2P";
+  --font-pitch-display: "Space Grotesk";
+  --font-pitch-body: "Inter";
+}
+
+/* Escopo tipográfico do pitch — só dentro de `.pitch-scope`
+   (`features/pitch/PitchPage.tsx`), nunca vaza pro resto do produto. */
+.pitch-scope {
+  font-family: var(--font-pitch-body), "Trebuchet MS", Verdana, sans-serif;
+}
+.pitch-scope h1,
+.pitch-scope h2,
+.pitch-scope h3 {
+  font-family: var(--font-pitch-display), var(--font-pitch-body), sans-serif;
+  letter-spacing: -0.02em;
 }
 
 html,
@@ -44,6 +62,87 @@ body {
   .clip-hex {
     clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
   }
+
+  /* Landing (GH-MKT-01) — gradiente teal→laranja nas 2 cores de marca
+     (design-system/tokens.ts, color.brand.teal/orange). */
+  .text-gradient {
+    background: linear-gradient(135deg, #00d4c8, #f59e0b 85%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Landing (GH-MKT-01) — "text shimmer" (padrão cult-ui/aceternity): faixa
+     de brilho varrendo o texto em loop via background-clip animado. Mesmo
+     teal da marca (design-system/tokens.ts, color.brand.teal). */
+  .text-shimmer {
+    background: linear-gradient(
+      110deg,
+      #eaf2ff 0%,
+      #eaf2ff 38%,
+      #00d4c8 50%,
+      #eaf2ff 62%,
+      #eaf2ff 100%
+    );
+    background-size: 220% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer-text 3.4s linear infinite;
+  }
+
+  /* Grão sutil (ruído SVG inline, sem asset externo) — usado no /pitch pra
+     dar profundidade ao fundo escuro sem pesar no bundle. */
+  .bg-grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Grade técnica sutil de fundo — reforça a leitura "enterprise/dado" em
+     seções do /pitch (Tecnico, Mercado). Puro CSS, sem imagem. */
+  .bg-tech-grid {
+    background-image:
+      linear-gradient(rgba(0, 212, 200, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 212, 200, 0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 40%, transparent 90%);
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 40%, transparent 90%);
+  }
+
+  /* Faixa de rolagem infinita (padrão skiper-ui/aceternity) — ver
+     src/components/ui/Marquee.tsx. */
+  .animate-marquee {
+    animation: marquee linear infinite;
+  }
+  .animation-direction-reverse {
+    animation-direction: reverse;
+  }
+  .group:hover .animate-marquee {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes shimmer-text {
+  from {
+    background-position: 200% center;
+  }
+  to {
+    background-position: -200% center;
+  }
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -52,5 +151,52 @@ body {
   *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* Impressão do /pitch (Ctrl+P → Salvar como PDF) — folha A4, uma seção por
+   página, sem elementos de navegação fixa (que não fazem sentido fora do
+   scroll) nem canvas WebGL (three.js não renderiza em print e deixaria uma
+   caixa preta). Cores de marca preservadas de propósito — isto é um deck
+   pra ser LIDO em PDF, não um documento de texto corrido. */
+@page {
+  size: A4;
+  margin: 14mm 12mm;
+}
+
+@media print {
+  .pitch-scope {
+    background: #080e1d !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  .pitch-scope canvas {
+    display: none !important;
+  }
+
+  .pitch-scope section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    padding-top: 8mm;
+    padding-bottom: 8mm;
+  }
+
+  .pitch-scope section:not(:last-of-type) {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .pitch-scope.bg-grain::before,
+  .pitch-scope .bg-grain::before {
+    display: none !important;
+  }
+
+  /* Blobs decorativos com `blur()` — o motor de PDF do Chromium rasteriza
+     cada um em bitmap de página inteira; sem isso, um deck de ~20 páginas
+     ficava com dezenas de MB por causa só disso. */
+  .pitch-scope [class*="blur-"] {
+    display: none !important;
   }
 }

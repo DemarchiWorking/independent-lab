@@ -46,7 +46,7 @@ inovação aplicada a empreendedorismo/PMEs regionais).
    (contrato por período, capítulo resolvido uma vez, cargo/job único).
    `recompensar()` é endpoint público: nunca o abra a um evento novo sem essa
    guarda. Contratar/gastar debita **na mesma transação** da compra.
-9. **Layout funciona de 375 px a 1920 px.** Sem altura fixa em px, sem
+9. **Layout funciona de 375 px a 1920 px.** Alturas ligadas à janela (`dvh`/`clamp`), sem
    overflow horizontal, alvo de toque ≥ 40 px (ver `docs/RESPONSIVIDADE.md`).
 
 ## Mapa rápido (onde mexer em quê)
@@ -80,8 +80,34 @@ npm test            # vitest — gate obrigatório
 npm run build       # gate obrigatório antes de qualquer deploy
 ```
 
-Início rápido: duplo-clique em `iniciar.bat` (Windows) ou `./iniciar.sh`
-(Linux/Mac) — instalam dependências se faltar e sobem o app sozinhos.
+### Os 4 jeitos de subir isto (do mais simples ao mais completo)
+
+| Quero... | Faço | Banco | Multiplayer |
+|---|---|---|---|
+| **Jogar no meu Windows, 2 cliques** | duplo-clique em **`JOGAR.bat`** | arquivo (volume Docker) | não |
+| **1 comando em qualquer SO** | **`docker compose up -d`** | arquivo (volume Docker) | não |
+| **Mexer em UI rápido** | `./iniciar.sh` / `iniciar.bat` (`npm run dev`) | arquivo, em `./data/` | não |
+| **Produção / pitch / multiplayer** | **`./deploy/docker/setup.sh --with-supabase`** (ou `./start.sh`) | Postgres real | **sim** |
+
+**`docker compose up -d` funciona num clone limpo, sem `.env`, sem rodar
+script nenhum** — é `docker-compose.override.yml` que fornece os defaults
+seguros (`GAMEHUB_DB=file`, `GAMEHUB_SECRET` de dev, 1 réplica). Esse
+override é carregado SÓ quando não se passa `-f`; como `setup.sh`,
+`update.sh` e `rollback.sh` sempre passam `-f docker-compose.yml ...`,
+**produção nunca o enxerga**. Não mexa nessa propriedade sem entender que
+é ela que impede config de dev vazar pra VPS.
+
+**Numa VPS nova, um comando só (do zero ao ar, multiplayer):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/DemarchiWorking/independent-lab/integracao-deploy-vps/deploy/docker/bootstrap.sh | sudo bash
+```
+Leva ~5-6 min na primeira vez (piso: ~2,9 GB de imagem Docker pra baixar —
+ver o cabeçalho de `deploy/docker/bootstrap.sh` pra como chegar em <2 min).
+
+⚠️ **Multiplayer/presença ao vivo só existe no modo Supabase.** O modo
+arquivo é single-player: serve pra demonstrar a gamificação inteira
+(cadastro, mapa, sede, XP, escada de valor) sem infra, mas o WebSocket de
+presença fala direto com o Realtime do Supabase e fica em no-op.
 
 ## Validação sem infra (truques úteis neste projeto)
 

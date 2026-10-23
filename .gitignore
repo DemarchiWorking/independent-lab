@@ -37,3 +37,30 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Worktrees de agente (Claude Code) — scratch de sessão, nunca versiona.
+.claude/worktrees/
+
+# Terraform (deploy/terraform/) — estado e segredos nunca versionam.
+# `.terraform.lock.hcl` FICA de fora deste ignore de propósito — é o lock
+# de versão de provider, deve ser commitado (prática padrão Terraform).
+deploy/terraform/.terraform/
+deploy/terraform/*.tfstate
+deploy/terraform/*.tfstate.*
+deploy/terraform/*.tfvars
+deploy/terraform/crash.log
+
+# Estado local de deploy Docker (deploy/docker/update.sh e rollback.sh) —
+# qual commit está no ar em CADA host é fato do host, não do repositório.
+deploy/docker/.state/
+
+# Document Engine (GH-DOC-01) — rascunho de rodada por tenant (dado real de
+# cliente) e logs de cron: fato do host, nunca do repositório. O código
+# (scripts/, knowledge-base/, cron/) continua versionado normalmente.
+document-engine/clients/
+document-engine/logs/
+
+# Vídeo de backup da demo (deploy/apresentacao/assets/) — binário grande,
+# fato do host que gravou (e pode ficar desatualizado a cada mudança visual
+# da landing), nunca versionar.
+deploy/apresentacao/assets/

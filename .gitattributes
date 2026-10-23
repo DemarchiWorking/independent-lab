@@ -1,2 +1,16 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Arquivos .bat SEMPRE com CRLF no disco do Windows.
+# O `cmd.exe` tolera LF em scripts triviais, mas quebra de formas difíceis de
+# diagnosticar em blocos `if (...)` de várias linhas — exatamente o que
+# `JOGAR.bat` usa. Sem esta linha, um clone feito no Windows com
+# `core.autocrlf=false` (comum em Git for Windows configurado à mão) entrega
+# os `.bat` em LF e o duplo-clique falha sem mensagem útil.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Scripts de shell SEMPRE com LF, inclusive clonados no Windows — um `.sh`
+# com CRLF morre dentro do WSL/Docker com o erro clássico
+# "bad interpreter: /usr/bin/env bash^M".
+*.sh text eol=lf

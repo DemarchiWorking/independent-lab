@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
@@ -17,6 +17,19 @@ import type { Capitulo, Escolha, TomEscolha } from "./tipos";
  * Visual de "carta que chegou", não de modal de sistema: tem remetente, tem
  * data, e as opções mostram o custo ANTES de clicar. O jogador precisa poder
  * decidir informado — escolha às cegas não ensina nada sobre o negócio dele.
+ *
+ * `fixed inset-0` (overlay de página inteira), não bloco no fluxo normal —
+ * achado real em celular (relato do fundador, docs/PROXIMA-TAREFA.md Tarefa
+ * D): `CapituloGate` é montado ANTES/fora do `<GameShell>` em `/hub` e
+ * `/world` (ver os `page.tsx`), então como bloco em fluxo ele empurrava o
+ * canvas do World inteiro para baixo da dobra numa tela de celular — o
+ * jogador via só o card, sem nenhuma pista de que dava pra rolar até o
+ * jogo. Como overlay fixo e centralizado, com `max-h` + scroll interno
+ * próprio, ele nunca depende da altura da viewport: aparece por cima,
+ * sempre visível, em qualquer tamanho de tela. Não reaproveita
+ * `RibbonPanel` de propósito: lá o `absolute inset-0` é relativo à janela
+ * do jogo (dentro do `<GameShell>`) — aqui o gate precisa cobrir a
+ * PÁGINA inteira, incluindo fora do `<GameShell>`.
  */
 
 const CORES_TOM: Record<TomEscolha, string> = {
@@ -49,6 +62,50 @@ export function CapituloCard({
   const [desfecho, setDesfecho] = useState<string | null>(null);
   const [documento, setDocumento] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const painelRef = useRef<HTMLElement | null>(null);
+
+  /**
+   * Achado real de code review (2026-08-18) sobre o overlay `fixed inset-0`
+   * introduzido nesta sessão: `role="dialog" aria-modal="true"` declarava
+   * uma semântica de modal que não era garantida — sem foco inicial e sem
+   * trap de Tab, um usuário de teclado/leitor de tela conseguia tabular
+   * pra elementos do `/hub`/`/world` por trás do overlay (visualmente
+   * cobertos, mas ainda focáveis); sem travar o scroll do `<body>`, a
+   * página de fundo ainda rolava por teclado (Space/PageDown) mesmo com o
+   * modal "aberto" — na mesma superfície mobile que motivou o fix
+   * original. Escape É de propósito NÃO tratado aqui: diferente de um
+   * modal comum, este card representa uma decisão de jogo que precisa ser
+   * tomada (mesmo padrão de um diálogo de consentimento obrigatório) —
+   * não há conceito de "fechar sem escolher".
+   */
+  useEffect(() => {
+    const overflowOriginal = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    painelRef.current?.focus();
+
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !painelRef.current) return;
+      const focaveis = painelRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focaveis.length === 0) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      if (e.shiftKey && document.activeElement === primeiro) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && document.activeElement === ultimo) {
+        e.preventDefault();
+        primeiro.focus();
+      }
+    };
+    document.addEventListener("keydown", aoTeclar);
+
+    return () => {
+      document.body.style.overflow = overflowOriginal;
+      document.removeEventListener("keydown", aoTeclar);
+    };
+  }, []);
 
   /**
    * De propósito, SEM `useTransition`/`startTransition` aqui.
@@ -83,112 +140,124 @@ export function CapituloCard({
   };
 
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
+    <motion.div
+      className="fixed inset-0 z-40 flex items-center justify-center p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={springSnappy}
-      className="relative w-full overflow-hidden rounded-md bg-panel p-4 pt-5 text-ink shadow-modal"
-      aria-label={`Capítulo: ${capitulo.titulo}`}
     >
-      <span className="clip-ribbon absolute -left-1.5 -top-3 rounded-sm bg-coral px-4 py-1.5 text-[13px] font-extrabold text-white shadow-[0_3px_0] shadow-coral-dark">
-        {rotuloDeTempo(diaDoNegocio)}
-      </span>
+      <div className="absolute inset-0 bg-black/55" />
+      <motion.section
+        ref={painelRef}
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={springSnappy}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Capítulo: ${capitulo.titulo}`}
+        tabIndex={-1}
+        className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-md bg-panel p-4 pt-5 text-ink shadow-modal outline-none"
+      >
+        <span className="clip-ribbon absolute -left-1.5 -top-3 rounded-sm bg-coral px-4 py-1.5 text-[13px] font-extrabold text-white shadow-[0_3px_0] shadow-coral-dark">
+          {rotuloDeTempo(diaDoNegocio)}
+        </span>
 
-      <div className="mt-3">
-        <p className="font-pixel text-[8px] uppercase tracking-wide text-[#5b6b86]">
-          {capitulo.remetente}
-        </p>
-        <h2 className="mt-1 text-base font-extrabold leading-tight">
-          {capitulo.titulo}
-        </h2>
-        <p className="mt-2 text-[13px] leading-relaxed text-[#33415c]">
-          {capitulo.narrativa}
-        </p>
-      </div>
+        <div className="mt-3">
+          <p className="font-pixel text-[8px] uppercase tracking-wide text-[#5b6b86]">
+            {capitulo.remetente}
+          </p>
+          <h2 className="mt-1 text-base font-extrabold leading-tight">
+            {capitulo.titulo}
+          </h2>
+          <p className="mt-2 text-[13px] leading-relaxed text-[#33415c]">
+            {capitulo.narrativa}
+          </p>
+        </div>
 
-      <AnimatePresence mode="wait">
-        {desfecho ? (
-          <motion.div
-            key="desfecho"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-3 rounded-sm bg-[#f1f4f9] p-3"
-          >
-            <p className="text-[13px] font-bold leading-relaxed text-ink">
-              {desfecho}
-            </p>
-            {documento ? (
-              <p className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-teal">
-                <Icon name="file" size={13} />
-                Documento liberado no seu acervo: {documento}
-              </p>
-            ) : null}
-            <button
-              type="button"
-              {...pressable}
-              onClick={() => {
-                // sincroniza o resto da tela (HUD, moeda, XP) e só então some
-                // — a ordem importa pouco aqui porque `aoFechar` já tira este
-                // card da árvore por estado local, imune ao refresh alheio
-                router.refresh();
-                aoFechar?.();
-              }}
-              className="mt-3 w-full rounded-md bg-orange px-3 py-2 text-center text-[12px] font-extrabold text-ink shadow-[0_3px_0] shadow-orange-dark"
+        <AnimatePresence mode="wait">
+          {desfecho ? (
+            <motion.div
+              key="desfecho"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 rounded-sm bg-[#f1f4f9] p-3"
             >
-              Continuar
-            </button>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="escolhas"
-            variants={listContainer}
-            initial="initial"
-            animate="enter"
-            exit={{ opacity: 0 }}
-            className="mt-3 flex flex-col gap-2"
-          >
-            {capitulo.escolhas.map((e) => {
-              const custo = e.efeito.moeda && e.efeito.moeda < 0 ? -e.efeito.moeda : 0;
-              const semSaldo = custo > moedaVirtual;
-              return (
-              <motion.button
-                key={e.id}
-                variants={listItem}
-                {...(pendente || semSaldo ? {} : pressable)}
+              <p className="text-[13px] font-bold leading-relaxed text-ink">
+                {desfecho}
+              </p>
+              {documento ? (
+                <p className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-teal">
+                  <Icon name="file" size={13} />
+                  Documento liberado no seu acervo: {documento}
+                </p>
+              ) : null}
+              <button
                 type="button"
-                disabled={pendente || semSaldo}
-                onClick={() => escolher(e)}
-                className={cn(
-                  "rounded-md border-2 bg-white p-2.5 text-left transition-colors disabled:opacity-60",
-                  CORES_TOM[e.tom],
-                )}
+                {...pressable}
+                onClick={() => {
+                  // sincroniza o resto da tela (HUD, moeda, XP) e só então some
+                  // — a ordem importa pouco aqui porque `aoFechar` já tira este
+                  // card da árvore por estado local, imune ao refresh alheio
+                  router.refresh();
+                  aoFechar?.();
+                }}
+                className="mt-3 w-full rounded-md bg-orange px-3 py-2 text-center text-[12px] font-extrabold text-ink shadow-[0_3px_0] shadow-orange-dark"
               >
-                <span className="flex items-center gap-1.5">
-                  <Icon name={ICONE_TOM[e.tom]} size={14} />
-                  <b className="text-[13px]">{e.rotulo}</b>
-                </span>
-                <span className="mt-0.5 block text-[11px] text-[#5b6b86]">
-                  {e.descricao}
-                </span>
-                <CustoDaEscolha escolha={e} />
-                {semSaldo ? (
-                  <span className="mt-1 block text-[10px] font-bold text-coral-dark">
-                    Faltam 🪙 {custo - moedaVirtual} — cumpra contratos para juntar.
+                Continuar
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="escolhas"
+              variants={listContainer}
+              initial="initial"
+              animate="enter"
+              exit={{ opacity: 0 }}
+              className="mt-3 flex flex-col gap-2"
+            >
+              {capitulo.escolhas.map((e) => {
+                const custo = e.efeito.moeda && e.efeito.moeda < 0 ? -e.efeito.moeda : 0;
+                const semSaldo = custo > moedaVirtual;
+                return (
+                <motion.button
+                  key={e.id}
+                  variants={listItem}
+                  {...(pendente || semSaldo ? {} : pressable)}
+                  type="button"
+                  disabled={pendente || semSaldo}
+                  onClick={() => escolher(e)}
+                  className={cn(
+                    "rounded-md border-2 bg-white p-2.5 text-left transition-colors disabled:opacity-60",
+                    CORES_TOM[e.tom],
+                  )}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Icon name={ICONE_TOM[e.tom]} size={14} />
+                    <b className="text-[13px]">{e.rotulo}</b>
                   </span>
-                ) : null}
-              </motion.button>
-              );
-            })}
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  <span className="mt-0.5 block text-[11px] text-[#5b6b86]">
+                    {e.descricao}
+                  </span>
+                  <CustoDaEscolha escolha={e} />
+                  {semSaldo ? (
+                    <span className="mt-1 block text-[10px] font-bold text-coral-dark">
+                      Faltam 🪙 {custo - moedaVirtual} — cumpra contratos para juntar.
+                    </span>
+                  ) : null}
+                </motion.button>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {erro ? (
-        <p className="mt-2 rounded-sm bg-coral/15 px-2.5 py-1.5 text-[11px] font-bold text-coral-dark">
-          {erro}
-        </p>
-      ) : null}
-    </motion.section>
+        {erro ? (
+          <p className="mt-2 rounded-sm bg-coral/15 px-2.5 py-1.5 text-[11px] font-bold text-coral-dark">
+            {erro}
+          </p>
+        ) : null}
+      </motion.section>
+    </motion.div>
   );
 }
 

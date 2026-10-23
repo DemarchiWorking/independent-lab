@@ -17,8 +17,34 @@ import {
   desenharPiso,
   desenharTapete,
   type CategoriaMovel,
+  type OpcoesAvatar,
+  type OpcoesMovel,
 } from "./desenho";
 import { CENARIO } from "./cores";
+
+/**
+ * Ponto de injeção da camada visual — permite trocar COMO a sala é desenhada
+ * (`WorldScreenV2`/`VisitaScreenV2`, ver `render/desenhoV2.ts`) sem duplicar
+ * `CenaWorld` inteira, que é onde mora o depth-sort/reconciliação/animação já
+ * testados. `DESENHADORES_PADRAO` é exatamente o que já rodava antes deste
+ * ponto de extensão existir — por isso nenhuma rota que não passar este
+ * parâmetro muda de comportamento, nem em um pixel.
+ */
+export interface Desenhadores {
+  piso: typeof desenharPiso;
+  tapete: typeof desenharTapete;
+  paredes: typeof desenharParedes;
+  movel: (opcoes: OpcoesMovel & { itemId?: string }) => Container;
+  avatar: (opcoes: OpcoesAvatar & { cargoId?: string }) => Container;
+}
+
+export const DESENHADORES_PADRAO: Desenhadores = {
+  piso: desenharPiso,
+  tapete: desenharTapete,
+  paredes: desenharParedes,
+  movel: desenharMovel,
+  avatar: desenharAvatar,
+};
 
 /**
  * Gerência da cena Pixi: monta o palco, mantém o depth-sort correto e anima o
@@ -38,6 +64,10 @@ export interface MovelNaCena {
   cor: number;
   categoria: CategoriaMovel;
   selecionado: boolean;
+  /** id do item no catálogo (`features/sede/catalogo.ts`) — opcional; só
+   *  consumido por desenhadores V2 que querem uma silhueta por item, não só
+   *  por categoria. Desenhadores V1 (`desenho.ts`) ignoram este campo. */
+  itemId?: string;
 }
 
 export interface AvatarNaCena {
@@ -47,6 +77,10 @@ export interface AvatarNaCena {
   cor: number;
   nome: string;
   dono: boolean;
+  /** cargo do catálogo de IA (`features/equipe-ia/catalogo.ts`) — opcional;
+   *  mesma lógica de `itemId` acima, para silhueta por cargo em vez de só
+   *  por cor. */
+  cargoId?: string;
 }
 
 export interface EstadoCena {
@@ -99,6 +133,8 @@ export class CenaWorld {
      *  de alguém? dá para interagir?) é `engine/proximidade.ts`. Regra
      *  nunca mora no `render/`. */
     private readonly aoParar?: (avatarId: string, celula: Celula) => void,
+    /** Camada visual — default preserva o comportamento de sempre. */
+    private readonly desenhadores: Desenhadores = DESENHADORES_PADRAO,
   ) {
     this.camadaDinamica.sortableChildren = true;
     this.raiz.addChild(this.camadaCenario, this.camadaDestaque, this.camadaDinamica);
@@ -196,9 +232,9 @@ export class CenaWorld {
     this.raiz.position.set(m.offsetX, ALTURA_PAREDE + TILE_H);
 
     this.camadaCenario.addChild(
-      desenharParedes(geo.cols, geo.rows),
-      desenharPiso(geo.cols, geo.rows),
-      desenharTapete(geo.cols, geo.rows),
+      this.desenhadores.paredes(geo.cols, geo.rows),
+      this.desenhadores.piso(geo.cols, geo.rows),
+      this.desenhadores.tapete(geo.cols, geo.rows),
     );
   }
 
@@ -230,10 +266,11 @@ export class CenaWorld {
       let vista = this.vistasMovel.get(m.id);
 
       if (!vista) {
-        vista = desenharMovel({
+        vista = this.desenhadores.movel({
           cor: m.cor,
           categoria: m.categoria,
           selecionado: m.selecionado,
+          itemId: m.itemId,
         });
         vista.label = `movel:${m.id}`;
         this.vistasMovel.set(m.id, vista);
@@ -271,7 +308,12 @@ export class CenaWorld {
     for (const a of avatares) {
       if (this.andarilhos.has(a.id)) continue;
 
-      const vista = desenharAvatar({ cor: a.cor, nome: a.nome, dono: a.dono });
+      const vista = this.desenhadores.avatar({
+        cor: a.cor,
+        nome: a.nome,
+        dono: a.dono,
+        cargoId: a.cargoId,
+      });
       const p = gridParaTela(a.cx, a.cy);
       vista.position.set(p.x, p.y);
       vista.zIndex = (a.cx + a.cy) * 100 + 50;

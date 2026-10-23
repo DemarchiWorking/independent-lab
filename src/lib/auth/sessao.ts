@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { Sessao } from "@/lib/db/types";
 
 const COOKIE = "gamehub_sessao";
@@ -19,6 +19,23 @@ function assinar(payload: string): string {
   return createHmac("sha256", segredo()).update(payload).digest("hex");
 }
 
+/**
+ * `secure` precisa refletir o protocolo REAL da requisição, não
+ * `NODE_ENV`: este projeto também é servido em produção por IP puro, sem
+ * domínio/HTTPS na frente (nginx só com `listen 80`, ver `nginx.conf`).
+ * Um cookie `Secure` sobre HTTP puro é descartado pelo browser em
+ * silêncio — o login parece funcionar (o redirect dispara) mas a sessão
+ * nunca persiste, e toda página protegida joga de volta pra `/entrar`.
+ * `X-Forwarded-Proto` é setado pelo nginx (`proxy_set_header
+ * X-Forwarded-Proto $scheme`) e reflete o protocolo do cliente mesmo
+ * atrás do proxy — se um dia houver HTTPS na frente, isso já fica certo
+ * sozinho.
+ */
+async function conexaoSegura(): Promise<boolean> {
+  const proto = (await headers()).get("x-forwarded-proto");
+  return proto === "https";
+}
+
 /** Cookie httpOnly assinado: <base64(json)>.<hmac> */
 export async function criarSessao(sessao: Sessao): Promise<void> {
   const payload = Buffer.from(JSON.stringify(sessao)).toString("base64url");
@@ -27,7 +44,7 @@ export async function criarSessao(sessao: Sessao): Promise<void> {
   jar.set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: await conexaoSegura(),
     path: "/",
     maxAge: MAX_AGE,
   });
@@ -45,13 +62,35 @@ export async function lerSessao(): Promise<Sessao | null> {
   if (esperada.length !== recebida.length) return null;
   if (!timingSafeEqual(esperada, recebida)) return null;
 
+  let sessao: Sessao;
   try {
-    return JSON.parse(
+    sessao = JSON.parse(
       Buffer.from(payload, "base64url").toString("utf8"),
     ) as Sessao;
   } catch {
     return null;
   }
+
+  // `tenantId` vira `negocios.id` (bigint) em toda leitura do repositório
+  // Supabase. Um cookie assinado mas com `tenantId` não-numérico é sobra de
+  // uma sessão criada em modo `GAMEHUB_DB=file` (onde o id é hex, ver
+  // `novoId()`) e ainda válida pela mesma `GAMEHUB_SECRET` — não é
+  // falsificação, mas também não é utilizável NO DRIVER ATUAL: sem esta
+  // checagem, cada página autenticada quebra com "invalid input syntax for
+  // type bigint: NaN" em vez de simplesmente mandar logar de novo.
+  //
+  // A checagem só pode valer para o driver Supabase. Um `GAMEHUB_DB=file`
+  // (o padrão de dev local, ver `lib/db/index.ts`) SEMPRE gera `tenantId`
+  // hexadecimal — rejeitar isso incondicionalmente (como uma versão
+  // anterior fazia) derrubava toda sessão de volta pro login no primeiro
+  // reload, mesmo sendo o próprio driver ativo. Achado ao tentar validar
+  // visualmente o World em `npm run dev` (ver
+  // `docs/architecture/ARQUITETURA-VISUAL-ITENS-SEDE.md`).
+  if (process.env.GAMEHUB_DB === "supabase" && !/^\d+$/.test(sessao.tenantId)) {
+    return null;
+  }
+
+  return sessao;
 }
 
 export async function encerrarSessao(): Promise<void> {

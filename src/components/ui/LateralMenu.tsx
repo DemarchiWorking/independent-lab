@@ -40,7 +40,7 @@ export function LateralMenu<T extends string>({
       initial="initial"
       animate="enter"
       aria-label="Módulos do jogo"
-      className="relative z-20 flex gap-1.5 overflow-x-auto px-2 pb-2 max-lg:order-1 lg:absolute lg:left-2 lg:top-1/2 lg:-translate-y-1/2 lg:flex-col lg:overflow-visible lg:p-0"
+      className="relative z-20 flex gap-1.5 overflow-x-auto px-2 pb-2 max-lg:order-1 lg:absolute lg:left-2 lg:top-[calc(var(--hud-h,96px)+12px)] lg:bottom-20 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:p-0"
     >
       {items.map((item) => {
         const ativo = item.key === current;

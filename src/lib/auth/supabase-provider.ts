@@ -1,5 +1,15 @@
 import { supabaseAdmin, supabaseAnon } from "@/lib/supabase/client";
+import { enviarEmail } from "@/lib/email/resend";
 import type { AuthProvider, Identidade } from "./provider";
+
+/** Só `app_metadata.role === "admin"` vira `Identidade.role` — qualquer
+ *  outro valor é tratado como usuário comum. `app_metadata` só é
+ *  gravável via Admin API/service_role (nunca pelo próprio usuário,
+ *  diferente de `user_metadata`), então este campo é confiável como
+ *  origem de autorização. */
+function roleDoUsuario(appMetadata: Record<string, unknown> | undefined): Identidade["role"] {
+  return appMetadata?.role === "admin" ? "admin" : undefined;
+}
 
 /**
  * Autenticação via Supabase Auth. A senha nunca transita pela nossa camada de
@@ -28,13 +38,23 @@ export class SupabaseAuthProvider implements AuthProvider {
     const { data, error } = await supabaseAdmin().auth.admin.createUser({
       email,
       password: senha,
-      email_confirm: false,
+      // `email_confirm: true` (era `false`): este produto não tem NENHUM
+      // fluxo de confirmação por e-mail (sem página `/confirmar`, sem SMTP
+      // configurado no self-hosted) — com `false`, o GoTrue marca a conta
+      // como não confirmada e `signInWithPassword` sempre recusa com
+      // `email_not_confirmed`, mesmo com a senha certa. Bug ao vivo
+      // 2026-08-02: TODO cadastro ficava permanentemente impossibilitado de
+      // logar. `GOTRUE_MAILER_AUTOCONFIRM=true` do container não cobre
+      // este caso — só afeta o fluxo público `/signup`, não
+      // `admin.createUser`. Reproduzido e confirmado via API bruta do
+      // GoTrue antes deste fix (Kong :8010) — ver commit.
+      email_confirm: true,
       user_metadata: { nome },
     });
     if (error || !data.user) {
       throw new Error(`Supabase createUser: ${error?.message ?? "sem usuário"}`);
     }
-    return { usuarioId: data.user.id };
+    return { usuarioId: data.user.id, role: roleDoUsuario(data.user.app_metadata) };
   }
 
   async autenticar(email: string, senha: string): Promise<Identidade | null> {
@@ -43,6 +63,65 @@ export class SupabaseAuthProvider implements AuthProvider {
       password: senha,
     });
     if (error || !data.user) return null;
-    return { usuarioId: data.user.id };
+    return { usuarioId: data.user.id, role: roleDoUsuario(data.user.app_metadata) };
+  }
+
+  async removerConta(usuarioId: string): Promise<void> {
+    const { error } = await supabaseAdmin().auth.admin.deleteUser(usuarioId);
+    if (error) throw new Error(`Supabase deleteUser: ${error.message}`);
+  }
+
+  /**
+   * `generateLink` (admin) gera o código sem que o GoTrue tente mandar
+   * e-mail sozinho (este self-hosted não tem SMTP configurado) — o envio é
+   * nosso, via Resend. `error` cobre tanto "e-mail não existe" quanto falha
+   * de infra: os dois casos ficam silenciosos de propósito, nunca revelando
+   * qual dos dois aconteceu.
+   */
+  async solicitarRecuperacaoSenha(email: string): Promise<void> {
+    const { data, error } = await supabaseAdmin().auth.admin.generateLink({
+      type: "recovery",
+      email,
+    });
+    const codigo = data?.properties?.email_otp;
+    if (error || !codigo) return;
+
+    await enviarEmail({
+      to: email,
+      subject: "Seu código de recuperação — labdatadev gamehub",
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a">
+          <h2>Recuperação de senha</h2>
+          <p>Use o código abaixo para trocar sua senha no labdatadev gamehub:</p>
+          <p style="font-size:28px;font-weight:800;letter-spacing:6px;margin:20px 0">${codigo}</p>
+          <p style="color:#666;font-size:13px">Se você não pediu isso, ignore este e-mail — sua senha continua a mesma.</p>
+        </div>`,
+    });
+  }
+
+  /**
+   * `verifyOtp` (cliente anon) é quem de fato valida o código — expiração,
+   * uso único e tentativas ficam por conta do GoTrue, nunca reimplementados
+   * aqui. Só depois de validado é que a senha troca, via admin
+   * `updateUserById` (não precisa da sessão que `verifyOtp` devolve, só da
+   * confirmação de que o código bateu).
+   */
+  async confirmarRecuperacaoSenha(
+    email: string,
+    codigo: string,
+    novaSenha: string,
+  ): Promise<boolean> {
+    const { data, error } = await supabaseAnon().auth.verifyOtp({
+      email,
+      token: codigo,
+      type: "recovery",
+    });
+    if (error || !data.user) return false;
+
+    const { error: erroSenha } = await supabaseAdmin().auth.admin.updateUserById(
+      data.user.id,
+      { password: novaSenha },
+    );
+    return !erroSenha;
   }
 }

@@ -73,9 +73,11 @@ export function MapaScreen({
   };
 
   return (
-    <div className="flex h-full flex-col gap-2 overflow-hidden text-ink">
-      {/* seletor de cidade */}
-      <div className="flex flex-wrap gap-1.5">
+    <div className="flex h-full flex-col gap-1.5 overflow-hidden text-ink sm:gap-2">
+      {/* seletor de cidade — achado 2026-08-25 (feedback ao vivo): "nome
+          das cidades ocupa todo espaço válido" — compactado no mobile
+          (padding/fonte menores), sem mudar o comportamento. */}
+      <div className="flex flex-wrap gap-1">
         {mapa.cidades.map((c) => {
           const ativo = c.slug === cidade?.slug;
           return (
@@ -84,11 +86,11 @@ export function MapaScreen({
               type="button"
               onClick={() => trocarCidade(c.slug)}
               className={cn(
-                "flex items-center gap-1 rounded-pill px-2.5 py-1 text-[11px] font-bold",
+                "flex items-center gap-1 rounded-pill px-2 py-0.5 text-[10px] font-bold sm:px-2.5 sm:py-1 sm:text-[11px]",
                 ativo ? "bg-orange text-ink" : "bg-card2 text-muted",
               )}
             >
-              {c.prioritaria ? <Icon name="star" size={11} /> : null}
+              {c.prioritaria ? <Icon name="star" size={10} /> : null}
               {c.nome}
             </button>
           );
@@ -97,7 +99,7 @@ export function MapaScreen({
 
       {/* seletor de bairro */}
       {cidade && cidade.bairros.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1">
           {cidade.bairros.map((b) => {
             const ativo = b.slug === bairro?.slug;
             return (
@@ -109,7 +111,7 @@ export function MapaScreen({
                   setSel(null);
                 }}
                 className={cn(
-                  "rounded-pill px-2.5 py-1 text-[11px] font-bold",
+                  "rounded-pill px-2 py-0.5 text-[10px] font-bold sm:px-2.5 sm:py-1 sm:text-[11px]",
                   ativo ? "bg-teal text-ink" : "bg-card2 text-muted",
                 )}
               >
@@ -120,11 +122,18 @@ export function MapaScreen({
         </div>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 md:grid-cols-[1fr_220px]">
+      {/* Achado 2026-08-25: no mobile (1 coluna) o painel de detalhe ficava
+          empilhado ABAIXO do mapa dividindo o mesmo espaço `flex-1` — como
+          ele já nasce preenchido (a própria sede do usuário vem
+          pré-selecionada), sobrava só uma tira fina pro mapa em si.
+          `grid-rows-[minmax(180px,1fr)_auto]` garante um piso pro mapa e
+          deixa o painel de detalhe ocupar só o que o CONTEÚDO dele precisa,
+          nunca uma fatia proporcional roubada do mapa. */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(180px,1fr)_auto] gap-2 md:grid-cols-[1fr_220px] md:grid-rows-none">
         {/* quarteirões isométricos */}
-        <div className="min-h-0 overflow-auto rounded-md bg-card2/50 p-3">
+        <div className="min-h-0 overflow-auto rounded-md bg-card2/50 p-2 sm:p-3">
           {bairro && bairro.quarteiroes.length > 0 ? (
-            <div className="flex flex-wrap items-start gap-6">
+            <div className="flex flex-wrap items-start gap-3 sm:gap-6">
               {bairro.quarteiroes.map((q) => (
                 <QuarteiraoIso
                   key={q.id}
@@ -150,7 +159,7 @@ export function MapaScreen({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -16 }}
             transition={springSnappy}
-            className="rounded-md bg-panel p-3 text-ink"
+            className="max-h-[35dvh] overflow-auto rounded-md bg-panel p-3 text-ink md:max-h-none"
           >
             {selecionado ? (
               <>

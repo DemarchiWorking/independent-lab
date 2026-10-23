@@ -1,0 +1,66 @@
+# ============================================================================
+# labdatadev-gamehub — modo LOCAL de 1 comando (`docker compose up`).
+#
+# ┌──────────────────────────────────────────────────────────────────────┐
+# │  Este arquivo é carregado AUTOMATICAMENTE pelo Docker Compose quando  │
+# │  você roda `docker compose up` SEM passar `-f`. É a convenção oficial │
+# │  do Compose para "ajustes de máquina local".                          │
+# │                                                                       │
+# │  E é ignorado quando alguém passa `-f` explicitamente — que é         │
+# │  exatamente o que `deploy/docker/setup.sh`, `update.sh` e             │
+# │  `rollback.sh` sempre fazem (`-f docker-compose.yml -f ...`).         │
+# │  Ou seja: PRODUÇÃO NUNCA VÊ ESTE ARQUIVO. Não é um risco de vazar     │
+# │  config de dev pra VPS — é o mecanismo que garante que não vaza.      │
+# └──────────────────────────────────────────────────────────────────────┘
+#
+# O que ele resolve (auditoria DevOps 2026-08-02): num clone limpo,
+# `docker compose up` falhava em três pontos, um depois do outro —
+#   1. `.env` não existe          → resolvido com `required: false` no base
+#   2. `GAMEHUB_SECRET` ausente   → o app faz `throw` em NODE_ENV=production
+#                                    (`src/lib/auth/sessao.ts`), container em
+#                                    crashloop. Default de dev abaixo.
+#   3. 3 réplicas + banco em arquivo → escritor único, dado corrompe.
+#                                    Forçado 1 réplica abaixo.
+#
+# Uso:
+#   docker compose up -d          # sobe tudo, banco em arquivo, porta 3006
+#   docker compose logs -f        # acompanhar
+#   docker compose down           # parar (dados FICAM salvos no volume)
+#   docker compose down -v        # parar E apagar os dados
+#
+# Quer outra porta?  GAMEHUB_HTTP_PORT=8080 docker compose up -d
+#   (Windows PowerShell: $env:GAMEHUB_HTTP_PORT=8080; docker compose up -d)
+# ============================================================================
+
+services:
+  app:
+    environment:
+      # Banco em ARQUIVO (JSON dentro do volume `gamehub-data`), sem Postgres,
+      # sem Supabase, sem rede externa. É o modo "simulação local": dá pra
+      # cadastrar, jogar e ver a gamificação inteira funcionando offline.
+      # O que NÃO funciona neste modo é a presença ao vivo (multiplayer em
+      # tempo real), que fala direto com o Realtime do Supabase — para isso
+      # use `./deploy/docker/setup.sh --with-supabase`.
+      #
+      # `${VAR:-default}` lê do `.env` da pasta quando ele existe, então um
+      # `.env` de verdade (gerado pelo setup.sh) continua vencendo.
+      - GAMEHUB_DB=${GAMEHUB_DB:-file}
+
+      # Segredo de assinatura do cookie de sessão. O app EXIGE >= 16 chars em
+      # NODE_ENV=production, senão lança e o container não sobe.
+      #
+      # ⚠️ Este default é público (está no git) e serve SÓ para rodar na sua
+      # máquina. Ele nunca chega em produção: a VPS usa `deploy/docker/
+      # setup.sh`, que gera um `openssl rand -hex 32` no `.env` — e esse `.env`
+      # vence a interpolação abaixo. Se você quiser um segredo próprio no
+      # local também, crie um `.env` com `GAMEHUB_SECRET=...`.
+      - GAMEHUB_SECRET=${GAMEHUB_SECRET:-local-only-nao-use-em-producao-0000}
+
+    # 1 réplica, não 3. O adapter de arquivo (`src/lib/db/file-adapter.ts`) é
+    # de ESCRITOR ÚNICO: com o Nginx distribuindo entre réplicas que
+    # compartilham o mesmo volume, duas escritas simultâneas se sobrescrevem
+    # e o cadastro some. `deploy/docker/setup.sh` aplica a mesma guarda pelo
+    # lado do script; aqui é pelo lado do Compose, para quem nunca roda o
+    # script. No modo Supabase o Postgres arbitra e as 3 réplicas voltam.
+    deploy:
+      replicas: 1

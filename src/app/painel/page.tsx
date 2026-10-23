@@ -8,6 +8,7 @@ import { Icon } from "@/components/ui/Icon";
 import { AtributosBar } from "@/components/ui/AtributosBar";
 import { OfertasPainel } from "@/features/ofertas/OfertasPainel";
 import { ConvitePainel } from "@/features/growth/ConvitePainel";
+import { DocumentosPainel } from "@/features/documentos-gerados/DocumentosPainel";
 import { ConquistasPainel } from "@/features/conquistas/ConquistasPainel";
 import type { ContextoConquistas } from "@/features/conquistas/catalogo";
 import { compararComBenchmark, eixoParaFocar, mensagemFoco } from "@/features/mapa/benchmark";
@@ -20,18 +21,29 @@ export default async function PainelPage() {
   if (!sessao) redirect("/entrar");
 
   const repo = getRepository();
-  const [negocio, onboarding, vizinhos, ofertas, mensagens, funcionarios, parcerias, nos, sede] =
-    await Promise.all([
-      repo.lerNegocio(sessao.tenantId),
-      repo.lerOnboarding(sessao.tenantId),
-      repo.listarVizinhos(sessao.tenantId),
-      repo.listarOfertas(sessao.tenantId),
-      repo.listarSolicitacoesContato(sessao.tenantId),
-      repo.listarFuncionarios(sessao.tenantId),
-      repo.listarParceriasFormadas(sessao.tenantId),
-      repo.listarNosDesbloqueados(sessao.tenantId),
-      repo.lerSede(sessao.tenantId),
-    ]);
+  const [
+    negocio,
+    onboarding,
+    vizinhos,
+    ofertas,
+    mensagens,
+    funcionarios,
+    parcerias,
+    nos,
+    sede,
+    documentos,
+  ] = await Promise.all([
+    repo.lerNegocio(sessao.tenantId),
+    repo.lerOnboarding(sessao.tenantId),
+    repo.listarVizinhos(sessao.tenantId),
+    repo.listarOfertas(sessao.tenantId),
+    repo.listarSolicitacoesContato(sessao.tenantId),
+    repo.listarFuncionarios(sessao.tenantId),
+    repo.listarParceriasFormadas(sessao.tenantId),
+    repo.listarNosDesbloqueados(sessao.tenantId),
+    repo.lerSede(sessao.tenantId),
+    repo.listarMeusDocumentos(sessao.tenantId),
+  ]);
 
   if (!negocio) redirect("/cadastro");
 
@@ -281,6 +293,10 @@ export default async function PainelPage() {
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <ConvitePainel />
         <ConquistasPainel ctx={contextoConquistas} tenantId={negocio.id} />
+      </div>
+
+      <div className="mt-3">
+        <DocumentosPainel documentos={documentos} />
       </div>
 
       <div className="mt-5">

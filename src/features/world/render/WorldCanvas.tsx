@@ -2,7 +2,7 @@
 
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import type { Celula } from "../engine/iso";
-import { CenaWorld, type EstadoCena } from "./cena";
+import { CenaWorld, DESENHADORES_PADRAO, type EstadoCena } from "./cena";
 
 /**
  * Ponte React ↔ Pixi.
@@ -32,6 +32,19 @@ interface WorldCanvasProps {
   onCliqueCelula: (celula: Celula) => void;
   /** Avisa que o avatar do jogador parou numa célula (GH-WORLD-08). */
   onAvatarParou?: (celula: Celula) => void;
+  /**
+   * Camada visual da sala — default (`undefined`) preserva o desenho de
+   * sempre (`desenho.ts`). `"v2"` carrega `render/desenhoV2.ts` (silhueta
+   * por item, `WorldScreenV2`/`VisitaScreenV2`).
+   *
+   * De propósito uma STRING, não o objeto `Desenhadores` em si: quem chama
+   * este componente (`WorldScreenV2.tsx`) nunca importa `desenhoV2.ts` (que
+   * toca `pixi.js`) no próprio módulo — só este arquivo, que já é
+   * `dynamic(..., { ssr: false })` e já carrega Pixi dentro do efeito.
+   * Passar o objeto resolvido pelo chamador furaria exatamente a garantia
+   * do item 3 do comentário acima (manter Pixi fora do bundle inicial).
+   */
+  variante?: "v2";
   ref?: Ref<WorldCanvasHandle>;
 }
 
@@ -52,6 +65,7 @@ export function WorldCanvas({
   avatarDonoId,
   onCliqueCelula,
   onAvatarParou,
+  variante,
   ref,
 }: WorldCanvasProps) {
   const descricaoAcessivel = descrever(estado);
@@ -68,6 +82,10 @@ export function WorldCanvas({
   pararRef.current = onAvatarParou;
   const donoRef = useRef(avatarDonoId);
   donoRef.current = avatarDonoId;
+  // lido só na montagem (abaixo) — trocar a variante em runtime não é um
+  // caso de uso real hoje, então não entra nas deps do efeito de montagem
+  const varianteRef = useRef(variante);
+  varianteRef.current = variante;
 
   useImperativeHandle(
     ref,
@@ -88,6 +106,25 @@ export function WorldCanvas({
 
       const { Application } = await import("pixi.js");
       const { CenaWorld: Cena } = await import("./cena");
+      // desenhoV2.ts importa pixi.js — só carrega quando a variante pedir,
+      // dentro do mesmo efeito assíncrono que já carrega o resto do Pixi.
+      let desenhadores = DESENHADORES_PADRAO;
+      if (varianteRef.current === "v2") {
+        desenhadores = (await import("./desenhoV2")).DESENHADORES_V2;
+        // Degrau B — sprites de verdade, por cima do procedural V2. Qualquer
+        // falha aqui (rede, 404, import) é pega e IGNORADA: a variante "v2"
+        // continua funcionando 100% procedural, exatamente como antes desta
+        // camada existir. Nunca deixamos uma falha de asset derrubar a cena.
+        try {
+          const { carregarTexturasMovel, criarDesenhadorMovelComSprites } = await import(
+            "./spritesV2"
+          );
+          const texturas = await carregarTexturasMovel();
+          desenhadores = { ...desenhadores, movel: criarDesenhadorMovelComSprites(texturas) };
+        } catch (erro) {
+          console.warn("[world] sprites do Degrau B indisponíveis, seguindo 100% procedural:", erro);
+        }
+      }
 
       if (cancelado) return;
 
@@ -120,6 +157,7 @@ export function WorldCanvas({
         (avatarId, celula) => {
           if (avatarId === donoRef.current) pararRef.current?.(celula);
         },
+        desenhadores,
       );
       cena.sincronizar(estadoRef.current);
       cenaRef.current = cena;

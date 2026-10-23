@@ -16,9 +16,18 @@ function perfil(over: Partial<PerfilNegocio> = {}, resp: Partial<Respostas> = {}
     segmento: "engenharia",
     cidade: "Mendes",
     bairro: "Centro",
+    problemaPrincipal: "Obras públicas atrasam por falta de projeto executivo completo",
     equipe: "2-5",
     presencaDigital: "social",
     captacao: ["indicacao"],
+    licitacaoPublico: "ja-vendeu",
+    modeloReceita: "projeto-unico",
+    ticketMedio: "10000-50000",
+    clientesPagantes: "1-5",
+    faturamentoFaixa: "30-100k",
+    diferencial: "Entregamos o projeto com ART e memorial no primeiro envio",
+    provaSocial: "Três obras concluídas para a prefeitura de Mendes",
+    concorrentesConhecidos: "Escritórios de Barra do Piraí",
     objetivo: "mais-leads",
     gargalo: "perco-leads",
     investimento: "1500-3500",
@@ -68,12 +77,17 @@ describe("Canvas enterprise — estrutura", () => {
       expect(new Set(praticas).size, `boa prática do quadro ${chave}`).toBe(praticas.length);
     }
     const eng = JSON.stringify(gerarCanvas(perfil()));
+    // textos livres do cliente zerados: aqui só o conhecimento do NICHO conta
+    const semLivre = {
+      problemaPrincipal: "", diferencial: "", provaSocial: "", concorrentesConhecidos: "",
+    };
     const ali = JSON.stringify(
-      gerarCanvas(perfil({ segmento: "alimentacao" }, { segmento: "alimentacao" })),
+      gerarCanvas(perfil({ segmento: "alimentacao" }, { segmento: "alimentacao", ...semLivre })),
     );
     expect(eng).toContain("PNCP");
     expect(ali).toContain("merenda");
-    expect(ali).not.toContain("ART");
+    expect(ali).not.toMatch(/ART/);
+    expect(ali).not.toContain("CREA");
   });
 
   it("é puro e determinístico", () => {
@@ -96,6 +110,8 @@ describe("Canvas enterprise — maturidade vem das respostas do cadastro", () =>
     expect(m({ gargalo: "sem-dados" }).receitas.nivel).toBe("a-definir");
     expect(m({ gargalo: "sem-processo" }).atividades.nivel).toBe("a-definir");
     expect(m({ gargalo: "manual" }).atividades.nivel).toBe("parcial");
+    expect(m({ gargalo: "perco-leads" }).atividades.nivel).toBe("parcial");
+    expect(m({ gargalo: "imagem-fraca" }).atividades.nivel).toBe("definido");
   });
 
   it("não saber o teto de investimento deixa Custos 'a definir'", () => {
@@ -147,6 +163,70 @@ describe("Canvas enterprise — maturidade vem das respostas do cadastro", () =>
       (p) => pesos[c.blocos.find((b) => b.titulo === p.bloco)!.maturidade],
     );
     expect([...ms].sort((a, b) => a - b)).toEqual(ms);
+  });
+});
+
+describe("Canvas enterprise — usa o que o cliente respondeu no cadastro", () => {
+  const itens = (resp: Partial<Respostas>, chave: string, nivel = 1) =>
+    gerarCanvas(perfil({ nivelAgente: nivel }, resp)).blocos.find((b) => b.chave === chave)!.itens.join(" | ");
+
+  it("o problema, o diferencial e a prova social do cliente entram na Proposta de Valor", () => {
+    const t = itens({}, "proposta");
+    expect(t).toContain("projeto executivo completo");
+    expect(t).toContain("ART e memorial");
+    expect(t).toContain("Três obras concluídas");
+  });
+
+  it("sem resposta, o quadro pede a informação em vez de inventar", () => {
+    const t = itens({ problemaPrincipal: "", provaSocial: "ainda não tenho", diferencial: "" }, "proposta");
+    expect(t).toContain("Descreva em uma frase o problema");
+    expect(t).toContain("Sem prova social registrada");
+    expect(t).not.toContain("Diferencial declarado");
+  });
+
+  it("respostas vazias do tipo 'não sei' não viram conteúdo do documento", () => {
+    const t = itens({ problemaPrincipal: "não sei" }, "proposta");
+    expect(t).not.toContain("nas suas palavras");
+  });
+
+  it("modelo de receita e ticket médio aparecem em Receitas", () => {
+    expect(itens({}, "receitas")).toContain("projeto único");
+    expect(itens({}, "receitas")).toContain("R$ 10.000 a R$ 50.000");
+    expect(itens({ ticketMedio: "nao-sei" }, "receitas")).toContain("Ticket médio não informado");
+  });
+
+  it("a relação com o poder público do cliente aparece em Clientes", () => {
+    expect(itens({ licitacaoPublico: "tem-interesse" }, "clientes")).toContain("habilitação");
+    expect(itens({ licitacaoPublico: "nao-e-foco" }, "clientes")).not.toContain("poder público —");
+  });
+
+  it("concorrentes conhecidos entram a partir do nível 2", () => {
+    expect(itens({}, "proposta", 1)).not.toContain("Concorrentes que você já conhece");
+    expect(itens({}, "proposta", 2)).toContain("Barra do Piraí");
+  });
+
+  it("o resumo executivo cita o problema que o negócio resolve", () => {
+    const c = gerarCanvas(perfil());
+    expect(c.resumoExecutivo[0].texto).toContain("Resolve:");
+  });
+
+  it("texto livre longo é limitado e continua escapado no HTML", () => {
+    const longo = "x".repeat(900);
+    const c = gerarCanvas(perfil({}, { diferencial: longo + " <img src=x onerror=alert(1)>" }));
+    const proposta = c.blocos.find((b) => b.chave === "proposta")!.itens.join(" ");
+    expect(proposta.length).toBeLessThan(900);
+    const h = canvasParaHtml(gerarCanvas(perfil({}, { problemaPrincipal: "<img src=x onerror=alert(1)> falha grave" })));
+    expect(h).not.toContain("<img");
+    expect(h).toContain("&lt;img");
+  });
+
+  it("maturidade usa clientes pagantes, proposta descrita e modelo de receita", () => {
+    const m = (r: Partial<Respostas>) => maturidadeDosBlocos(perfil({}, r).respostas);
+    expect(m({ clientesPagantes: "nenhum", captacao: [] }).clientes.nivel).toBe("a-definir");
+    expect(m({ clientesPagantes: "21-50" }).clientes.nivel).toBe("definido");
+    expect(m({ presencaDigital: "social" }).proposta.nivel).toBe("definido");
+    expect(m({ diferencial: "", problemaPrincipal: "" }).proposta.nivel).toBe("parcial");
+    expect(m({ modeloReceita: "assinatura-recorrente", ticketMedio: "2000-10000", gargalo: "manual" }).receitas.nivel).toBe("definido");
   });
 });
 

@@ -41,7 +41,7 @@ Trabalho recorrente do jogo. Duas naturezas:
 Semana ISO no relógio de Brasília (UTC−3). Período, prova e valor da
 recompensa **saem do servidor**; o cliente manda só `contratoId` (+ número).
 Pagamento atômico e idempotente por `(tenant, contrato, período)` — unique no
-banco (`0027`), então clique duplo / requisição repetida não paga duas vezes.
+banco (`0040`), então clique duplo / requisição repetida não paga duas vezes.
 
 ## Falhas de economia corrigidas nesta entrega
 
@@ -58,10 +58,14 @@ banco (`0027`), então clique duplo / requisição repetida não paga duas vezes
    escolha que não custa moeda — travado em teste).
 4. **Contratar pagava 🪙 200 e não custava nada.** Agora custa
    (`CargoIA.custoMoeda`), com débito + inserção atômicos.
-5. **RLS permitia escrita direta pelo navegador** (`negocios_atualiza_proprio`
-   — inclusive `moeda_virtual`/`xp` — e inserts de contratação/trabalho/nó).
-   Com a anon key no browser (presença ao vivo), qualquer um se daria moeda.
-   `0027` remove as 4 policies; o app só escreve por RPC/service_role.
+5. **O navegador ainda podia inserir contratação direto no banco.** A produção
+   já tinha revogado o `update` em `negocios` (`0035`) e quase todo `insert`
+   (`0036`), mas deixou `insert` de `authenticated` em
+   `funcionarios_contratados`. Com a contratação custando moeda, qualquer
+   jogador logado contrataria de graça por `POST /rest/v1/funcionarios_contratados`.
+   `0040` revoga o grant e remove a policy; também remove, por defesa em
+   profundidade, as policies de escrita de `negocios`, `trabalhos_aceitos` e
+   `nos_desbloqueados`. O app só escreve por RPC/service_role.
 6. **Cartas encadeadas exigiam reload.** O `CapituloGate` agora busca a
    próxima carta ao fechar a atual (no dia 0 vêm duas seguidas).
 
@@ -74,6 +78,6 @@ sinalizar "novo vs. existente" — fica para um card próprio.
 
 ## Aplicar em produção
 
-`supabase/migrations/0027_contratos_e_economia.sql` (sintaxe validada com
+`supabase/migrations/0040_contratos_e_economia.sql` (sintaxe validada com
 `pg-query-emscripten`; **semântica de RLS/RPC ainda sem Postgres real**, igual
 às anteriores — Fase 0 do Épico 13). No modo `file` não há migração.

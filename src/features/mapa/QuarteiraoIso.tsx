@@ -28,15 +28,24 @@ export function QuarteiraoIso({
   selecionadoLote: number | null;
   onSelecionar: (lote: number) => void;
 }) {
+  // Achado 2026-08-25 (feedback ao vivo): o bloco isométrico tem tamanho
+  // fixo em pixel (308×154) — cabia sem folga em mobile, e dois
+  // quarteirões lado a lado forçavam rolagem horizontal. Escala 85% só até
+  // o breakpoint `sm`, via wrapper com o tamanho JÁ REDUZIDO (pra
+  // `flex-wrap` do container pai medir o espaço certo) + classe Tailwind
+  // de `scale` no conteúdo interno — nunca `style` inline pra isso, senão
+  // a responsividade do `sm:` não teria como vencer (inline sempre ganha
+  // de classe). `TILE_W`/`TILE_H`/a matemática isométrica não mudaram,
+  // só o desenho final fica menor.
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={springSnappy}
-      className="shrink-0"
+      className="w-[262px] h-[131px] shrink-0 sm:h-[154px] sm:w-[308px]"
     >
       <div
-        className="relative mx-auto"
+        className="relative mx-auto origin-top-left scale-[0.85] sm:scale-100"
         style={{ width: LARGURA, height: ALTURA }}
       >
         {quarteirao.lotes.map((lote, i) => {
@@ -60,6 +69,7 @@ export function QuarteiraoIso({
               icon={seg?.icon}
               ehJogador={lote.negocio?.id === meuTenantId}
               selecionado={selecionadoLote === lote.numero}
+              tier={lote.negocio?.degrauAtual}
               onClick={() => lote.negocio && onSelecionar(lote.numero)}
             />
           );
