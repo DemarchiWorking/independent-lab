@@ -361,6 +361,8 @@ sudo nginx -t && sudo systemctl reload nginx             # depois de mexer no Ng
 
 ## 9. Rollback
 
+> Publicações registradas: [RELEASE-2026-10-23](RELEASE-2026-10-23.md) (Épico 17: contratos, Canvas, responsividade; migration `0040`).
+
 ```bash
 cd ~/labdatadev-gamehub
 git log --oneline -5                # ache o commit bom anterior

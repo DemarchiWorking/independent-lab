@@ -3,7 +3,9 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Cada entrada aponta o card do backlog e o documento que detalha a mudança.
 
-## [Não lançado] — 2026-10-23
+## [2026-10-23] — publicado em produção (`631e63b`)
+
+> Registro da publicação, verificações e rollback: [`docs/deploy/RELEASE-2026-10-23.md`](docs/deploy/RELEASE-2026-10-23.md).
 
 ### Adicionado
 - **Contratos semanais e de jornada** (`GH-ECO-01`): seis contratos, período ISO
