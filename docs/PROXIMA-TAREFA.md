@@ -10,6 +10,13 @@ nível 1, Jornada guiada e o fechamento de 6 falhas de economia — tudo em
 verificar a migration `0027` num Postgres real (Fase 0 do Épico 13) e um
 passe de clique real no navegador do roteiro de demo.
 
+## 🆕 2026-10-23 (2) — Canvas enterprise e responsividade
+
+- **Canvas** por nicho em nível enterprise: [`CANVAS-ENTERPRISE.md`](CANVAS-ENTERPRISE.md).
+- **Responsividade** 375→1920 px: [`RESPONSIVIDADE.md`](RESPONSIVIDADE.md) (dois modos de layout).
+- Pendências nomeadas: `GH-QA-01` (teste visual automatizado), matriz de
+  responsividade incompleta (telas marcadas "—"), exportação em PDF nativa.
+
 ## 🚨 (histórico) confira em que branch o servidor roda
 
 Tudo o que foi entregue em 2026-07-28/29 vive no branch

@@ -42,6 +42,12 @@ inovação aplicada a empreendedorismo/PMEs regionais).
 6. **Moeda virtual (🪙) e R$ real nunca se misturam.** Nenhuma tela pode
    sugerir que uma converte na outra.
 7. **`npm run build` antes de considerar qualquer feature "pronta".**
+8. **Moeda só entra por caminho com guarda de idempotência no servidor**
+   (contrato por período, capítulo resolvido uma vez, cargo/job único).
+   `recompensar()` é endpoint público: nunca o abra a um evento novo sem essa
+   guarda. Contratar/gastar debita **na mesma transação** da compra.
+9. **Layout funciona de 375 px a 1920 px.** Sem altura fixa em px, sem
+   overflow horizontal, alvo de toque ≥ 40 px (ver `docs/RESPONSIVIDADE.md`).
 
 ## Mapa rápido (onde mexer em quê)
 
@@ -55,6 +61,9 @@ inovação aplicada a empreendedorismo/PMEs regionais).
 | Adicionar coluna/tabela no banco real | nova migration em `supabase/migrations/000N_*.sql`, seguindo o padrão de RLS forçada + `(select private.tenant_atual())` das anteriores |
 | Adicionar uma tela ao jogo | pasta nova em `src/features/<nome>/`, registrar em `src/features/shell/GameShell.tsx` |
 | Mexer na sala isométrica / no boneco que anda | `src/features/world/` — regra em `engine/` (puro, testado), desenho em `render/` (Pixi). **Nunca ponha regra dentro do `render/`.** |
+| Melhorar o conteúdo do Canvas de um nicho | `src/features/equipe-ia/entregaveis/canvas-conteudo.ts` (+ `vocabulario.ts`) — spec em [`docs/CANVAS-ENTERPRISE.md`](docs/CANVAS-ENTERPRISE.md) |
+| Mudar como se ganha/gasta moeda ou os contratos semanais | `src/features/contratos/catalogo.ts` e `features/gamificacao/engine.ts` — leia [`docs/ECONOMIA-E-JORNADA.md`](docs/ECONOMIA-E-JORNADA.md) antes |
+| Criar/alterar uma tela do shell | Siga as convenções de [`docs/RESPONSIVIDADE.md`](docs/RESPONSIVIDADE.md) — dois modos de layout, sem altura fixa |
 | Planejar a próxima evolução do jogo | [`docs/world/EVOLUCAO-MOTOR-2026.md`](docs/world/EVOLUCAO-MOTOR-2026.md) — pesquisa 2026, decisão de engine e roadmap G0–G6 |
 | Adicionar um móvel novo | `src/features/sede/catalogo.ts` (preço/bônus) — a silhueta 3D vem da `categoria`, desenhada em `world/render/desenho.ts` |
 | Criar/ver uma campanha com prazo p/ todos os jogadores | `/admin/eventos` (gated por `GAMEHUB_ADMIN_EMAILS`) — ver `src/features/eventos-globais/` |

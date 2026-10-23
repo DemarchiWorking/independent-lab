@@ -7,11 +7,8 @@ import { gerarCanvas } from "@/features/equipe-ia/entregaveis/canvas";
 import { gerarPost } from "@/features/equipe-ia/entregaveis/post";
 import { gerarScript } from "@/features/equipe-ia/entregaveis/script";
 import { gerarReel } from "@/features/equipe-ia/entregaveis/reel";
-import {
-  canvasParaHtml,
-  reelParaHtml,
-  scriptParaHtml,
-} from "@/features/equipe-ia/entregaveis/render";
+import { reelParaHtml, scriptParaHtml } from "@/features/equipe-ia/entregaveis/render";
+import { canvasParaHtml } from "@/features/equipe-ia/entregaveis/render-canvas";
 import { perfilDoNegocio } from "@/features/equipe-ia/entregaveis/tipos";
 import { vocabulario } from "@/features/equipe-ia/entregaveis/vocabulario";
 
@@ -35,7 +32,7 @@ const TIPOS: readonly TipoEntregavel[] = ["canvas", "post", "script", "reel"];
  * autenticação para auditar, em vez de três que podem divergir.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ tipo: string }> },
 ) {
   const { tipo } = await params;
@@ -150,7 +147,7 @@ export async function GET(
 
   const html =
     tipoEntregavel === "canvas"
-      ? canvasParaHtml(gerarCanvas(perfil))
+      ? canvasParaHtml(gerarCanvas(perfil), { emitidoEm: dataEmissao() })
       : tipoEntregavel === "reel"
         ? reelParaHtml(gerarReel(perfil))
         : scriptParaHtml(
@@ -158,14 +155,30 @@ export async function GET(
             `${vocabulario(perfil.segmento).oQueVende} · ${perfil.cidade}`,
           );
 
+  // `?ver=1` abre no navegador em vez de baixar — o dono confere o material
+  // antes de guardar. Continua sendo o mesmo documento, com a mesma checagem
+  // de sessão e de contratação acima.
+  const abrirNoNavegador = new URL(request.url).searchParams.get("ver") === "1";
+
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${tipoEntregavel}-${nomeArquivo}.html"`,
+      "Content-Disposition": `${abrirNoNavegador ? "inline" : "attachment"}; filename="${tipoEntregavel}-${nomeArquivo}.html"`,
+      "X-Content-Type-Options": "nosniff",
       // material do próprio tenant: nunca deve ser guardado por proxy/CDN
       "Cache-Control": "private, no-store",
     },
   });
+}
+
+/** Data de emissão no fuso de Brasília — o relógio do SERVIDOR, nunca do cliente. */
+function dataEmissao(): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date());
 }
 
 /** Nome de arquivo seguro a partir do nome do negócio — evita quebrar o

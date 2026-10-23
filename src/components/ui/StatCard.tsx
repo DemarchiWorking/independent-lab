@@ -43,7 +43,7 @@ export function StatCard({
       transition={springSnappy}
       {...(onClick ? { title: acaoLabel ?? label, "aria-label": acaoLabel ?? label } : {})}
       className={cn(
-        "flex items-center gap-2 rounded-md bg-panel px-2.5 py-1.5 text-left text-ink shadow-hard",
+        "flex min-w-0 items-center gap-1.5 rounded-md bg-panel px-2 py-1.5 text-left text-ink shadow-hard sm:gap-2 sm:px-2.5",
         onClick && "cursor-pointer hover:bg-white",
       )}
     >
@@ -56,13 +56,13 @@ export function StatCard({
       >
         <Icon name={icon} size={16} />
       </span>
-      <div className="leading-tight">
-        <small className="block font-pixel text-[8px] uppercase tracking-wide text-[#5b6b86]">
+      <div className="min-w-0 leading-tight">
+        <small className="block truncate font-pixel text-[8px] uppercase tracking-wide text-[#5b6b86]">
           {label}
         </small>
-        <b className="text-sm tabular-nums">{value}</b>
+        <b className="block truncate text-sm tabular-nums">{value}</b>
         {typeof progress === "number" ? (
-          <div className="mt-1 h-1.5 w-14 overflow-hidden rounded-pill bg-[#dbe3f0]">
+          <div className="mt-1 h-1.5 w-full max-w-14 overflow-hidden rounded-pill bg-[#dbe3f0]">
             <motion.i
               className="block h-full bg-green"
               initial={{ width: 0 }}

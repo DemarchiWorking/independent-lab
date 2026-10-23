@@ -27,7 +27,7 @@ export function RibbonPanel({
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="absolute inset-0 z-30 flex items-center justify-center p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 lg:absolute lg:z-30"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -58,7 +58,7 @@ export function RibbonPanel({
             >
               <Icon name="close" size={16} />
             </button>
-            <div className="mt-3">{children}</div>
+            <div className="mt-3 max-h-[calc(100dvh-8rem)] overflow-y-auto lg:max-h-[min(70dvh,640px)]">{children}</div>
           </motion.div>
         </motion.div>
       ) : null}

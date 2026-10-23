@@ -40,14 +40,14 @@ export function LateralMenu<T extends string>({
       initial="initial"
       animate="enter"
       aria-label="Módulos do jogo"
-      className="absolute left-2 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-1.5"
+      className="relative z-20 flex gap-1.5 overflow-x-auto px-2 pb-2 max-lg:order-1 lg:absolute lg:left-2 lg:top-1/2 lg:-translate-y-1/2 lg:flex-col lg:overflow-visible lg:p-0"
     >
       {items.map((item) => {
         const ativo = item.key === current;
         const bloqueado = item.disponivel === false;
 
         const classe = cn(
-          "group relative grid h-9 w-9 place-items-center rounded-md shadow-hard transition-colors",
+          "group relative grid h-10 w-10 shrink-0 place-items-center rounded-md shadow-hard transition-colors lg:h-9 lg:w-9",
           ativo
             ? "bg-orange text-ink"
             : bloqueado
@@ -65,7 +65,7 @@ export function LateralMenu<T extends string>({
               className={cn(
                 "pointer-events-none absolute left-11 hidden whitespace-nowrap rounded-sm bg-night/90 px-2 py-1",
                 "font-pixel text-[8px] uppercase text-white opacity-0 transition-opacity",
-                "group-hover:opacity-100 sm:block",
+                "group-hover:opacity-100 lg:block",
               )}
             >
               {item.label}

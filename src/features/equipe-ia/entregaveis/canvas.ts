@@ -1,4 +1,13 @@
-import type { CanvasNegocio, PerfilNegocio } from "./tipos";
+import type {
+  BlocoCanvas,
+  CanvasNegocio,
+  ChaveBloco,
+  FasePlano,
+  Maturidade,
+  PerfilNegocio,
+  Prioridade,
+} from "./tipos";
+import { conteudoCanvas, ORDEM_BLOCOS, PERGUNTA_BLOCO } from "./canvas-conteudo";
 import {
   CAPTACAO_TEXTO,
   GARGALO_TEXTO,
@@ -7,77 +16,226 @@ import {
 } from "./vocabulario";
 
 /**
- * Business Model Canvas preenchido a partir do perfil do negócio
- * (entregável do Documentador de IA). Puro: mesmo perfil, mesmo canvas —
- * sem relógio, sem I/O, sem aleatoriedade. É o que torna testável.
+ * Business Model Canvas de nível enterprise (entregável do Documentador de IA).
  *
- * `nivelAgente` controla PROFUNDIDADE, não conteúdo diferente: nível 1
- * entrega o canvas básico; 2 acrescenta um item extra por bloco e a
- * seção de próximos passos; 3 acrescenta leitura de risco. Assim evoluir
- * o agente tem efeito visível no produto, sem invalidar o que já foi
- * gerado antes.
+ * Puro: mesmo perfil, mesmo canvas — sem relógio, sem I/O, sem aleatoriedade.
+ * É o que torna cada afirmação testável.
+ *
+ * O que torna este canvas "de consultoria" e não um formulário preenchido:
+ *
+ * 1. **Cada quadro responde uma pergunta** (`PERGUNTA_BLOCO`) e traz a
+ *    melhor prática, o indicador e — a partir do nível 2 — a hipótese a
+ *    validar do SEGMENTO do negócio (`canvas-conteudo.ts`).
+ * 2. **A maturidade de cada quadro vem das respostas do cadastro**, com a
+ *    evidência escrita ao lado (`maturidadeDosBlocos`). Nada é opinião solta:
+ *    quem lê vê qual resposta sustenta cada classificação.
+ * 3. **Prioridades saem dos quadros menos definidos**, não de uma lista fixa.
+ *
+ * `nivelAgente` controla PROFUNDIDADE, nunca contradiz o nível anterior:
+ * - nível 1: canvas completo (9 quadros, pergunta, resposta, boa prática,
+ *   indicador, maturidade, resumo executivo e prioridades);
+ * - nível 2: + itens extras, hipóteses por quadro, plano de 90 dias e
+ *   próximos passos;
+ * - nível 3: + matriz de riscos do nicho e checklist de validação.
  */
+
+const PESO: Record<Maturidade, number> = { "a-definir": 0, parcial: 1, definido: 2 };
+const PONTOS: Record<Maturidade, number> = { definido: 100, parcial: 50, "a-definir": 0 };
+
+const ATIVIDADE_POR_GARGALO: Record<PerfilNegocio["respostas"]["gargalo"], string> = {
+  "perco-leads": "Responder todo contato em minutos, com roteiro pronto e registro de cada conversa",
+  manual: "Eliminar o trabalho manual que mais se repete (planilha solta vira rotina em sistema)",
+  "sem-dados": "Registrar a origem de cada cliente e o resultado por canal, toda semana",
+  "imagem-fraca": "Atualizar a presença digital com prova concreta do que o negócio já entregou",
+  "sem-processo": "Documentar o atendimento e a entrega em passo a passo que qualquer pessoa repita",
+};
+
+interface Avaliacao {
+  nivel: Maturidade;
+  evidencia: string;
+}
+
+/** Sobe/desce um nível de maturidade (limitado aos extremos). */
+function ajustar(nivel: Maturidade, delta: -1 | 1): Maturidade {
+  const ordem: Maturidade[] = ["a-definir", "parcial", "definido"];
+  const i = Math.min(2, Math.max(0, ordem.indexOf(nivel) + delta));
+  return ordem[i];
+}
+
+/**
+ * Quão definido está cada quadro, a partir do que o dono declarou no
+ * cadastro. Regras explícitas e conservadoras: sem resposta que comprove,
+ * o quadro nunca passa de "parcial" — e a evidência diz o porquê.
+ */
+export function maturidadeDosBlocos(
+  respostas: PerfilNegocio["respostas"],
+): Record<ChaveBloco, Avaliacao> {
+  const canais = respostas.captacao.filter((c) => c !== "sem-processo");
+  const grande = respostas.equipe === "6-15" || respostas.equipe === "16-30" || respostas.equipe === "30+";
+
+  const clientes: Avaliacao =
+    canais.includes("portais") || canais.includes("ads")
+      ? { nivel: "definido", evidencia: "Você já capta clientes por portais ou anúncios, o que exige saber quem compra." }
+      : { nivel: "parcial", evidencia: "O segmento está declarado, mas o cliente prioritário ainda não foi escolhido." };
+
+  const base: Maturidade =
+    respostas.presencaDigital === "site-portais"
+      ? "definido"
+      : respostas.presencaDigital === "nada"
+        ? "a-definir"
+        : "parcial";
+  const proposta: Avaliacao = {
+    nivel: respostas.gargalo === "imagem-fraca" ? ajustar(base, -1) : base,
+    evidencia:
+      respostas.gargalo === "imagem-fraca"
+        ? "Você declarou que a presença digital está abaixo do que o negócio entrega."
+        : respostas.presencaDigital === "nada"
+          ? "Você declarou não ter presença digital — a proposta ainda não está publicada."
+          : "Há presença digital, mas a proposta de valor ainda não foi validada com clientes.",
+  };
+
+  const canaisAval: Avaliacao =
+    canais.length === 0
+      ? { nivel: "a-definir", evidencia: "Você declarou não ter um canal de captação estruturado." }
+      : canais.length === 1
+        ? { nivel: "parcial", evidencia: "Você depende de um único canal de captação." }
+        : { nivel: "definido", evidencia: `Você já capta por ${canais.length} canais diferentes.` };
+
+  const relacionamento: Avaliacao =
+    respostas.gargalo === "perco-leads"
+      ? { nivel: "a-definir", evidencia: "Você declarou perder contatos por demora na resposta." }
+      : grande
+        ? { nivel: "definido", evidencia: "A equipe já divide o atendimento." }
+        : { nivel: "parcial", evidencia: "O atendimento depende de poucas pessoas e não tem rotina escrita." };
+
+  const receitas: Avaliacao =
+    respostas.gargalo === "sem-dados"
+      ? { nivel: "a-definir", evidencia: "Você declarou não saber de onde vem o resultado." }
+      : { nivel: "parcial", evidencia: "As fontes de receita são conhecidas, mas a margem por fonte ainda não é medida." };
+
+  const recursos: Avaliacao =
+    respostas.equipe === "so-eu"
+      ? { nivel: "parcial", evidencia: "Todo o conhecimento está concentrado no dono." }
+      : { nivel: "definido", evidencia: "Há equipe para sustentar a entrega." };
+
+  const atividades: Avaliacao =
+    respostas.gargalo === "sem-processo"
+      ? { nivel: "a-definir", evidencia: "Você declarou que a equipe não tem processo definido." }
+      : respostas.gargalo === "manual"
+        ? { nivel: "parcial", evidencia: "Você declarou muito trabalho manual e planilha." }
+        : { nivel: "definido", evidencia: "Nenhum gargalo operacional foi declarado." };
+
+  const parcerias: Avaliacao =
+    canais.includes("indicacao") && canais.includes("portais")
+      ? { nivel: "definido", evidencia: "Você já recebe indicação e atua em portais — há rede ativa." }
+      : canais.includes("indicacao")
+        ? { nivel: "parcial", evidencia: "Você recebe indicação, mas sem parceiros formalizados." }
+        : { nivel: "a-definir", evidencia: "Você não declarou indicação nem rede de parceiros." };
+
+  const custos: Avaliacao =
+    respostas.investimento === "nao-sei"
+      ? { nivel: "a-definir", evidencia: "Você declarou não ter um teto de investimento em tecnologia." }
+      : respostas.investimento === "ate-500"
+        ? { nivel: "parcial", evidencia: "O teto de investimento é baixo e precisa ser priorizado." }
+        : { nivel: "definido", evidencia: "Há um teto de investimento declarado." };
+
+  return { clientes, proposta, canais: canaisAval, relacionamento, receitas, recursos, atividades, parcerias, custos };
+}
+
 export function gerarCanvas(perfil: PerfilNegocio): CanvasNegocio {
   const v = vocabulario(perfil.segmento);
+  const c = conteudoCanvas(perfil.segmento);
   const { respostas, nivelAgente } = perfil;
   const nivel2 = nivelAgente >= 2;
   const nivel3 = nivelAgente >= 3;
+  const avaliacao = maturidadeDosBlocos(respostas);
 
   const canaisAtuais = respostas.captacao
-    .map((c) => CAPTACAO_TEXTO[c])
-    .filter((c): c is string => Boolean(c));
+    .filter((x) => x !== "sem-processo")
+    .map((x) => CAPTACAO_TEXTO[x])
+    .filter((x): x is string => Boolean(x));
 
-  const blocos = [
-    {
-      titulo: "Segmentos de Clientes",
-      itens: nivel2 ? v.clientes : v.clientes.slice(0, 2),
-    },
-    {
-      titulo: "Proposta de Valor",
-      itens: [
-        `Entrega de ${v.oQueVende} com previsibilidade de prazo`,
-        `Foco declarado para os próximos 90 dias: ${OBJETIVO_TEXTO[respostas.objetivo]}`,
-        ...(nivel2 ? [`Diferencial a construir: ${v.argumentoChave}`] : []),
-      ],
-    },
-    {
-      titulo: "Canais",
-      itens:
-        canaisAtuais.length > 0
-          ? [
-              ...canaisAtuais,
-              ...(nivel2 ? ["Página pública do negócio no ecossistema (SEO local)"] : []),
-            ]
-          : [
-              "Nenhum canal estruturado hoje — primeira prioridade",
-              "Começar por indicação ativa + presença digital básica",
-            ],
-    },
-    {
-      titulo: "Relacionamento com Clientes",
-      itens: relacionamentoPorEquipe(respostas.equipe, nivel2),
-    },
-    {
-      titulo: "Fontes de Receita",
-      itens: nivel2 ? v.receitas : v.receitas.slice(0, 2),
-    },
-    {
-      titulo: "Recursos Principais",
-      itens: nivel2 ? v.recursos : v.recursos.slice(0, 2),
-    },
-    {
-      titulo: "Atividades-Chave",
-      itens: nivel2 ? v.atividades : v.atividades.slice(0, 3),
-    },
-    {
-      titulo: "Parcerias Principais",
-      itens: nivel2 ? v.parcerias : v.parcerias.slice(0, 2),
-    },
-    {
-      titulo: "Estrutura de Custos",
-      itens: custosPorEquipe(respostas.equipe, respostas.investimento, nivel2),
-    },
-  ];
+  const itens: Record<ChaveBloco, string[]> = {
+    clientes: [
+      ...(nivel2 ? v.clientes : v.clientes.slice(0, 2)),
+      ...(respostas.captacao.includes("portais")
+        ? ["Você já atende compradores que usam portais — formalize esse segmento como prioridade"]
+        : []),
+    ],
+    proposta: [
+      ...(nivel2 ? c.propostaValor : c.propostaValor.slice(0, 2)),
+      `Foco declarado para os próximos 90 dias: ${OBJETIVO_TEXTO[respostas.objetivo]}`,
+      ...(respostas.gargalo === "imagem-fraca"
+        ? ["Ajuste necessário: a presença digital ainda não mostra o que o negócio entrega"]
+        : []),
+      ...(nivel2 ? [`Diferencial a construir: ${v.argumentoChave}`] : []),
+    ],
+    canais:
+      canaisAtuais.length > 0
+        ? [
+            ...canaisAtuais.map((x) => `Hoje: ${x}`),
+            ...c.canaisIdeais
+              .slice(0, nivel2 ? 3 : 2)
+              .map((x) => `Recomendado para o segmento: ${x}`),
+          ]
+        : [
+            "Nenhum canal estruturado hoje — primeira prioridade",
+            ...c.canaisIdeais
+              .slice(0, nivel2 ? 3 : 2)
+              .map((x) => `Recomendado para o segmento: ${x}`),
+          ],
+    relacionamento: [
+      ...relacionamentoPorEquipe(respostas.equipe),
+      ...(nivel2 ? c.relacionamento : c.relacionamento.slice(0, 1)),
+    ],
+    receitas: [
+      ...(nivel2 ? v.receitas : v.receitas.slice(0, 2)),
+      ...(respostas.gargalo === "sem-dados"
+        ? ["Medir a receita por fonte: hoje não está claro de onde vem o resultado"]
+        : []),
+    ],
+    recursos: [
+      ...(nivel2 ? v.recursos : v.recursos.slice(0, 2)),
+      ...(respostas.equipe === "so-eu"
+        ? ["Risco: o conhecimento e a operação dependem de uma única pessoa"]
+        : []),
+    ],
+    atividades: [
+      ...(nivel2 ? v.atividades : v.atividades.slice(0, 3)),
+      `Prioridade operacional: ${ATIVIDADE_POR_GARGALO[respostas.gargalo]}`,
+    ],
+    parcerias: nivel2 ? v.parcerias : v.parcerias.slice(0, 2),
+    custos: [
+      ...custosPorEquipe(respostas.equipe, respostas.investimento, nivel2),
+      ...(nivel2 ? c.custos : c.custos.slice(0, 2)),
+    ],
+  };
+
+  const blocos: BlocoCanvas[] = ORDEM_BLOCOS.map(({ chave, titulo }, i) => {
+    const pratica = c.blocos[chave];
+    return {
+      chave,
+      numero: i + 1,
+      titulo,
+      pergunta: PERGUNTA_BLOCO[chave],
+      itens: itens[chave],
+      boaPratica: pratica.boaPratica,
+      indicador: pratica.indicador,
+      maturidade: avaliacao[chave].nivel,
+      evidencia: avaliacao[chave].evidencia,
+      ...(nivel2 ? { hipotese: pratica.hipotese } : {}),
+    };
+  });
+
+  const indiceClareza = Math.round(
+    blocos.reduce((soma, b) => soma + PONTOS[b.maturidade], 0) / blocos.length,
+  );
+
+  const prioridades: Prioridade[] = [...blocos]
+    .filter((b) => b.maturidade !== "definido")
+    .sort((a, b) => PESO[a.maturidade] - PESO[b.maturidade] || a.numero - b.numero)
+    .slice(0, 3)
+    .map((b) => ({ bloco: b.titulo, porque: b.evidencia, acao: b.boaPratica }));
 
   const proximosPassos: string[] = [];
   if (nivel2) {
@@ -93,34 +251,129 @@ export function gerarCanvas(perfil: PerfilNegocio): CanvasNegocio {
     );
   }
 
+  const plano90Dias: FasePlano[] = nivel2
+    ? [
+        {
+          fase: "Dias 1–30 · Fundamentar",
+          acoes: [
+            prioridades[0]
+              ? `${prioridades[0].bloco}: ${prioridades[0].acao}`
+              : "Registrar a linha de base dos 9 indicadores deste canvas",
+            "Registrar os indicadores-base dos 9 quadros em uma planilha única, com um responsável",
+          ],
+        },
+        {
+          fase: "Dias 31–60 · Executar",
+          acoes: [
+            `Atacar o gargalo declarado: ${ATIVIDADE_POR_GARGALO[respostas.gargalo]}`,
+            ...(prioridades[1] ? [`${prioridades[1].bloco}: ${prioridades[1].acao}`] : []),
+            "Validar as hipóteses dos quadros conversando com 5 clientes reais",
+          ],
+        },
+        {
+          fase: "Dias 61–90 · Medir e decidir",
+          acoes: [
+            "Comparar os indicadores com a linha de base do dia 30",
+            "Decidir o que manter, ajustar ou cortar — com número, não com impressão",
+            "Atualizar este canvas e abrir o próximo ciclo de 90 dias",
+          ],
+        },
+      ]
+    : [];
+
+  const riscos = nivel3
+    ? [
+        ...c.riscos,
+        {
+          risco: `Gargalo declarado sem tratamento: ${GARGALO_TEXTO[respostas.gargalo]}`,
+          mitigacao: ATIVIDADE_POR_GARGALO[respostas.gargalo],
+        },
+      ]
+    : [];
+
+  const checklistValidacao = nivel3
+    ? [
+        "Conversei com pelo menos 5 clientes reais sobre a proposta de valor",
+        "Sei quanto custa e quanto rende cada fonte de receita",
+        "Cada canal tem um número de contatos e de vendas acompanhado",
+        "Existe um responsável por cada indicador deste canvas",
+        "Os 3 riscos principais têm um plano de mitigação com dono e prazo",
+        "A data da próxima revisão (90 dias) está na agenda",
+      ]
+    : [];
+
   return {
     titulo: `Modelo de Negócio — ${perfil.nomeNegocio}`,
     subtitulo: `${v.oQueVende} · ${perfil.bairro}, ${perfil.cidade}`,
+    controle: {
+      documento: "Business Model Canvas",
+      versao: `1.${nivelAgente - 1}`,
+      classificacao: "Confidencial — uso interno do negócio",
+      metodologia: "Business Model Canvas (Osterwalder & Pigneur, 2010) + boas práticas do segmento",
+      elaboradoPor: `Documentador IA · nível ${nivelAgente}`,
+      revisao: "A cada ciclo de 90 dias",
+    },
+    resumoExecutivo: [
+      {
+        rotulo: "O negócio",
+        texto: `${perfil.nomeNegocio} atua com ${v.oQueVende} em ${perfil.bairro}, ${perfil.cidade}.`,
+      },
+      {
+        rotulo: "Para quem vende",
+        texto: v.clientes.slice(0, 2).join("; ") + ".",
+      },
+      {
+        rotulo: "Como ganha dinheiro",
+        texto:
+          v.receitas[0] +
+          (respostas.gargalo === "sem-dados" ? " — ainda sem medição por fonte." : "."),
+      },
+      {
+        rotulo: "Foco dos próximos 90 dias",
+        texto: `${capitalizar(OBJETIVO_TEXTO[respostas.objetivo])}, enfrentando: ${GARGALO_TEXTO[respostas.gargalo]}.`,
+      },
+      {
+        rotulo: "Maior ponto de atenção",
+        texto: prioridades[0]
+          ? `${prioridades[0].bloco} — ${prioridades[0].porque}`
+          : "Todos os quadros estão bem definidos; o desafio agora é medir e revisar.",
+      },
+    ],
+    indiceClareza,
+    rotuloClareza:
+      indiceClareza >= 75
+        ? "Modelo sólido"
+        : indiceClareza >= 50
+          ? "Modelo em estruturação"
+          : "Modelo inicial",
     blocos,
+    prioridades,
     proximosPassos,
+    plano90Dias,
+    riscos,
+    checklistValidacao,
   };
 }
 
-function relacionamentoPorEquipe(
-  equipe: PerfilNegocio["respostas"]["equipe"],
-  nivel2: boolean,
-): string[] {
-  const base =
-    equipe === "so-eu"
+function capitalizar(texto: string): string {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function relacionamentoPorEquipe(equipe: PerfilNegocio["respostas"]["equipe"]): string[] {
+  return equipe === "so-eu"
+    ? [
+        "Atendimento direto do dono (alta confiança, baixa escala)",
+        "Risco: tudo depende de uma pessoa só",
+      ]
+    : equipe === "2-5"
       ? [
-          "Atendimento direto do dono (alta confiança, baixa escala)",
-          "Risco: tudo depende de uma pessoa só",
+          "Atendimento pela equipe, com o dono no fechamento",
+          "Precisa de padrão para não depender de quem atendeu",
         ]
-      : equipe === "2-5"
-        ? [
-            "Atendimento pela equipe, com o dono no fechamento",
-            "Precisa de padrão para não depender de quem atendeu",
-          ]
-        : [
-            "Atendimento distribuído na equipe",
-            "Exige processo documentado e histórico centralizado",
-          ];
-  return nivel2 ? [...base, "Pós-venda estruturado gera recompra e indicação"] : base;
+      : [
+          "Atendimento distribuído na equipe",
+          "Exige processo documentado e histórico centralizado",
+        ];
 }
 
 function custosPorEquipe(
@@ -132,12 +385,12 @@ function custosPorEquipe(
     equipe === "so-eu"
       ? "Pró-labore do dono (custo real, mesmo que não saia do caixa)"
       : "Folha da equipe (maior custo fixo)";
-  const base = [pessoal, "Estrutura fixa (espaço, sistemas, licenças)"];
+  const base = [pessoal];
   if (!nivel2) return base;
 
   const teto =
     investimento === "nao-sei"
       ? "Definir um teto mensal de investimento em tecnologia — hoje não há"
       : `Investimento em tecnologia declarado: faixa ${investimento.replace("-", " a ")}`;
-  return [...base, "Custo variável por entrega (insumo, deslocamento)", teto];
+  return [...base, teto];
 }

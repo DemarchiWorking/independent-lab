@@ -2133,6 +2133,42 @@ visitantes de verdade aparecem como avatares adicionais, sem tocar em
 - [x] Jornada (passo único, "ligado a vender") substitui a missão antiga
 - [x] Fecha farm em `recompensar()`, capítulo futuro, escolha sem saldo, RLS de escrita direta
 - [ ] Verificação viva da `0027` em Postgres real (depende da Fase 0 do Épico 13)
+
+### GH-CAN-01 — Canvas enterprise por nicho ✅
+
+Especificação em [`CANVAS-ENTERPRISE.md`](CANVAS-ENTERPRISE.md).
+
+- [x] Canvas desenhado na grade clássica **no início** do documento
+- [x] 9 quadros × 8 segmentos com pergunta, resposta, boa prática, indicador e hipótese
+- [x] Maturidade por quadro derivada do cadastro, com evidência, e índice de clareza
+- [x] Resumo executivo, prioridades, plano de 90 dias, matriz de riscos, checklist
+- [x] Controle de documento (versão, emissão, classificação, revisão), A4 paisagem, offline
+- [x] "Ver no navegador" além do download
+- [ ] Exportação nativa em PDF (hoje: Imprimir → Salvar como PDF) — junto de `GH-EDU-02`
+
+### GH-RESP-01 — Responsividade de 375 a 1920 px ✅
+
+Guia em [`RESPONSIVIDADE.md`](RESPONSIVIDADE.md).
+
+- [x] Shell em dois modos (coluna < 1024 px · cena ≥ 1024 px), altura ligada à janela
+- [x] HUD, navegação, menu lateral, atalhos e modais responsivos
+- [x] Carta de história como overlay rolável
+- [ ] Ver `GH-QA-01`
+
+### GH-QA-01 — Teste visual automatizado de layout
+
+| Campo | Valor |
+|---|---|
+| Prioridade | P1 |
+| Esforço | M |
+
+**Descrição:** hoje a verificação de layout é manual. Playwright com
+*screenshots* e checagem de `scrollWidth <= innerWidth` nos 5 tamanhos de
+`RESPONSIVIDADE.md` (375, 768, 1024, 1366, 1920) para as telas do hub, o
+`/world`, o `/painel` e o Canvas baixável.
+
+- [ ] Suíte rodando no CI antes do deploy
+- [ ] Cobre todas as telas do shell, não só o hub
 - [ ] Corrida de dupla contratação aplica XP/degrau 2× (limitação conhecida)
 
 ---

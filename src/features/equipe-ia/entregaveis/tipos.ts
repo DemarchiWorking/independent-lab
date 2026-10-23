@@ -24,17 +24,97 @@ export interface PerfilNegocio {
   nivelAgente: number;
 }
 
+/** Os 9 quadros do Business Model Canvas (Osterwalder & Pigneur, 2010). */
+export type ChaveBloco =
+  | "parcerias"
+  | "atividades"
+  | "recursos"
+  | "proposta"
+  | "relacionamento"
+  | "canais"
+  | "clientes"
+  | "custos"
+  | "receitas";
+
+/**
+ * Quão bem definido está o quadro, **derivado das respostas do cadastro**
+ * (ver `maturidadeDosBlocos` em canvas.ts). Não é opinião do agente: cada
+ * regra aponta a resposta que a sustenta, e o canvas diz isso ao leitor.
+ */
+export type Maturidade = "definido" | "parcial" | "a-definir";
+
 export interface BlocoCanvas {
+  chave: ChaveBloco;
+  /** posição na ordem de leitura recomendada (1 = clientes) */
+  numero: number;
   titulo: string;
+  /** pergunta-guia que o quadro precisa responder */
+  pergunta: string;
+  /** a resposta: o que vai no quadro, já no vocabulário do nicho */
   itens: string[];
+  /** a melhor prática do segmento para este quadro */
+  boaPratica: string;
+  /** o número que diz se o quadro está funcionando */
+  indicador: string;
+  /** como o quadro está hoje, segundo o cadastro */
+  maturidade: Maturidade;
+  /** por que essa maturidade — a resposta do cadastro que a sustenta */
+  evidencia: string;
+  /** hipótese a validar com clientes reais — só a partir do nível 2 */
+  hipotese?: string;
+}
+
+export interface ControleDocumento {
+  documento: string;
+  versao: string;
+  classificacao: string;
+  metodologia: string;
+  elaboradoPor: string;
+  revisao: string;
+}
+
+export interface ItemResumo {
+  rotulo: string;
+  texto: string;
+}
+
+export interface Prioridade {
+  bloco: string;
+  porque: string;
+  acao: string;
+}
+
+export interface FasePlano {
+  fase: string;
+  acoes: string[];
+}
+
+export interface RiscoCanvas {
+  risco: string;
+  mitigacao: string;
 }
 
 export interface CanvasNegocio {
   titulo: string;
   subtitulo: string;
+  controle: ControleDocumento;
+  /** 5 linhas que um investidor ou o Sebrae leria primeiro */
+  resumoExecutivo: ItemResumo[];
+  /** 0–100: média do quanto cada quadro está definido */
+  indiceClareza: number;
+  rotuloClareza: string;
+  /** os 9 quadros, na ordem de leitura recomendada */
   blocos: BlocoCanvas[];
+  /** os até 3 quadros menos definidos e o que fazer — todos os níveis */
+  prioridades: Prioridade[];
   /** só a partir do nível 2 do agente */
   proximosPassos: string[];
+  /** plano de 90 dias em 3 fases — só a partir do nível 2 */
+  plano90Dias: FasePlano[];
+  /** matriz de riscos — só a partir do nível 3 */
+  riscos: RiscoCanvas[];
+  /** checklist de validação com clientes reais — só a partir do nível 3 */
+  checklistValidacao: string[];
 }
 
 export interface PostSocial {

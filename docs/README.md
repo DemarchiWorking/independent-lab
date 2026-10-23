@@ -13,6 +13,14 @@
 | [PRODUTO-IA-FUNCIONARIOS.md](PRODUTO-IA-FUNCIONARIOS.md) | Entender o produto atual (o pivot) |
 | [analise-prints/SINTESE-REQUISITOS-FUNCIONAIS.md](analise-prints/SINTESE-REQUISITOS-FUNCIONAIS.md) | **Antes de implementar qualquer feature de jogo** |
 
+## 🆕 Economia, Canvas e responsividade
+
+| Documento | Conteúdo |
+|---|---|
+| [ECONOMIA-E-JORNADA.md](ECONOMIA-E-JORNADA.md) | Como se ganha e se gasta moeda: contratos semanais, Jornada, parceria do Laboratório e falhas de economia corrigidas |
+| [CANVAS-ENTERPRISE.md](CANVAS-ENTERPRISE.md) | Especificação do Business Model Canvas por nicho: estrutura, maturidade, níveis, como estender, testes |
+| [RESPONSIVIDADE.md](RESPONSIVIDADE.md) | Dois modos de layout, breakpoints, convenções, matriz de verificação e como reproduzir |
+
 ## 🎮 Análise de referência e motor de jogo
 
 | Documento | Conteúdo |

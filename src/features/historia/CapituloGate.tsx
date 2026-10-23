@@ -26,17 +26,22 @@ import { capituloAtual, type CapituloAberto } from "./actions";
  */
 export function CapituloGate({
   inicial,
-  className = "mx-auto w-full max-w-6xl px-3 pt-6",
 }: {
   inicial: CapituloAberto | null;
-  /** classe do wrapper — ajuste por página para não duplicar padding de um
-   *  `<main>` que já centraliza (ex.: `/world` já tem `px-3`) */
-  className?: string;
 }) {
   const [capitulo, setCapitulo] = useState(inicial);
   if (!capitulo) return null;
   return (
-    <div className={className}>
+    // A carta é um overlay (não um bloco acima do jogo): inline ela empurrava a
+    // cena para fora da primeira tela — no HD e no celular o jogador via só a
+    // carta e precisava rolar para descobrir que existia um jogo embaixo. Como
+    // overlay rola sozinha quando é maior que a janela.
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[60] overflow-y-auto bg-black/60 p-3 sm:p-6"
+    >
+      <div className="mx-auto w-full max-w-xl py-4">
       <CapituloCard
         key={capitulo.capitulo.id}
         capitulo={capitulo.capitulo}
@@ -51,6 +56,7 @@ export function CapituloGate({
           }
         }}
       />
+      </div>
     </div>
   );
 }

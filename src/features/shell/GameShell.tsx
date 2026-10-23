@@ -235,13 +235,23 @@ export function GameShell({
   };
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-3 py-6">
-      <p className="mb-3 font-pixel text-[11px] uppercase tracking-[3px] text-teal">
+    <main className="mx-auto w-full max-w-6xl px-2 py-3 min-[1700px]:max-w-[1500px] sm:px-3 lg:py-6">
+      <p className="mb-2 font-pixel text-[10px] uppercase tracking-[3px] text-teal lg:mb-3 lg:text-[11px]">
         labdatadev · gamehub
       </p>
-      <div className="relative aspect-[20/11] min-h-[440px] w-full overflow-hidden rounded-[14px] border-[3px] border-[#05304a] shadow-[0_0_0_4px_#041018,0_18px_50px_rgba(0,0,0,.55)]">
+      {/*
+        Moldura responsiva em DOIS modos (nunca "encolher" a cena):
+          · < 1024px (celular e tablet em pé): coluna — HUD, atalhos e tela
+            fluem na página, que rola; navegação e atalhos ficam fixos.
+          · ≥ 1024px (tablet deitado, HD, Full HD): a cena do jogo, com altura
+            ligada à janela (520–900px) em vez de proporção fixa, que no HD
+            estourava a tela e no Full HD sobrava vazio.
+      */}
+      <div className="relative flex min-h-[calc(100dvh-4.5rem)] flex-col overflow-hidden rounded-[14px] border-[3px] border-[#05304a] shadow-[0_0_0_4px_#041018,0_18px_50px_rgba(0,0,0,.55)] lg:block lg:h-[clamp(520px,calc(100dvh-6rem),900px)] lg:min-h-0">
        <RecompensaProvider demo={demo}>
-        <IsoRoom />
+        <div className="absolute inset-0">
+          <IsoRoom />
+        </div>
         <HudBar
           data={dadosHud}
           acoes={
@@ -257,7 +267,7 @@ export function GameShell({
           }
         />
 
-        <div className="absolute inset-x-0 bottom-0 top-0 z-10 pb-20 pl-14 pr-4 pt-24">
+        <div className="relative z-10 flex-1 px-2 pb-24 pt-2 max-lg:order-2 lg:absolute lg:inset-0 lg:px-0 lg:pb-20 lg:pl-14 lg:pr-4 lg:pt-24">
           <AnimatePresence mode="wait">
             <motion.section
               key={view}
@@ -265,7 +275,7 @@ export function GameShell({
               initial="initial"
               animate="enter"
               exit="exit"
-              className="h-full"
+              className="lg:h-full"
             >
               {view === "hub" ? (
                 <HubScreen
@@ -278,11 +288,11 @@ export function GameShell({
                   aoIr={go}
                 />
               ) : (
-                <div className="relative h-full rounded-md bg-card/85 p-4 pt-5 backdrop-blur-sm">
+                <div className="relative rounded-md bg-card/85 p-3 pt-5 backdrop-blur-sm sm:p-4 sm:pt-5 lg:h-full">
                   <span className="clip-ribbon absolute -left-1.5 -top-3 rounded-sm bg-coral px-4 py-1.5 text-[13px] font-extrabold text-white shadow-[0_3px_0] shadow-coral-dark">
                     {stageTitle(view)}
                   </span>
-                  <div className="h-full pt-3">
+                  <div className="pt-3 lg:h-full">
                     {view === "sede" &&
                     sede &&
                     mobilia !== undefined &&
@@ -363,13 +373,52 @@ export function GameShell({
           }}
         />
 
+        {/* Atalhos no celular/tablet em pé: os três botões que no desktop
+            flutuam nos cantos viram uma faixa no fluxo da página — flutuando
+            eles cobriam botões de ação do conteúdo (ex.: "Desbloquear"). */}
+        <div className="relative z-20 flex gap-2 px-2 pb-2 max-lg:order-1 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setDrawer(true)}
+            className="flex items-center gap-1.5 rounded-md bg-panel/90 px-3 py-2 text-xs font-extrabold text-ink shadow-hard"
+          >
+            <Icon name="grid" size={15} />
+            Módulos
+          </button>
+          {!demo ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setCelular(true)}
+                className="relative flex items-center gap-1.5 rounded-md bg-panel/90 px-3 py-2 text-xs font-extrabold text-ink shadow-hard"
+              >
+                <Icon name="monitor" size={15} />
+                Celular
+                {mensagens.length > 0 ? (
+                  <span className="grid h-4 min-w-4 place-items-center rounded-pill bg-coral px-1 font-pixel text-[7px] text-white">
+                    {mensagens.length}
+                  </span>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                onClick={() => setInventario(true)}
+                className="flex items-center gap-1.5 rounded-md bg-panel/90 px-3 py-2 text-xs font-extrabold text-ink shadow-hard"
+              >
+                <Icon name="cube" size={15} />
+                Inventário
+              </button>
+            </>
+          ) : null}
+        </div>
+
         {/* app-drawer (2×2) — abre o menu de módulos, fiel ao Startup Panic */}
         <motion.button
           type="button"
           {...pressable}
           onClick={() => setDrawer(true)}
           aria-label="Abrir módulos"
-          className="absolute bottom-3 left-3 z-20 grid grid-cols-2 gap-0.5 rounded-md bg-panel/90 p-2.5 shadow-hard"
+          className="absolute bottom-3 left-3 z-20 hidden grid-cols-2 gap-0.5 rounded-md bg-panel/90 p-2.5 shadow-hard lg:grid"
         >
           {Array.from({ length: 4 }).map((_, i) => (
             <span key={i} className="h-2 w-2 rounded-[2px] bg-ink/70" />
@@ -380,7 +429,7 @@ export function GameShell({
             app-drawer da esquerda. Só no modo autenticado: no demo não há
             inventário nem mensagens de verdade para mostrar. */}
         {!demo ? (
-          <div className="absolute bottom-3 right-3 z-20 flex flex-col gap-2">
+          <div className="absolute bottom-3 right-3 z-20 hidden flex-col gap-2 lg:flex">
             <motion.button
               type="button"
               {...pressable}

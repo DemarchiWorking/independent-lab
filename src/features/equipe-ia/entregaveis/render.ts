@@ -1,5 +1,6 @@
 import { color, font } from "@tokens";
-import type { CanvasNegocio, RoteiroReel, ScriptComercial } from "./tipos";
+import { escaparHtml } from "./html";
+import type { RoteiroReel, ScriptComercial } from "./tipos";
 
 /**
  * Renderização dos entregáveis para HTML autocontido e imprimível.
@@ -13,21 +14,7 @@ import type { CanvasNegocio, RoteiroReel, ScriptComercial } from "./tipos";
  * (regra não-negociável do AGENTS.md) — é o mesmo visual do app.
  */
 
-/**
- * Escapa conteúdo vindo do usuário antes de entrar no HTML.
- *
- * NÃO é paranoia: `nomeNegocio` é digitado no cadastro e vai para dentro
- * do documento. Sem escapar, um negócio chamado `<script>…` viraria script
- * executável no momento em que o dono abrisse o arquivo baixado.
- */
-export function escaparHtml(texto: string): string {
-  return texto
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+export { escaparHtml };
 
 function moldura(titulo: string, subtitulo: string, corpo: string): string {
   return `<!doctype html>
@@ -88,27 +75,6 @@ function moldura(titulo: string, subtitulo: string, corpo: string): string {
   </div>
 </body>
 </html>`;
-}
-
-export function canvasParaHtml(canvas: CanvasNegocio): string {
-  const blocos = canvas.blocos
-    .map(
-      (b) => `<div class="bloco">
-      <h2>${escaparHtml(b.titulo)}</h2>
-      <ul>${b.itens.map((i) => `<li>${escaparHtml(i)}</li>`).join("")}</ul>
-    </div>`,
-    )
-    .join("");
-
-  const passos =
-    canvas.proximosPassos.length > 0
-      ? `<div class="destaque">
-      <h2>Próximos passos</h2>
-      <ul>${canvas.proximosPassos.map((p) => `<li>${escaparHtml(p)}</li>`).join("")}</ul>
-    </div>`
-      : "";
-
-  return moldura(canvas.titulo, canvas.subtitulo, `<div class="grade">${blocos}</div>${passos}`);
 }
 
 export function reelParaHtml(reel: RoteiroReel): string {

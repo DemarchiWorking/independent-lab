@@ -20,8 +20,11 @@ interface NavProps<T extends string> {
 /** Barra de navegação inferior (troca o "palco"). Modular via `items`. */
 export function Nav<T extends string>({ items, current, onChange }: NavProps<T>) {
   return (
-    <nav className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 flex justify-center p-3">
-      <div className="flex gap-1 rounded-pill bg-panel/95 p-1.5 shadow-hard">
+    <nav
+      aria-label="Telas do jogo"
+      className="pointer-events-auto fixed inset-x-0 bottom-0 z-40 flex justify-center p-2 lg:absolute lg:z-20 lg:p-3"
+    >
+      <div className="flex max-w-full gap-1 overflow-x-auto rounded-pill bg-panel/95 p-1.5 shadow-hard">
         {items.map((item) => {
           const active = item.key === current;
           return (
@@ -31,8 +34,9 @@ export function Nav<T extends string>({ items, current, onChange }: NavProps<T>)
               {...pressable}
               onClick={() => onChange(item.key)}
               aria-current={active}
+              aria-label={item.label}
               className={cn(
-                "relative flex items-center gap-1.5 rounded-pill px-3 py-2 text-xs font-extrabold",
+                "relative flex shrink-0 items-center gap-1.5 rounded-pill px-2.5 py-2 text-xs font-extrabold sm:px-3",
                 active ? "text-ink" : "text-[#5b6b86]",
               )}
             >
@@ -45,7 +49,7 @@ export function Nav<T extends string>({ items, current, onChange }: NavProps<T>)
               ) : null}
               <span className="relative flex items-center gap-1.5">
                 <Icon name={item.icon} size={16} />
-                {item.label}
+                <span className="max-sm:hidden">{item.label}</span>
               </span>
             </motion.button>
           );

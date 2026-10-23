@@ -31,9 +31,9 @@ export interface HudAcoes {
  *  Cada elemento é um atalho para a tela que explica aquele número. */
 export function HudBar({ data, acoes = {} }: { data: HudData; acoes?: HudAcoes }) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="pointer-events-auto flex gap-2">
+    <div className="pointer-events-none relative z-20 p-2 lg:absolute lg:inset-x-0 lg:top-0 lg:p-3">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between lg:gap-3">
+        <div className="pointer-events-auto grid grid-cols-3 gap-2 lg:flex">
           <StatCard
             icon="coin"
             label="Moeda"
@@ -73,9 +73,9 @@ export function HudBar({ data, acoes = {} }: { data: HudData; acoes?: HudAcoes }
           onClick={acoes.aoClicarObjetivo}
           disabled={!acoes.aoClicarObjetivo}
           title={acoes.aoClicarObjetivo ? "Ver missão no Hub" : undefined}
-          className="pointer-events-auto flex items-center gap-3 rounded-md bg-panel/95 px-3 py-2 text-left text-ink shadow-hard enabled:hover:bg-panel disabled:cursor-default"
+          className="pointer-events-auto flex w-full items-center justify-between gap-3 rounded-md bg-panel/95 px-3 py-2 text-left text-ink shadow-hard enabled:hover:bg-panel disabled:cursor-default lg:w-auto lg:justify-start"
         >
-          <div className="leading-tight">
+          <div className="min-w-0 leading-tight">
             <small className="block font-pixel text-[8px] uppercase text-[#5b6b86]">
               Objetivo
             </small>
@@ -85,7 +85,7 @@ export function HudBar({ data, acoes = {} }: { data: HudData; acoes?: HudAcoes }
         </motion.button>
       </div>
 
-      <div className="mt-2 flex items-center justify-between">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         {data.alert ? <AlertBanner message={data.alert} /> : <span />}
         <motion.button
           type="button"

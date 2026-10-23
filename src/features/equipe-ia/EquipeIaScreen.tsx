@@ -215,6 +215,19 @@ export function EquipeIaScreen({
                 {ROTULO_ENTREGAVEL[entregavel] ?? "Baixar entregável"}
               </a>
             ) : null}
+            {/* o post é imagem (baixa direto); canvas, script e roteiro são
+                documentos e podem ser conferidos no navegador antes de guardar */}
+            {jaContratado && entregavel && entregavel !== "post" ? (
+              <a
+                href={`/api/entregavel/${entregavel}?ver=1`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-md bg-[#e6eaf1] px-4 py-2.5 font-ui text-sm font-extrabold text-[#33415c]"
+              >
+                <Icon name="arrow" size={14} />
+                Ver no navegador
+              </a>
+            ) : null}
 
             {jaContratado && custoProximo !== undefined ? (
               <ActionButton
